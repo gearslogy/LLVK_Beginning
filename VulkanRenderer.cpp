@@ -44,7 +44,7 @@ void VulkanRenderer::cleanup() {
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
     vkDestroyDevice(mainDevice.logicalDevice, nullptr);
     if(enableValidation){
-        DestroyDebugReportCallbackEXT(instance, reportCallback, nullptr);
+        DebugV1::DestroyDebugReportCallbackEXT(instance, reportCallback, nullptr);
     }
     vkDestroyInstance(instance, nullptr);
 }
@@ -66,7 +66,11 @@ void VulkanRenderer::createInstance() {
         std::cout << "glfw extension:" <<glfwExtensionNames[i] << std::endl;
         extensionNamesList.emplace_back(glfwExtensionNames[i]);
     }
-    if(enableValidation) extensionNamesList.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); // VK_EXT_debug_report
+    if(enableValidation) {
+        extensionNamesList.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); // VK_EXT_debug_report, this is old method(v1)
+        extensionNamesList.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);  // we will use here
+    }
+
 
     checkInstanceExtensionSupport(extensionNamesList);
     //VkInstanceCreateInfo instanceCreateInfo; // CAUSE CRASH
@@ -97,12 +101,12 @@ void VulkanRenderer::createDebugCallback() {
     if(not enableValidation) return;
     VkDebugReportCallbackCreateInfoEXT callbackCreateInfo = {};
     callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-    callbackCreateInfo.pfnCallback = debugFunction;
+    callbackCreateInfo.pfnCallback = DebugV1::debugFunction;
     callbackCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT |
                                VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT | VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
 
     // Create debug callback with custom create function
-    VkResult const result = CreateDebugReportCallbackEXT(instance, &callbackCreateInfo, nullptr, &reportCallback);
+    VkResult const result = DebugV1::CreateDebugReportCallbackEXT(instance, &callbackCreateInfo, nullptr, &reportCallback);
     if (result != VK_SUCCESS)
         throw std::runtime_error("Failed to create Debug Callback!");
 }

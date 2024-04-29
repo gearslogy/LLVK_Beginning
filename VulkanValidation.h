@@ -9,7 +9,8 @@
 #include <vulkan/vulkan.h>
 #include <iostream>
 #include <format>
-/*
+namespace DebugV1 {
+    /*
 typedef enum VkDebugReportFlagBitsEXT {
     VK_DEBUG_REPORT_INFORMATION_BIT_EXT = 0x00000001,
     VK_DEBUG_REPORT_WARNING_BIT_EXT = 0x00000002,
@@ -68,13 +69,22 @@ inline VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugR
     return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
-static void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback,
+inline void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback,
                                           const VkAllocationCallbacks *pAllocator) {
     auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(instance,
                                                                             "vkDestroyDebugReportCallbackEXT");
     if (func != nullptr)
         func(instance, callback, pAllocator);
 }
+}
+
+
+namespace DebugV2 {
+
+}
+
+
+
 
 
 #endif //CP_02_VULKANVALIDATION_H
