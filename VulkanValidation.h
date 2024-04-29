@@ -80,6 +80,69 @@ inline void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCall
 
 
 namespace DebugV2 {
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugFunction(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData){
+        //std::cerr << "*****validation layer: " << pCallbackData->pMessage << std::endl;
+        const char* severityStr;
+        switch (messageSeverity) {
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+                severityStr = "VERBOSE";
+            break;
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+                severityStr = "INFO";
+            break;
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+                severityStr = "WARNING";
+            break;
+            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+                severityStr = "ERROR";
+            break;
+            default:
+                severityStr = "UNKNOWN";
+        }
+        printf("[%s] %s\n", severityStr, pCallbackData->pMessage);
+        return VK_FALSE;
+    }
+    inline VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func != nullptr) {
+            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+        } else {
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        }
+    }
+    inline void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr) {
+            func(instance, debugMessenger, pAllocator);
+        }
+    }
+    struct CustomDebug {
+        VkInstance bindInstance{}; // REF OBJECT
+        VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+        VkDebugUtilsMessengerEXT debugMessenger{};
+        // rely on the VkInstance
+        void init() {
+            createInfo = getCreateInfo();
+            if (CreateDebugUtilsMessengerEXT(bindInstance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+                throw std::runtime_error("failed to set up debug messenger!");
+        }
+        void cleanup() {
+            DestroyDebugUtilsMessengerEXT(bindInstance, debugMessenger, nullptr);
+        }
+        static VkDebugUtilsMessengerCreateInfoEXT getCreateInfo() {
+            VkDebugUtilsMessengerCreateInfoEXT ret{};
+            ret.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            ret.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;// | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT ;//| VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT;
+            ret.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            ret.pfnUserCallback = debugFunction;
+            return ret;
+        }
+
+    };
 
 }
 

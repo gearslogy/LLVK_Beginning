@@ -10,6 +10,7 @@
 #include "Pipeline.h"
 #include "RenderPass.h"
 #include "Utils.h"
+#include "VulkanValidation.h"
 class VulkanRenderer {
 public :
     VulkanRenderer();
@@ -36,8 +37,10 @@ private:
     VkExtent2D swapChainExtent;
 
     // Objects
+    DebugV2::CustomDebug simpleDebug;
     Pipeline simplePipeline;
     RenderPass simplePass;
+
 
     // create functions
     void createInstance();

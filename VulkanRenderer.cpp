@@ -44,7 +44,7 @@ void VulkanRenderer::cleanup() {
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
     vkDestroyDevice(mainDevice.logicalDevice, nullptr);
     if(enableValidation){
-        DebugV1::DestroyDebugReportCallbackEXT(instance, reportCallback, nullptr);
+        simpleDebug.cleanup();
     }
     vkDestroyInstance(instance, nullptr);
 }
@@ -60,26 +60,24 @@ void VulkanRenderer::createInstance() {
 
     uint32_t glfwExtPropsCount;
     const char** glfwExtensionNames = glfwGetRequiredInstanceExtensions(&glfwExtPropsCount);
-    std::cout << "glfwGetRequiredInstanceExtensions :" << glfwExtPropsCount << std::endl;
     std::vector<const char *> extensionNamesList;
     for(int i=0;i<glfwExtPropsCount;i++){
-        std::cout << "glfw extension:" <<glfwExtensionNames[i] << std::endl;
         extensionNamesList.emplace_back(glfwExtensionNames[i]);
     }
     if(enableValidation) {
-        extensionNamesList.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); // VK_EXT_debug_report, this is old method(v1)
+        //extensionNamesList.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); // VK_EXT_debug_report, this is old method(v1)
         extensionNamesList.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);  // we will use here
     }
 
-
     checkInstanceExtensionSupport(extensionNamesList);
-    //VkInstanceCreateInfo instanceCreateInfo; // CAUSE CRASH
+
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = DebugV2::CustomDebug::getCreateInfo();
     VkInstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
     instanceCreateInfo.enabledExtensionCount = extensionNamesList.size();
     instanceCreateInfo.ppEnabledExtensionNames = extensionNamesList.data();
-
+    instanceCreateInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
     std::vector<const char *> layerNames = {
             //"VK_LAYER_LUNARG_api_dump", // SUPPORT
             //"VK_LAYER_LUNARG_standard_validation" // NOT SUPPORTED
@@ -89,7 +87,6 @@ void VulkanRenderer::createInstance() {
         instanceCreateInfo.ppEnabledLayerNames = layerNames.data();
         instanceCreateInfo.enabledLayerCount = layerNames.size();
     }
-
     // create instance
     VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
     if(result != VK_SUCCESS){
@@ -99,16 +96,8 @@ void VulkanRenderer::createInstance() {
 
 void VulkanRenderer::createDebugCallback() {
     if(not enableValidation) return;
-    VkDebugReportCallbackCreateInfoEXT callbackCreateInfo = {};
-    callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-    callbackCreateInfo.pfnCallback = DebugV1::debugFunction;
-    callbackCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT |
-                               VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT | VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
-
-    // Create debug callback with custom create function
-    VkResult const result = DebugV1::CreateDebugReportCallbackEXT(instance, &callbackCreateInfo, nullptr, &reportCallback);
-    if (result != VK_SUCCESS)
-        throw std::runtime_error("Failed to create Debug Callback!");
+    simpleDebug.bindInstance = instance;
+    simpleDebug.init();
 }
 
 void VulkanRenderer::checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions) {
@@ -121,8 +110,9 @@ void VulkanRenderer::checkInstanceExtensionSupport(const std::vector<const char 
             if(strcmp(vkInstanceExtProp.extensionName , checkExt) == 0 ) return true;
             return false;
         });
-        if(find!= instancePropertiesList.end())
-            std::cout << "vulkan support instance extension:" << checkExt << std::endl;
+        if(find!= instancePropertiesList.end()) {
+            //std::cout << "vulkan support instance extension:" << checkExt << std::endl;
+        }
         else{
             throw std::runtime_error(std::format("vulkan not support this instance extension:{}", checkExt));
         }
