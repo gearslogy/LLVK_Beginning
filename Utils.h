@@ -20,6 +20,38 @@ struct QueueFamilyIndices{
     }
 };
 
+inline QueueFamilyIndices getQueueFamilies(VkSurfaceKHR surface, VkPhysicalDevice device)  {
+    QueueFamilyIndices indices;
+
+    uint32_t queueFamilyCount{0};
+    vkGetPhysicalDeviceQueueFamilyProperties(device,&queueFamilyCount,nullptr );
+    std::vector<VkQueueFamilyProperties> queueFamilyList(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device,&queueFamilyCount, queueFamilyList.data() );
+
+    int i=0;
+    for(auto &queueFamily : queueFamilyList){
+        // has graphics queue family
+        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT and queueFamily.queueCount >0){
+            indices.graphicsFamily = i; // current only focus the GRAPHICS_FAMILY, 用整形自己做indice
+            //std::cout << "find graphics queue VK_QUEUE_GRAPHICS_BIT,queue count: " << queueFamily.queueCount << " ,and graphicsFamily indices:" << indices.graphicsFamily<< std::endl;
+        }
+
+        // check if queue family supports presentation . graphics queue also is a presentation queue.!
+        // 这里直接这样检查，不用else if. 因为graphics queue 也是 presentation queue
+        VkBool32 presentationSupport =false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentationSupport);
+        if(queueFamily.queueCount> 0 && presentationSupport){
+            indices.presentationFamily = i;
+        }
+        if(indices.isValid()){
+            break;
+        }
+
+        i++;
+    }
+    return indices;
+}
+
 
 struct SwapChainDetails{
     VkSurfaceCapabilitiesKHR capabilities;

@@ -10,7 +10,7 @@ set(GLFW_PATH_LIB ${GLFW_PATH}/lib-vc2019)
 
 FIND_PACKAGE(Vulkan)
 
-file(GLOB SOURCES VulkanRenderer* RenderPass* Pipeline* CommandBuffer*)
+file(GLOB SOURCES VulkanRenderer* RenderPass* Pipeline* CommandBuffer* Swapchain* Image*)
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 
