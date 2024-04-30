@@ -12,7 +12,7 @@ void Pipeline::cleanup() {
 }
 
 void Pipeline::init() {
-       const auto vertCode = readSpvFile("shaders/vert_shader.spv");
+    const auto vertCode = readSpvFile("shaders/vert_shader.spv");
     const auto fragCode = readSpvFile("shaders/frag_shader.spv");
 
     const auto vertModule = createShaderModule(bindDevice,vertCode);

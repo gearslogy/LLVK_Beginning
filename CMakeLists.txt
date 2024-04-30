@@ -10,7 +10,14 @@ set(GLFW_PATH_LIB ${GLFW_PATH}/lib-vc2019)
 
 FIND_PACKAGE(Vulkan)
 
-file(GLOB SOURCES VulkanRenderer* RenderPass* Pipeline* CommandBuffer* Swapchain* Image*)
+file(GLOB SOURCES VulkanRenderer*
+        RenderPass*
+        Pipeline*
+        Command*
+        Swapchain*
+        Image*
+        Frambuffer*
+)
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 
@@ -18,7 +25,7 @@ add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )
 MESSAGE("VULKAN_SDK  Path----> $ENV{VULKAN_SDK}" )
 
-set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslangValidator.exe)
+set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslc.exe)
 
 set(shader_folder ${CMAKE_SOURCE_DIR}/build/bin/shaders)
 file(GLOB_RECURSE shader_sources
@@ -30,11 +37,11 @@ foreach(shader_source IN LISTS shader_sources)
     get_filename_component(shader_ext "${shader_source}" EXT)
     set(output_path "${shader_folder}/${shader_name}.spv")
     MESSAGE("[[AOT SHADER]]: ${output_path}")
-    MESSAGE("[[AOT COMMAND:]] ${glsl_compiler_exec_path} -V ${shader_source} -o ${output_path}")
+    MESSAGE("[[AOT COMMAND:]] ${glsl_compiler_exec_path}  ${shader_source} -o ${output_path}")
 
     add_custom_command( TARGET ${PROJECT_NAME}
             POST_BUILD
-            COMMAND "${glsl_compiler_exec_path}" -V ${shader_source} -o ${output_path}
+            COMMAND "${glsl_compiler_exec_path}" ${shader_source} -o ${output_path}
             COMMENT "Compiling----------------> ${shader_name} ${shader_ext} with glslangValidator"
     )
 endforeach()

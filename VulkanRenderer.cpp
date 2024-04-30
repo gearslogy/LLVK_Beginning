@@ -26,6 +26,8 @@ int VulkanRenderer::init(GLFWwindow *rh) {
         createSwapChain();
         createRenderpass();
         createPipeline();
+        createFramebuffers();
+        createCommandPoolAndBuffers();
     }
     catch (const std::runtime_error &e) {
         std::cout << e.what() << std::endl;
@@ -34,6 +36,8 @@ int VulkanRenderer::init(GLFWwindow *rh) {
     return 0;
 }
 void VulkanRenderer::cleanup() {
+    simpleCommandManager.cleanup();
+    simpleFramebuffer.cleanup();
     simplePass.cleanup();
     simplePipeline.cleanup();
     simpleSwapchain.cleanup();
@@ -128,21 +132,23 @@ void VulkanRenderer::getPhysicalDevice() {
             break;
         }
     }
+    assert(mainDevice.physicalDevice!=VK_NULL_HANDLE);
 }
 
 bool VulkanRenderer::checkDeviceSuitable(const VkPhysicalDevice &device) const{
+    bool condition0{false};
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(device, &props);
     std::cout << "GPU name:" <<props.deviceName << std::endl;
     QueueFamilyIndices indices = getQueueFamilies(surfaceKhr,device);
-    if(indices.isValid())
-        return true;
+    condition0 = indices.isValid();
     // assert checking
-    checkDeviceExtensionSupport(deviceExtensions);
+
     auto swapDetails = Swapchain::getSwapChainDetails(surfaceKhr,device);
-    assert(not swapDetails.formatList.empty());
-    assert(not swapDetails.presentModeList.empty());
-    return false;
+    auto condition1 = not swapDetails.formatList.empty();
+    auto condition2 = not swapDetails.presentModeList.empty();
+    auto condition3 = checkDeviceExtensionSupport(device,deviceExtensions);
+    return condition0 and condition1 and condition2 and condition3;
 }
 
 
@@ -191,22 +197,27 @@ void VulkanRenderer::createSurface() {
         throw std::runtime_error{"ERROR create surface"};
     }
 }
-void VulkanRenderer::checkDeviceExtensionSupport(const std::vector<const char*> &checkExtensions) const {
+bool VulkanRenderer::checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<const char *> &checkExtensions) {
     uint32_t propCount{0};
-    vkEnumerateDeviceExtensionProperties(mainDevice.physicalDevice, nullptr, &propCount, nullptr);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &propCount, nullptr);
     std::vector<VkExtensionProperties > propList(propCount);
-    vkEnumerateDeviceExtensionProperties(mainDevice.physicalDevice, nullptr, &propCount, propList.data());
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &propCount, propList.data());
+
+    int accumCheck{0};
     for(const auto &checkExt : checkExtensions){
         auto find = std::find_if(propList.begin(), propList.end(), [&checkExt](VkExtensionProperties &vkInstanceExtProp){
             if(strcmp(vkInstanceExtProp.extensionName , checkExt) == 0 ) return true;
             return false;
         });
-        if(find!= propList.end())
+        if(find != propList.end()){
             std::cout << "vulkan support device extension:" << checkExt << std::endl;
+            accumCheck +=1;
+        }
         else{
-            throw std::runtime_error(std::format("vulkan not support this device extension:{}", checkExt));
+            std::cout << "vulkan do not support device extension:" << checkExt << std::endl;
         }
     };
+    return accumCheck == checkExtensions.size();
 }
 
 
@@ -218,7 +229,6 @@ void VulkanRenderer::createSwapChain() {
     simpleSwapchain.init();
 }
 
-
 void VulkanRenderer::createPipeline(){
     simplePipeline.bindDevice = mainDevice.logicalDevice;
     simplePipeline.bindExtent = simpleSwapchain.swapChainExtent;
@@ -228,6 +238,20 @@ void VulkanRenderer::createPipeline(){
 void VulkanRenderer::createRenderpass(){
     simplePass.bindDevice = mainDevice.logicalDevice;
     simplePass.init();
+}
+void VulkanRenderer::createFramebuffers() {
+    simpleFramebuffer.bindDevice = mainDevice.logicalDevice;
+    simpleFramebuffer.bindRenderPass = simplePass.pass;
+    simpleFramebuffer.bindSwapChainExtent = simpleSwapchain.swapChainExtent;
+    simpleFramebuffer.bindSwapChainImages = simpleSwapchain.swapChainImages;
+    simpleFramebuffer.init();
+}
+void VulkanRenderer::createCommandPoolAndBuffers() {
+    simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
+    simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
+    simpleCommandManager.bindSurface = surfaceKhr;
+    simpleCommandManager.bindSwapChainFramebuffers = simpleFramebuffer.swapChainFramebuffers;
+    simpleCommandManager.init();
 }
 
 

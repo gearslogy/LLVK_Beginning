@@ -12,7 +12,8 @@
 #include "Utils.h"
 #include "VulkanValidation.h"
 #include "Swapchain.h"
-
+#include "Frambuffer.h"
+#include "CommandManager.h"
 class VulkanRenderer {
 public :
     VulkanRenderer();
@@ -32,14 +33,13 @@ private:
     VkQueue presentationQueue;
     VkSurfaceKHR surfaceKhr;
 
-
-
     // Objects
     DebugV2::CustomDebug simpleDebug;
     Pipeline simplePipeline;
     RenderPass simplePass;
     Swapchain simpleSwapchain;
-
+    Frambuffer simpleFramebuffer;
+    CommandManager simpleCommandManager;
     // create functions
     void createInstance();
     void createDebugCallback();
@@ -48,10 +48,13 @@ private:
     void createSwapChain();
     void createRenderpass();
     void createPipeline();
-    void getPhysicalDevice();
+    void createFramebuffers();
+    void createCommandPoolAndBuffers();
 
+    void getPhysicalDevice();
     // support functions
-    void checkDeviceExtensionSupport(const std::vector<const char*> &checkExtensions) const;
+    static bool checkDeviceExtensionSupport(VkPhysicalDevice device,
+        const std::vector<const char*> &checkExtensions) ;
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
     [[nodiscard]] bool checkDeviceSuitable(const VkPhysicalDevice &device) const ;
 
