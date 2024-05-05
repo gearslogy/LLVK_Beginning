@@ -20,11 +20,12 @@ VulkanRenderer::VulkanRenderer() {}
 void VulkanRenderer::initWindow() {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     window = glfwCreateWindow(800, 600, "Vulkan", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height ) {
         auto app = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+        std::cout << "glfw windows size changed:" << width << " " << height << std::endl;
         app->framebufferResized = true;
     });
 }
@@ -63,6 +64,7 @@ int VulkanRenderer::initVulkan() {
 void VulkanRenderer::cleanup() {
     // Wait until no actions being run on device before destroying
     vkDeviceWaitIdle(mainDevice.logicalDevice);
+    cleanupSwapChain();
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
         vkDestroySemaphore(mainDevice.logicalDevice, imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(mainDevice.logicalDevice, renderFinishedSemaphores[i], nullptr);
@@ -70,17 +72,37 @@ void VulkanRenderer::cleanup() {
     }
 
     simpleCommandManager.cleanup();
-    simpleFramebuffer.cleanup();
     simplePipeline.cleanup();
     simplePass.cleanup();
-    simpleSwapchain.cleanup();
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
     mainDevice.cleanup();
     if(enableValidation){
         simpleDebug.cleanup();
     }
     vkDestroyInstance(instance, nullptr);
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
+void VulkanRenderer::cleanupSwapChain() {
+    simpleFramebuffer.cleanup();
+    simpleSwapchain.cleanup();
+}
+void VulkanRenderer::recreateSwapChain() {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwWaitEvents();
+    }
+    vkDeviceWaitIdle(mainDevice.logicalDevice);
+    cleanupSwapChain();
+    createSwapChain();
+    createFramebuffers();
+}
+
+
+
+
 void VulkanRenderer::createInstance() {
     VkApplicationInfo appInfo{
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -195,9 +217,9 @@ void VulkanRenderer::createCommandPoolAndBuffers() {
     simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
     simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleCommandManager.bindSurface = surfaceKhr;
-    simpleCommandManager.bindSwapChainFramebuffers = simpleFramebuffer.swapChainFramebuffers;
+    simpleCommandManager.bindSwapChainFramebuffers = &simpleFramebuffer.swapChainFramebuffers;
     simpleCommandManager.bindRenderPass = simplePass.pass;
-    simpleCommandManager.bindSwapChainExtent = simpleSwapchain.swapChainExtent;
+    simpleCommandManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleCommandManager.bindPipeline = simplePipeline.graphicsPipeline;
     simpleCommandManager.init();
 }
@@ -220,13 +242,21 @@ void VulkanRenderer::createSyncObjects() {
 }
 
 void VulkanRenderer::draw() {
+    //std::cout << "draw frame:" << currentFrame << std::endl;
     // GPU -> CPU, 等待上一帧是不是渲染完成
     vkWaitForFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
-    vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
+
     //std::cout << "frame:" << currentFrame << std::endl;
     // GPU->GPU 获取可以绘制的交换链图片
     uint32_t imageIndex;
     auto result =vkAcquireNextImageKHR(mainDevice.logicalDevice, simpleSwapchain.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    if(result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapChain();
+        return;
+    }else if(result !=VK_SUCCESS and result!=VK_SUBOPTIMAL_KHR) {
+        throw std::runtime_error{"failed to acquire swap chain image!"};
+    }
+    vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
 
     VkCommandBuffer commandBufferToSubmit = simpleCommandManager.commandBuffers[currentFrame];
     vkResetCommandBuffer(commandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0);
@@ -255,7 +285,15 @@ void VulkanRenderer::draw() {
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &simpleSwapchain.swapchain;
     presentInfo.pImageIndices = &imageIndex;
-    vkQueuePresentKHR(mainDevice.presentationQueue, &presentInfo);
+    result = vkQueuePresentKHR(mainDevice.presentationQueue, &presentInfo);
+
+    if(result == VK_ERROR_OUT_OF_DATE_KHR or result == VK_SUBOPTIMAL_KHR or framebufferResized) {
+        framebufferResized = false;
+        recreateSwapChain();
+        std::cout << magic_enum::enum_name(result) <<"222\n";
+    }else if(result != VK_SUCCESS) {
+        throw std::runtime_error{"failed to present swapchain image"};
+    }
 
     // advanced
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;

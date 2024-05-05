@@ -11,9 +11,9 @@ struct CommandManager {
     VkDevice bindLogicDevice{};
     VkPhysicalDevice bindPhysicalDevice{};
     VkSurfaceKHR bindSurface{};
-    std::vector<VkFramebuffer> bindSwapChainFramebuffers;
+    const std::vector<VkFramebuffer> *bindSwapChainFramebuffers;
+    const VkExtent2D *bindSwapChainExtent;
     VkRenderPass bindRenderPass;
-    VkExtent2D bindSwapChainExtent;
     VkPipeline bindPipeline;
     // created
     VkCommandPool graphicsCommandPool{};

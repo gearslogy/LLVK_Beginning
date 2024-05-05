@@ -57,6 +57,9 @@ private:
     void createFramebuffers();
     void createCommandPoolAndBuffers();
     void createSyncObjects();
+    // swapchain recreate
+    void cleanupSwapChain();
+    void recreateSwapChain();
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
 };
 #endif //CP_01_VULKANRENDERER_H
