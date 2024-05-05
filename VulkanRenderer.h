@@ -14,23 +14,24 @@
 #include "Swapchain.h"
 #include "Frambuffer.h"
 #include "CommandManager.h"
+#include "Device.h"
 class VulkanRenderer {
 public :
     VulkanRenderer();
-    int init(GLFWwindow * rh);
+    void initWindow();
+    int initVulkan();
+    void mainLoop();
     void cleanup();
+    void run();
+    void draw();
 private:
+    bool framebufferResized  = false;
     GLFWwindow  *window;
     VkInstance instance{};
     bool enableValidation{true};
     VkDebugReportCallbackEXT reportCallback;
-    struct MainDevice{
-        VkPhysicalDevice physicalDevice;
-        VkDevice logicalDevice;
-    };
-    MainDevice mainDevice;
-    VkQueue graphicsQueue;
-    VkQueue presentationQueue;
+
+    Device mainDevice;
     VkSurfaceKHR surfaceKhr;
 
     // Objects
@@ -40,29 +41,22 @@ private:
     Swapchain simpleSwapchain;
     Frambuffer simpleFramebuffer;
     CommandManager simpleCommandManager;
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+    int currentFrame{0};
+
     // create functions
     void createInstance();
     void createDebugCallback();
-    void createLogicDevice();
+    void createPhyiscalAndLogicDevice();
     void createSurface();
     void createSwapChain();
     void createRenderpass();
     void createPipeline();
     void createFramebuffers();
     void createCommandPoolAndBuffers();
-
-    void getPhysicalDevice();
-    // support functions
-    static bool checkDeviceExtensionSupport(VkPhysicalDevice device,
-        const std::vector<const char*> &checkExtensions) ;
+    void createSyncObjects();
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
-    [[nodiscard]] bool checkDeviceSuitable(const VkPhysicalDevice &device) const ;
-
-private:
-    inline static const std::vector<const char*> deviceExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-
-
 };
 #endif //CP_01_VULKANRENDERER_H

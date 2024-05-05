@@ -11,6 +11,8 @@
 #include <string>
 #include <fstream>
 #include <format>
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 struct QueueFamilyIndices{
     int graphicsFamily{-1};
     int presentationFamily{-1};

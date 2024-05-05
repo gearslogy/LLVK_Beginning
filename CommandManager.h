@@ -12,12 +12,18 @@ struct CommandManager {
     VkPhysicalDevice bindPhysicalDevice{};
     VkSurfaceKHR bindSurface{};
     std::vector<VkFramebuffer> bindSwapChainFramebuffers;
+    VkRenderPass bindRenderPass;
+    VkExtent2D bindSwapChainExtent;
+    VkPipeline bindPipeline;
     // created
     VkCommandPool graphicsCommandPool{};
-    std::vector<VkCommandBuffer> swapChainCommandBuffers;// Resize command buffer count to have one for each framebuffer
+    std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer
     void init();
     void cleanup();
+    void recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageIndex);
+
 private:
+    void createGraphicsCommandPool();
     void createCommandBuffers();
 
 };

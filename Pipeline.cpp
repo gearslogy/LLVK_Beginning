@@ -43,9 +43,10 @@ void Pipeline::init() {
     // 3. assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly_ST_CIO{};
     inputAssembly_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly_ST_CIO.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    inputAssembly_ST_CIO.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly_ST_CIO.primitiveRestartEnable = false;
     // 4. viewport and scissor
+    /*
     VkViewport viewport{};
     viewport.x = 0;
     viewport.y = 0;
@@ -56,13 +57,13 @@ void Pipeline::init() {
     VkRect2D scissor{
         {0,0},
         bindExtent
-    };
+    };*/
     VkPipelineViewportStateCreateInfo viewport_ST_CIO{};
     viewport_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewport_ST_CIO.viewportCount = 1;
-    viewport_ST_CIO.pViewports = &viewport;
+    //viewport_ST_CIO.pViewports = &viewport;
     viewport_ST_CIO.scissorCount = 1;
-    viewport_ST_CIO.pScissors = &scissor;
+    //viewport_ST_CIO.pScissors = &scissor;
 
 
     // 5. dynamic state
@@ -90,6 +91,7 @@ void Pipeline::init() {
     VkPipelineMultisampleStateCreateInfo multisample_ST_CIO{};
     multisample_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisample_ST_CIO.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisample_ST_CIO.sampleShadingEnable = VK_FALSE;
 
     // 8. blending
     VkPipelineColorBlendAttachmentState colorBlend_ATM_ST{};
@@ -121,6 +123,7 @@ void Pipeline::init() {
     if(result != VK_SUCCESS) throw std::runtime_error{"ERROR create pipeline layout"};
 
     // 10 TODO depth stencil testing
+    VkPipelineDepthStencilStateCreateInfo ds_ST_;
 
     // 11. PIPELINE
     VkGraphicsPipelineCreateInfo pipeline_CIO{};
@@ -130,7 +133,7 @@ void Pipeline::init() {
     pipeline_CIO.pVertexInputState = &vertexInput_ST_CIO;
     pipeline_CIO.pInputAssemblyState = &inputAssembly_ST_CIO;
     pipeline_CIO.pViewportState = &viewport_ST_CIO;
-    pipeline_CIO.pDynamicState = nullptr;
+    pipeline_CIO.pDynamicState = &dynamics_ST_CIO;
     pipeline_CIO.pRasterizationState = &rasterization_ST_CIO;
     pipeline_CIO.pMultisampleState = &multisample_ST_CIO;
     pipeline_CIO.pColorBlendState = &blend_ST_CIO;

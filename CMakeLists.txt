@@ -17,6 +17,7 @@ file(GLOB SOURCES VulkanRenderer*
         Swapchain*
         Image*
         Frambuffer*
+        Device*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})

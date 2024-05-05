@@ -116,6 +116,7 @@ VkPresentModeKHR Swapchain::chooseBestPresentationMode(const std::vector<VkPrese
 VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &input) const{
 #undef max
     if(input.currentExtent.width != std::numeric_limits<uint32_t>::max() ){
+        std::cout << "Swapchain::chooseSwapExtent:" << input.currentExtent.width <<" " << input.currentExtent.height << std::endl;
         return input.currentExtent; // 一般情况下 根据input 得到的就是窗口大小
     }
     else {

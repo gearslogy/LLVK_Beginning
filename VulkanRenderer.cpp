@@ -15,19 +15,44 @@
 #include <format>
 #include <filesystem>
 VulkanRenderer::VulkanRenderer() {}
-int VulkanRenderer::init(GLFWwindow *rh) {
-    window = rh;
+
+
+void VulkanRenderer::initWindow() {
+    glfwInit();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    window = glfwCreateWindow(800, 600, "Vulkan", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height ) {
+        auto app = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+        app->framebufferResized = true;
+    });
+}
+void VulkanRenderer::mainLoop() {
+    while (!glfwWindowShouldClose(window)){
+        glfwPollEvents();
+        draw();
+    }
+}
+void VulkanRenderer::run() {
+    initWindow();
+    initVulkan();
+    mainLoop();
+    cleanup();
+}
+
+int VulkanRenderer::initVulkan() {
     try{
         createInstance();
         createDebugCallback();
         createSurface();
-        getPhysicalDevice();
-        createLogicDevice();
+        createPhyiscalAndLogicDevice();
         createSwapChain();
         createRenderpass();
         createPipeline();
         createFramebuffers();
         createCommandPoolAndBuffers();
+        createSyncObjects();
     }
     catch (const std::runtime_error &e) {
         std::cout << e.what() << std::endl;
@@ -36,13 +61,21 @@ int VulkanRenderer::init(GLFWwindow *rh) {
     return 0;
 }
 void VulkanRenderer::cleanup() {
+    // Wait until no actions being run on device before destroying
+    vkDeviceWaitIdle(mainDevice.logicalDevice);
+    for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+        vkDestroySemaphore(mainDevice.logicalDevice, imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(mainDevice.logicalDevice, renderFinishedSemaphores[i], nullptr);
+        vkDestroyFence(mainDevice.logicalDevice,inFlightFences[i], nullptr);
+    }
+
     simpleCommandManager.cleanup();
     simpleFramebuffer.cleanup();
-    simplePass.cleanup();
     simplePipeline.cleanup();
+    simplePass.cleanup();
     simpleSwapchain.cleanup();
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
-    vkDestroyDevice(mainDevice.logicalDevice, nullptr);
+    mainDevice.cleanup();
     if(enableValidation){
         simpleDebug.cleanup();
     }
@@ -94,6 +127,12 @@ void VulkanRenderer::createInstance() {
     }
 }
 
+void VulkanRenderer::createPhyiscalAndLogicDevice() {
+    mainDevice.bindSurface = surfaceKhr;
+    mainDevice.bindInstance = instance;
+    mainDevice.init();
+}
+
 void VulkanRenderer::createDebugCallback() {
     if(not enableValidation) return;
     simpleDebug.bindInstance = instance;
@@ -119,105 +158,11 @@ void VulkanRenderer::checkInstanceExtensionSupport(const std::vector<const char 
     };
 }
 
-void VulkanRenderer::getPhysicalDevice() {
-    uint32_t physicalDeviceCount{0};
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-    std::cout << "GPU count:" << physicalDeviceCount << std::endl;
-    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
-    assert(not physicalDevices.empty());
-    for(auto &device: physicalDevices){
-        if(checkDeviceSuitable(device)){ // Once we discover the graphics family
-            mainDevice.physicalDevice = device;
-            break;
-        }
-    }
-    assert(mainDevice.physicalDevice!=VK_NULL_HANDLE);
-}
-
-bool VulkanRenderer::checkDeviceSuitable(const VkPhysicalDevice &device) const{
-    bool condition0{false};
-    VkPhysicalDeviceProperties props{};
-    vkGetPhysicalDeviceProperties(device, &props);
-    std::cout << "GPU name:" <<props.deviceName << std::endl;
-    QueueFamilyIndices indices = getQueueFamilies(surfaceKhr,device);
-    condition0 = indices.isValid();
-    // assert checking
-
-    auto swapDetails = Swapchain::getSwapChainDetails(surfaceKhr,device);
-    auto condition1 = not swapDetails.formatList.empty();
-    auto condition2 = not swapDetails.presentModeList.empty();
-    auto condition3 = checkDeviceExtensionSupport(device,deviceExtensions);
-    return condition0 and condition1 and condition2 and condition3;
-}
-
-
-
-void VulkanRenderer::createLogicDevice() {
-    auto queueFamilies = getQueueFamilies(surfaceKhr,mainDevice.physicalDevice);
-
-    std::vector<VkDeviceQueueCreateInfo > queueInfos;
-    std::set<int> queueFamilyIndices { queueFamilies.graphicsFamily, queueFamilies.presentationFamily}; // 其实是一个
-    for(auto &familyIndex : queueFamilyIndices){
-        VkDeviceQueueCreateInfo queueCreateInfo{};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        float queuePriorities[] = {1.0f}; // max is 1.0f
-        queueCreateInfo.pQueuePriorities = queuePriorities;
-        queueCreateInfo.queueCount = 1;// 当前family只用其中1个queue
-        queueCreateInfo.queueFamilyIndex = familyIndex;
-        queueInfos.emplace_back(queueCreateInfo);
-    }
-
-    VkPhysicalDeviceFeatures features{};
-    vkGetPhysicalDeviceFeatures(mainDevice.physicalDevice, &features); // 非必要
-
-
-    VkDeviceCreateInfo deviceCreateInfo{};
-    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pQueueCreateInfos = queueInfos.data();               // 注意这里可以挂多个VkQueueCreateInfo, 目前本质只挂一个GraphicsFamily中的一个Queue, 因为GraphicsFamily和Queue是一样的
-    deviceCreateInfo.queueCreateInfoCount = queueInfos.size();
-    deviceCreateInfo.ppEnabledExtensionNames = nullptr;
-    deviceCreateInfo.pEnabledFeatures =  &features;
-    deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
-    deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-    auto result = vkCreateDevice(mainDevice.physicalDevice, &deviceCreateInfo, nullptr, &mainDevice.logicalDevice);
-    if(result!=VK_SUCCESS) throw std::runtime_error{"create device error"};
-
-    // create Queue
-    vkGetDeviceQueue(mainDevice.logicalDevice, queueFamilies.graphicsFamily, 0, &graphicsQueue);
-    vkGetDeviceQueue(mainDevice.logicalDevice, queueFamilies.presentationFamily, 0,&presentationQueue);
-    std::cout <<"graphics queue:" <<graphicsQueue << " presentation queue:"<< presentationQueue << std::endl;
-
-}
-
 void VulkanRenderer::createSurface() {
     auto result = glfwCreateWindowSurface(instance, window, nullptr, &surfaceKhr);
     if(result!= VK_SUCCESS) {
         throw std::runtime_error{"ERROR create surface"};
     }
-}
-bool VulkanRenderer::checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<const char *> &checkExtensions) {
-    uint32_t propCount{0};
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &propCount, nullptr);
-    std::vector<VkExtensionProperties > propList(propCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &propCount, propList.data());
-
-    int accumCheck{0};
-    for(const auto &checkExt : checkExtensions){
-        auto find = std::find_if(propList.begin(), propList.end(), [&checkExt](VkExtensionProperties &vkInstanceExtProp){
-            if(strcmp(vkInstanceExtProp.extensionName , checkExt) == 0 ) return true;
-            return false;
-        });
-        if(find != propList.end()){
-            std::cout << "vulkan support device extension:" << checkExt << std::endl;
-            accumCheck +=1;
-        }
-        else{
-            std::cout << "vulkan do not support device extension:" << checkExt << std::endl;
-        }
-    };
-    return accumCheck == checkExtensions.size();
 }
 
 
@@ -251,7 +196,68 @@ void VulkanRenderer::createCommandPoolAndBuffers() {
     simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleCommandManager.bindSurface = surfaceKhr;
     simpleCommandManager.bindSwapChainFramebuffers = simpleFramebuffer.swapChainFramebuffers;
+    simpleCommandManager.bindRenderPass = simplePass.pass;
+    simpleCommandManager.bindSwapChainExtent = simpleSwapchain.swapChainExtent;
+    simpleCommandManager.bindPipeline = simplePipeline.graphicsPipeline;
     simpleCommandManager.init();
 }
+void VulkanRenderer::createSyncObjects() {
+    imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
+    VkSemaphoreCreateInfo semaphore_CIO{};
+    semaphore_CIO.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkFenceCreateInfo fence_CIO{};
+    fence_CIO.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_CIO.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for(int i=0;i<MAX_FRAMES_IN_FLIGHT; i++) {
+        vkCreateSemaphore(mainDevice.logicalDevice, &semaphore_CIO, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(mainDevice.logicalDevice, &semaphore_CIO, nullptr, &renderFinishedSemaphores[i]);
+        vkCreateFence(mainDevice.logicalDevice, &fence_CIO, nullptr, &inFlightFences[i]);
+    }
+}
+
+void VulkanRenderer::draw() {
+    // GPU -> CPU, 等待上一帧是不是渲染完成
+    vkWaitForFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
+    vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
+    //std::cout << "frame:" << currentFrame << std::endl;
+    // GPU->GPU 获取可以绘制的交换链图片
+    uint32_t imageIndex;
+    auto result =vkAcquireNextImageKHR(mainDevice.logicalDevice, simpleSwapchain.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+    VkCommandBuffer commandBufferToSubmit = simpleCommandManager.commandBuffers[currentFrame];
+    vkResetCommandBuffer(commandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0);
+    simpleCommandManager.recordCommand(commandBufferToSubmit, imageIndex);
+    //std::cout << "record:" << currentFrame << std::endl;
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.waitSemaphoreCount  = 1;
+    submitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFrame]; // 如果交换链图片已经准备好信号
+    constexpr VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBufferToSubmit;
+    // 渲染完成信号，发射renderFinishedSemaphores
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
+    if (vkQueueSubmit(mainDevice.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        throw std::runtime_error("failed to submit draw command buffer!");
+    }
+    //std::cout << "submit:" << currentFrame << std::endl;
+    // present
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderFinishedSemaphores[currentFrame]; // render完成
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &simpleSwapchain.swapchain;
+    presentInfo.pImageIndices = &imageIndex;
+    vkQueuePresentKHR(mainDevice.presentationQueue, &presentInfo);
+
+    // advanced
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
 
