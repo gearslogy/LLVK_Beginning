@@ -11,10 +11,9 @@
 struct Frambuffer {
     // REF OBJECT
     VkDevice bindDevice;
-    std::vector<SwapChainImage> bindSwapChainImages;
     VkRenderPass bindRenderPass;
-    VkExtent2D bindSwapChainExtent;
-
+    const std::vector<SwapChainImage> *bindSwapChainImages;
+    const VkExtent2D *bindSwapChainExtent;
     // created object
     std::vector<VkFramebuffer> swapChainFramebuffers;
     void init();

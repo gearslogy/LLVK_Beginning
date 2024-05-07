@@ -209,8 +209,8 @@ void VulkanRenderer::createRenderpass(){
 void VulkanRenderer::createFramebuffers() {
     simpleFramebuffer.bindDevice = mainDevice.logicalDevice;
     simpleFramebuffer.bindRenderPass = simplePass.pass;
-    simpleFramebuffer.bindSwapChainExtent = simpleSwapchain.swapChainExtent;
-    simpleFramebuffer.bindSwapChainImages = simpleSwapchain.swapChainImages;
+    simpleFramebuffer.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
+    simpleFramebuffer.bindSwapChainImages = &simpleSwapchain.swapChainImages;
     simpleFramebuffer.init();
 }
 void VulkanRenderer::createCommandPoolAndBuffers() {
