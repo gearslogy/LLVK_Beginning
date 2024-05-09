@@ -24,6 +24,7 @@ void RenderPass::init() {
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = attachRefs;
 
+    /*
     constexpr  int dependencyCount= 2;
     VkSubpassDependency subpassDependency[dependencyCount]= {};
     // --- 1. VK_IMAGE_LAYOUT_UNDEFINED -----> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -45,8 +46,16 @@ void RenderPass::init() {
     subpassDependency[1].dstSubpass = VK_SUBPASS_EXTERNAL;
     subpassDependency[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     subpassDependency[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    subpassDependency[1].dependencyFlags = 0;
+    subpassDependency[1].dependencyFlags = 0;*/
 
+    constexpr  int dependencyCount= 1;
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstSubpass = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     
     // create render pass
     VkRenderPassCreateInfo pass_CIO{};
@@ -56,7 +65,7 @@ void RenderPass::init() {
     pass_CIO.subpassCount = 1;
     pass_CIO.pSubpasses = &subpass;
     pass_CIO.dependencyCount = dependencyCount;
-    pass_CIO.pDependencies = subpassDependency;
+    pass_CIO.pDependencies = &dependency;
     // create
     auto ret = vkCreateRenderPass(bindDevice, &pass_CIO, nullptr, &pass);
     if(ret != VK_SUCCESS) throw std::runtime_error{"ERROR"};

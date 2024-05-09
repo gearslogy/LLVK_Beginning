@@ -57,7 +57,7 @@ void BufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
     if(vkBeginCommandBuffer(copyCommandBuffer, &cmdBufBeginInfo) != VK_SUCCESS) throw std::runtime_error{"begin copy command buffer error"};
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = 0;
-        copyRegion.srcOffset = 1;
+        copyRegion.dstOffset = 0;
         copyRegion.size = size;
         vkCmdCopyBuffer(copyCommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
     if(vkEndCommandBuffer(copyCommandBuffer) != VK_SUCCESS)
@@ -105,10 +105,13 @@ void BufferManager::createVertexBufferWithStagingBuffer(size_t bufferSize, void 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, deviceBufferMemory);
 
-    // free the staging
+
     copyBuffer(stagingBuffer,vertexBuffer,bufferSize);
+    // free the staging
     vkDestroyBuffer(bindDevice,stagingBuffer,nullptr);
-    vkFreeMemory(bindDevice,deviceBufferMemory,nullptr);
+    vkFreeMemory(bindDevice,stagingBufferMemory,nullptr);
+
+    // manage our vertex buffer in array
     createdBuffers.emplace_back(vertexBuffer, deviceBufferMemory);
 }
 

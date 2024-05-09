@@ -268,7 +268,8 @@ void VulkanRenderer::createVertexBuffer() {
         {{0.4,0.4,0},{0.0,1.0,0.0}},
         {{-0.4,0.4,0},{0,0,1}},
     };
-    simpleVertexBuffer.createVertexBuffer(sizeof(Vertex) * 3, triangle);
+    //simpleVertexBuffer.createVertexBuffer(sizeof(Vertex) * 3, triangle);
+    simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * 3, triangle);
 }
 
 
