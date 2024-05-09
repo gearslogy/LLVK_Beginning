@@ -74,6 +74,7 @@ bool Device::checkDeviceSuitable(const VkPhysicalDevice &device) const{
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(device, &props);
     std::cout << "GPU name:" <<props.deviceName << std::endl;
+    std::cout << "GPU maxMemoryAllocationCount:" << props.limits.maxMemoryAllocationCount << std::endl;
     QueueFamilyIndices indices = getQueueFamilies(bindSurface,device);
     condition0 = indices.isValid();
     // assert checking

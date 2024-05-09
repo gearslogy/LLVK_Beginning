@@ -14,6 +14,8 @@
 #include "magic_enum.hpp"
 #include <format>
 #include <filesystem>
+
+#include "GeoVertexDescriptions.h"
 VulkanRenderer::VulkanRenderer() {}
 
 
@@ -52,7 +54,9 @@ int VulkanRenderer::initVulkan() {
         createRenderpass();
         createPipeline();
         createFramebuffers();
-        createCommandPoolAndBuffers();
+        createCommandPool();
+        createVertexBuffer();
+        createCommandBuffers();
         createSyncObjects();
     }
     catch (const std::runtime_error &e) {
@@ -70,8 +74,8 @@ void VulkanRenderer::cleanup() {
         vkDestroySemaphore(mainDevice.logicalDevice, renderFinishedSemaphores[i], nullptr);
         vkDestroyFence(mainDevice.logicalDevice,inFlightFences[i], nullptr);
     }
-
     simpleCommandManager.cleanup();
+    simpleVertexBuffer.cleanup();
     simplePipeline.cleanup();
     simplePass.cleanup();
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
@@ -213,7 +217,13 @@ void VulkanRenderer::createFramebuffers() {
     simpleFramebuffer.bindSwapChainImages = &simpleSwapchain.swapChainImages;
     simpleFramebuffer.init();
 }
-void VulkanRenderer::createCommandPoolAndBuffers() {
+void VulkanRenderer::createCommandPool() {
+    simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
+    simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
+    simpleCommandManager.bindSurface = surfaceKhr;
+    simpleCommandManager.createGraphicsCommandPool();
+}
+void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
     simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleCommandManager.bindSurface = surfaceKhr;
@@ -221,8 +231,17 @@ void VulkanRenderer::createCommandPoolAndBuffers() {
     simpleCommandManager.bindRenderPass = simplePass.pass;
     simpleCommandManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleCommandManager.bindPipeline = simplePipeline.graphicsPipeline;
-    simpleCommandManager.init();
+
+    std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
+    std::vector<VkDeviceSize> offsets = {0};
+    simpleCommandManager.bindVertexBuffers = {
+        std::move(vertexBuffer),
+        std::move(offsets),
+        0,1
+    };
+    simpleCommandManager.createCommandBuffers();
 }
+
 void VulkanRenderer::createSyncObjects() {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -233,13 +252,25 @@ void VulkanRenderer::createSyncObjects() {
     VkFenceCreateInfo fence_CIO{};
     fence_CIO.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_CIO.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT; i++) {
         vkCreateSemaphore(mainDevice.logicalDevice, &semaphore_CIO, nullptr, &imageAvailableSemaphores[i]);
         vkCreateSemaphore(mainDevice.logicalDevice, &semaphore_CIO, nullptr, &renderFinishedSemaphores[i]);
         vkCreateFence(mainDevice.logicalDevice, &fence_CIO, nullptr, &inFlightFences[i]);
     }
 }
+void VulkanRenderer::createVertexBuffer() {
+    simpleVertexBuffer.bindDevice = mainDevice.logicalDevice;
+    simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
+    simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
+    simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
+    static Vertex triangle[3] = {
+        {{0,-0.4,0},{ 1.0,0.0,0.0}},
+        {{0.4,0.4,0},{0.0,1.0,0.0}},
+        {{-0.4,0.4,0},{0,0,1}},
+    };
+    simpleVertexBuffer.createVertexBuffer(sizeof(Vertex) * 3, triangle);
+}
+
 
 void VulkanRenderer::draw() {
     //std::cout << "draw frame:" << currentFrame << std::endl;

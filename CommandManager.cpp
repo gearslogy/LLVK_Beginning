@@ -8,10 +8,7 @@
 void CommandManager::cleanup() {
     vkDestroyCommandPool(bindLogicDevice, graphicsCommandPool, nullptr);
 }
-void CommandManager::init() {
-    createGraphicsCommandPool();
-    createCommandBuffers();
-}
+
 
 void CommandManager::createGraphicsCommandPool() {
     QueueFamilyIndices queueFamilyIndices = getQueueFamilies(bindSurface, bindPhysicalDevice);
@@ -71,7 +68,13 @@ void CommandManager::recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageInde
         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
         VkRect2D scissor{{0,0}, *bindSwapChainExtent};
         vkCmdSetScissor(cmdBuffer,0, 1, &scissor);
+        vkCmdBindVertexBuffers(cmdBuffer,
+            bindVertexBuffers.firstBinding,
+            bindVertexBuffers.bindingCount,
+            bindVertexBuffers.vertexBuffers.data(),
+            bindVertexBuffers.offsets.data());
         vkCmdDraw(cmdBuffer,3, 1,0, 0);
+
     vkCmdEndRenderPass(cmdBuffer);
     if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");

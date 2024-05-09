@@ -7,6 +7,19 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
+/* struct for building command:vkCmdBindVertexBuffers
+VkBuffer vertexBuffers[] = {};
+VkDeviceSize offsets[] = {0}; // 0从每个buffer的起始位置开始读取
+vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+ */
+struct CmdBindVertexBuffers {
+    std::vector<VkBuffer>     vertexBuffers;
+    std::vector<VkDeviceSize> offsets;
+    uint32_t firstBinding;
+    uint32_t bindingCount;
+};
+
+
 struct CommandManager {
     VkDevice bindLogicDevice{};
     VkPhysicalDevice bindPhysicalDevice{};
@@ -15,14 +28,13 @@ struct CommandManager {
     const VkExtent2D *bindSwapChainExtent;
     VkRenderPass bindRenderPass;
     VkPipeline bindPipeline;
+    CmdBindVertexBuffers bindVertexBuffers;
     // created
     VkCommandPool graphicsCommandPool{};
     std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer
-    void init();
     void cleanup();
     void recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageIndex);
 
-private:
     void createGraphicsCommandPool();
     void createCommandBuffers();
 

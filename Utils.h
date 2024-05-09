@@ -92,7 +92,26 @@ inline VkShaderModule createShaderModule(VkDevice device, const std::vector<char
     return ret;
 }
 
-
+/*
+VkMemoryRequirements memRequirements;
+vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+VkMemoryAllocateInfo allocInfo{};
+allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+allocInfo.allocationSize = memRequirements.size;
+allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+*/
+inline uint32_t findMemoryType(VkPhysicalDevice device,uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memProperties{};
+    vkGetPhysicalDeviceMemoryProperties(device, &memProperties);
+    for(int i=0;i<memProperties.memoryTypeCount;i++) {
+        bool condition1 = typeFilter & (1 << i);
+        bool condition2 = (memProperties.memoryTypes[i].propertyFlags & properties) == properties;
+        if(condition1 and condition2) {
+            return i;
+        }
+    }
+    throw std::runtime_error{"can not get memory type"};
+}
 
 
 #endif //CP_02_UTILS_H

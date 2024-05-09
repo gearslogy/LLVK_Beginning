@@ -4,7 +4,7 @@
 
 #include "Pipeline.h"
 #include "Utils.h"
-
+#include "GeoVertexDescriptions.h"
 
 void Pipeline::cleanup() {
     vkDestroyPipeline(bindDevice, graphicsPipeline, nullptr);
@@ -34,12 +34,14 @@ void Pipeline::init() {
     VkPipelineShaderStageCreateInfo shaderStates[] = {vertShaderStageCreateInfo, fragShaderStageCreateInfo};
 
     // 2. vertex input
+    auto bindings = Vertex::bindings();
+    auto attribs = Vertex::attribs();
     VkPipelineVertexInputStateCreateInfo vertexInput_ST_CIO{};
     vertexInput_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInput_ST_CIO.vertexBindingDescriptionCount = 0;
-    vertexInput_ST_CIO.vertexAttributeDescriptionCount = 0;
-    vertexInput_ST_CIO.pVertexBindingDescriptions= nullptr;
-    vertexInput_ST_CIO.pVertexAttributeDescriptions = nullptr;
+    vertexInput_ST_CIO.vertexBindingDescriptionCount = 1;
+    vertexInput_ST_CIO.vertexAttributeDescriptionCount = attribs.size();
+    vertexInput_ST_CIO.pVertexBindingDescriptions= &bindings;
+    vertexInput_ST_CIO.pVertexAttributeDescriptions = attribs.data();
     // 3. assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly_ST_CIO{};
     inputAssembly_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

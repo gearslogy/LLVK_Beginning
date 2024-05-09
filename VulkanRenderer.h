@@ -15,6 +15,7 @@
 #include "Frambuffer.h"
 #include "CommandManager.h"
 #include "Device.h"
+#include "BufferManager.h"
 class VulkanRenderer {
 public :
     VulkanRenderer();
@@ -45,6 +46,8 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
     int currentFrame{0};
+    BufferManager simpleVertexBuffer;
+
 
     // create functions
     void createInstance();
@@ -55,8 +58,10 @@ private:
     void createRenderpass();
     void createPipeline();
     void createFramebuffers();
-    void createCommandPoolAndBuffers();
+    void createCommandPool();
+    void createCommandBuffers();
     void createSyncObjects();
+    void createVertexBuffer();
     // swapchain recreate
     void cleanupSwapChain();
     void recreateSwapChain();
