@@ -68,12 +68,22 @@ void CommandManager::recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageInde
         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
         VkRect2D scissor{{0,0}, *bindSwapChainExtent};
         vkCmdSetScissor(cmdBuffer,0, 1, &scissor);
+        /* draw non-indexed buffer
         vkCmdBindVertexBuffers(cmdBuffer,
             bindVertexBuffers.firstBinding,
             bindVertexBuffers.bindingCount,
             bindVertexBuffers.vertexBuffers.data(),
             bindVertexBuffers.offsets.data());
-        vkCmdDraw(cmdBuffer,3, 1,0, 0);
+        vkCmdDraw(cmdBuffer,bindVertexBuffers.vertexCount, 1,0, 0);
+        */
+        // draw index buffer
+        vkCmdBindVertexBuffers(cmdBuffer,
+                           bindVertexBuffers.firstBinding,
+                           bindVertexBuffers.bindingCount,
+                           bindVertexBuffers.vertexBuffers.data(),
+                           bindVertexBuffers.offsets.data());
+        vkCmdBindIndexBuffer(cmdBuffer, bindIndexBuffer.indexBuffer, bindIndexBuffer.offset,bindIndexBuffer.indexType);
+        vkCmdDrawIndexed(cmdBuffer,bindIndexBuffer.indexCount,1,0,0,0 );
 
     vkCmdEndRenderPass(cmdBuffer);
     if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {

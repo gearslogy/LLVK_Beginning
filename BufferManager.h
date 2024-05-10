@@ -27,8 +27,12 @@ struct BufferManager {
     std::vector<BufferAndMemory> createdBuffers; // use cleanup() to clean
     void cleanup();
     // The following functions are just for learning
-    void createVertexBuffer(size_t bufferSize, void *verticesBufferData);
-    void createVertexBufferWithStagingBuffer(size_t bufferSize, void *verticesBufferData);
+    void createVertexBuffer(size_t bufferSize, const void *verticesBufferData);
+    void createVertexBufferWithStagingBuffer(size_t bufferSize, const void *verticesBufferData);
+
+    // create index vertex buffer
+    void createIndexBuffer(size_t indexBufferSize, const void *indicesData);
+    std::vector<BufferAndMemory> createdIndexedBuffers;
 };
 
 

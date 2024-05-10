@@ -17,8 +17,14 @@ struct CmdBindVertexBuffers {
     std::vector<VkDeviceSize> offsets;
     uint32_t firstBinding;
     uint32_t bindingCount;
+    size_t vertexCount; // only use vkCmdDraw
 };
-
+struct CmdBindIndexBuffer {
+    VkBuffer indexBuffer;
+    VkDeviceSize offset;
+    VkIndexType indexType;
+    size_t indexCount;  // only use vkCmdDrawIndexed
+};
 
 struct CommandManager {
     VkDevice bindLogicDevice{};
@@ -29,6 +35,7 @@ struct CommandManager {
     VkRenderPass bindRenderPass;
     VkPipeline bindPipeline;
     CmdBindVertexBuffers bindVertexBuffers;
+    CmdBindIndexBuffer bindIndexBuffer;
     // created
     VkCommandPool graphicsCommandPool{};
     std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer

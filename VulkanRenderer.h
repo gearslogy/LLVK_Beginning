@@ -59,12 +59,16 @@ private:
     void createPipeline();
     void createFramebuffers();
     void createCommandPool();
+    void createVertexBuffer();
     void createCommandBuffers();
     void createSyncObjects();
-    void createVertexBuffer();
+
     // swapchain recreate
     void cleanupSwapChain();
     void recreateSwapChain();
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
+
+
+
 };
 #endif //CP_01_VULKANRENDERER_H

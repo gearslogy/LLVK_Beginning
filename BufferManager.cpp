@@ -13,6 +13,12 @@ void BufferManager::cleanup() {
         vkFreeMemory(bindDevice,bufferMemory, nullptr);
     }
     createdBuffers.clear();
+
+    for(auto [buffer, bufferMemory] : createdIndexedBuffers) {
+        vkDestroyBuffer(bindDevice, buffer, nullptr);
+        vkFreeMemory(bindDevice, bufferMemory, nullptr);
+    }
+    createdIndexedBuffers.clear();
 }
 
 
@@ -73,7 +79,7 @@ void BufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
     vkFreeCommandBuffers(bindDevice, bindCommandPool, 1, &copyCommandBuffer);
 }
 
-void BufferManager::createVertexBuffer(size_t bufferSize, void *verticesBufferData) {
+void BufferManager::createVertexBuffer(size_t bufferSize, const void *verticesBufferData) {
     VkBuffer vertexBuffer{};
     VkDeviceMemory deviceBufferMemory{};
     createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -87,7 +93,7 @@ void BufferManager::createVertexBuffer(size_t bufferSize, void *verticesBufferDa
     createdBuffers.emplace_back(vertexBuffer, deviceBufferMemory);
 }
 
-void BufferManager::createVertexBufferWithStagingBuffer(size_t bufferSize, void *verticesBufferData) {
+void BufferManager::createVertexBufferWithStagingBuffer(size_t bufferSize, const void *verticesBufferData) {
     VkBuffer stagingBuffer{};
     VkDeviceMemory stagingBufferMemory{};
     createBuffer(bufferSize,VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -114,4 +120,31 @@ void BufferManager::createVertexBufferWithStagingBuffer(size_t bufferSize, void 
     // manage our vertex buffer in array
     createdBuffers.emplace_back(vertexBuffer, deviceBufferMemory);
 }
+
+void BufferManager::createIndexBuffer(size_t indexBufferSize, const void *indicesData) {
+    VkBuffer stagingBuffer{};
+    VkDeviceMemory stagingMemory{};
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, stagingMemory);
+
+    void *data;
+    vkMapMemory(bindDevice, stagingMemory, 0, indexBufferSize, 0, &data);
+    memcpy(data, indicesData, indexBufferSize);
+    vkUnmapMemory(bindDevice, stagingMemory);
+
+    VkBuffer indexBuffer{};
+    VkDeviceMemory indexMemory{};
+    createBuffer(indexBufferSize,VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT ,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,indexBuffer, indexMemory);
+    copyBuffer(stagingBuffer, indexBuffer, indexBufferSize);
+
+    // free staging
+    vkDestroyBuffer(bindDevice,stagingBuffer,nullptr);
+    vkFreeMemory(bindDevice,stagingMemory,nullptr);
+
+    // manage our index buffer in array
+    createdIndexedBuffers.emplace_back(indexBuffer, indexMemory);
+}
+
 

@@ -16,6 +16,37 @@
 #include <filesystem>
 
 #include "GeoVertexDescriptions.h"
+
+
+/* DRAW TRANGLE
+ static Vertex triangle[3] = {
+     {{0,-0.4,0},{ 1.0,0.0,0.0}},
+     {{0.4,0.4,0},{0.0,1.0,0.0}},
+     {{-0.4,0.4,0},{0,0,1}},
+ };
+ //simpleVertexBuffer.createVertexBuffer(sizeof(Vertex) * 3, triangle);
+ simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * 3, triangle);
+ */
+
+ // DRAW QUAD WITH INDEX BUFFER
+ static std::vector<Vertex> vertices = {
+     {{-0.5f, -0.5f,0}, {1.0f, 0.0f, 0.0f}},
+     {{0.5f, -0.5f,0}, {0.0f, 1.0f, 0.0f}},
+     {{0.5f, 0.5f,0}, {0.0f, 0.0f, 1.0f}},
+     {{-0.5f, 0.5f,0}, {1.0f, 1.0f, 1.0f}}
+ };
+static std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+};
+
+
+
+
+
+
+
+
+
 VulkanRenderer::VulkanRenderer() {}
 
 
@@ -223,6 +254,15 @@ void VulkanRenderer::createCommandPool() {
     simpleCommandManager.bindSurface = surfaceKhr;
     simpleCommandManager.createGraphicsCommandPool();
 }
+void VulkanRenderer::createVertexBuffer() {
+    simpleVertexBuffer.bindDevice = mainDevice.logicalDevice;
+    simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
+    simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
+    simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
+    simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * vertices.size(), vertices.data());
+    simpleVertexBuffer.createIndexBuffer(sizeof(uint16_t)*indices.size(), indices.data());
+}
+
 void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
     simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
@@ -231,16 +271,39 @@ void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.bindRenderPass = simplePass.pass;
     simpleCommandManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleCommandManager.bindPipeline = simplePipeline.graphicsPipeline;
+    simpleCommandManager.createCommandBuffers();
 
+    /* DRAW TRANGLE
     std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
     std::vector<VkDeviceSize> offsets = {0};
     simpleCommandManager.bindVertexBuffers = {
         std::move(vertexBuffer),
         std::move(offsets),
-        0,1
+        0,1, 3
     };
-    simpleCommandManager.createCommandBuffers();
+    simpleCommandManager.createCommandBuffers();*/
+
+
+
+    // DRAW QUAD WITH INDEX BUFFER
+    std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
+    std::vector<VkDeviceSize> offsets = {0};
+    simpleCommandManager.bindVertexBuffers = {
+        std::move(vertexBuffer),
+        std::move(offsets),
+        0,1, vertices.size()
+    };
+    simpleCommandManager.bindIndexBuffer = {
+        simpleVertexBuffer.createdIndexedBuffers[0].buffer,
+        0,
+        VK_INDEX_TYPE_UINT16,
+        indices.size()
+    };
+
 }
+
+
+
 
 void VulkanRenderer::createSyncObjects() {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -257,19 +320,6 @@ void VulkanRenderer::createSyncObjects() {
         vkCreateSemaphore(mainDevice.logicalDevice, &semaphore_CIO, nullptr, &renderFinishedSemaphores[i]);
         vkCreateFence(mainDevice.logicalDevice, &fence_CIO, nullptr, &inFlightFences[i]);
     }
-}
-void VulkanRenderer::createVertexBuffer() {
-    simpleVertexBuffer.bindDevice = mainDevice.logicalDevice;
-    simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
-    simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
-    static Vertex triangle[3] = {
-        {{0,-0.4,0},{ 1.0,0.0,0.0}},
-        {{0.4,0.4,0},{0.0,1.0,0.0}},
-        {{-0.4,0.4,0},{0,0,1}},
-    };
-    //simpleVertexBuffer.createVertexBuffer(sizeof(Vertex) * 3, triangle);
-    simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * 3, triangle);
 }
 
 
