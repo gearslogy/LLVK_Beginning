@@ -7,6 +7,14 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
+struct FnCommand {
+    // single time command
+    static VkCommandBuffer beginSingleTimeCommand(VkDevice device, VkCommandPool pool);
+    static void endSingleTimeCommand(VkDevice device, VkCommandPool pool, VkQueue queue, VkCommandBuffer cmdBuf);
+    static VkCommandPool createCommandPool(VkDevice device,uint32_t queueFamilyIndex, const VkCommandPoolCreateInfo *poolCreateInfo = nullptr);
+};
+
+
 /* struct for building command:vkCmdBindVertexBuffers
 VkBuffer vertexBuffers[] = {};
 VkDeviceSize offsets[] = {0}; // 0从每个buffer的起始位置开始读取
@@ -33,9 +41,12 @@ struct CommandManager {
     const std::vector<VkFramebuffer> *bindSwapChainFramebuffers;
     const VkExtent2D *bindSwapChainExtent;
     VkRenderPass bindRenderPass;
-    VkPipeline bindPipeline;
+    VkPipeline bindPipeline; // which pipeline to rendering
+    VkPipelineLayout bindPipeLineLayout;
     CmdBindVertexBuffers bindVertexBuffers;
     CmdBindIndexBuffer bindIndexBuffer;
+    const std::vector<VkDescriptorSet> *bindDescriptorSets;
+    const int *bindCurrentFrame;
     // created
     VkCommandPool graphicsCommandPool{};
     std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer

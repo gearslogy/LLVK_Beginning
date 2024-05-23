@@ -11,7 +11,7 @@ struct Pipeline {
     VkDevice bindDevice{};   // REF object
     VkExtent2D bindExtent{}; // REF object
     VkRenderPass bindRenderPass{}; // REF object
-
+    VkDescriptorSetLayout bindDescriptorSetLayout;
 
     // created object
     VkPipeline graphicsPipeline{};

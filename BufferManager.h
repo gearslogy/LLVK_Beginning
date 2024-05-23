@@ -8,21 +8,35 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
+struct FnBuffer {
+    static void createBuffer(
+        VkPhysicalDevice physicalDevice,
+        VkDevice device,
+        VkDeviceSize size, // real size.
+        VkBufferUsageFlags usage,
+        VkMemoryPropertyFlags memProperties,
+        VkBuffer &buffer,
+        VkDeviceMemory &bufferMemory);
+
+    static void copyBuffer(VkDevice device,
+                           VkQueue copyCommandQueue,
+                           VkCommandPool copyCommandPool,
+                           VkBuffer srcBuffer,
+                           VkBuffer dstBuffer,
+                           VkDeviceSize size);
+};
+
 struct BufferAndMemory {
     VkBuffer buffer;
     VkDeviceMemory memory;
+    void cleanup(VkDevice device);
 };
 struct BufferManager {
     VkDevice bindDevice;
     VkPhysicalDevice bindPhysicalDevice;
     VkCommandPool bindCommandPool;// current use graphicsCommandPool
     VkQueue bindQueue;
-    void createBuffer(VkDeviceSize size, // real size.
-                      VkBufferUsageFlags usage,
-                      VkMemoryPropertyFlags memProperties,
-                      VkBuffer &buffer,
-                      VkDeviceMemory &bufferMemory);
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
 
     std::vector<BufferAndMemory> createdBuffers; // use cleanup() to clean
     void cleanup();

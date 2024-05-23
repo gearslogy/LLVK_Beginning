@@ -83,10 +83,14 @@ int VulkanRenderer::initVulkan() {
         createPhyiscalAndLogicDevice();
         createSwapChain();
         createRenderpass();
+        createDescriptorSetLayout();
         createPipeline();
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
+        createUniformBuffers();
+        createDescriptorPool();
+        createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -100,6 +104,7 @@ void VulkanRenderer::cleanup() {
     // Wait until no actions being run on device before destroying
     vkDeviceWaitIdle(mainDevice.logicalDevice);
     cleanupSwapChain();
+    simpleDescriptorManager.cleanup();
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
         vkDestroySemaphore(mainDevice.logicalDevice, imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(mainDevice.logicalDevice, renderFinishedSemaphores[i], nullptr);
@@ -230,11 +235,16 @@ void VulkanRenderer::createSwapChain() {
     simpleSwapchain.bindWindow = window;
     simpleSwapchain.init();
 }
+void VulkanRenderer::createDescriptorSetLayout() {
+    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
+    simpleDescriptorManager.createDescriptorSetLayout();
+}
 
 void VulkanRenderer::createPipeline(){
     simplePipeline.bindDevice = mainDevice.logicalDevice;
     simplePipeline.bindExtent = simpleSwapchain.swapChainExtent;
     simplePipeline.bindRenderPass = simplePass.pass;
+    simplePipeline.bindDescriptorSetLayout = simpleDescriptorManager.descriptorSetLayout;
     simplePipeline.init();
 }
 void VulkanRenderer::createRenderpass(){
@@ -263,6 +273,28 @@ void VulkanRenderer::createVertexBuffer() {
     simpleVertexBuffer.createIndexBuffer(sizeof(uint16_t)*indices.size(), indices.data());
 }
 
+void VulkanRenderer::createUniformBuffers() {
+    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
+    simpleDescriptorManager.bindPhyiscalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
+    simpleDescriptorManager.createUniformBuffers();
+}
+
+void VulkanRenderer::createDescriptorPool() {
+    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
+    simpleDescriptorManager.bindPhyiscalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
+    simpleDescriptorManager.createDescriptorPool();
+}
+
+void VulkanRenderer::createDescriptorSets() {
+    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
+    simpleDescriptorManager.bindPhyiscalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
+    simpleDescriptorManager.createDescriptorSets();
+}
+
+
 void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
     simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
@@ -271,6 +303,9 @@ void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.bindRenderPass = simplePass.pass;
     simpleCommandManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleCommandManager.bindPipeline = simplePipeline.graphicsPipeline;
+    simpleCommandManager.bindPipeLineLayout = simplePipeline.pipelineLayout;
+    simpleCommandManager.bindDescriptorSets = &simpleDescriptorManager.descriptorSets;
+    simpleCommandManager.bindCurrentFrame = &currentFrame;
     simpleCommandManager.createCommandBuffers();
 
     /* DRAW TRANGLE
@@ -338,6 +373,7 @@ void VulkanRenderer::draw() {
     }else if(result !=VK_SUCCESS and result!=VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error{"failed to acquire swap chain image!"};
     }
+    simpleDescriptorManager.simpleUniformBuffer.updateUniform(currentFrame);
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
 
     VkCommandBuffer commandBufferToSubmit = simpleCommandManager.commandBuffers[currentFrame];

@@ -20,6 +20,7 @@ file(GLOB SOURCES VulkanRenderer*
         Device*
         BufferManager*
         GeoVertexDescriptions*
+        DescriptorManager*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})

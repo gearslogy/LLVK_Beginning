@@ -16,6 +16,7 @@
 #include "CommandManager.h"
 #include "Device.h"
 #include "BufferManager.h"
+#include "DescriptorManager.h"
 class VulkanRenderer {
 public :
     VulkanRenderer();
@@ -47,7 +48,7 @@ private:
     std::vector<VkFence> inFlightFences;
     int currentFrame{0};
     BufferManager simpleVertexBuffer;
-
+    DescriptorManager simpleDescriptorManager;
 
     // create functions
     void createInstance();
@@ -56,10 +57,14 @@ private:
     void createSurface();
     void createSwapChain();
     void createRenderpass();
+    void createDescriptorSetLayout();
     void createPipeline();
     void createFramebuffers();
     void createCommandPool();
     void createVertexBuffer();
+    void createUniformBuffers();
+    void createDescriptorPool();
+    void createDescriptorSets();
     void createCommandBuffers();
     void createSyncObjects();
 
