@@ -14,7 +14,7 @@ layout(binding = 0) uniform MVP{
     mat4 proj;
 }camera;
 
-layout(binding = 0) uniform SURFACE{
+layout(binding = 1) uniform SURFACE{
     float baseAmp;
     float specularAmp;
 

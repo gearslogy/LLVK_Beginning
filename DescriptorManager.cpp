@@ -187,7 +187,7 @@ void DescriptorManager::createDescriptorSets() {
         VkWriteDescriptorSet descriptorWrite2{};
         descriptorWrite2.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite2.dstSet = descriptorSets[i];
-        descriptorWrite2.dstBinding = 0;
+        descriptorWrite2.dstBinding = 1;
         descriptorWrite2.dstArrayElement = 0;// NOT ARRAY UBO
         descriptorWrite2.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite2.descriptorCount = 1; // NOT ARRAY UBO
