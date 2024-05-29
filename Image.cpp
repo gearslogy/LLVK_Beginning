@@ -1,12 +1,9 @@
 //
-// Created by star on 4/29/2024.
+// Created by liuyangping on 2024/5/28.
 //
-
-#include "ImageUtils.h"
 #include <stdexcept>
-
-
-VkImageView ImageUtils::createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+#include "Image.h"
+VkImageView FnImage::createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
     VkImageViewCreateInfo viewCreateInfo{};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewCreateInfo.image = image;

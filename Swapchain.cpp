@@ -7,7 +7,7 @@
 #include "magic_enum.hpp"
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include "ImageUtils.h"
+#include "Image.h"
 void Swapchain::cleanup() {
     // swapchain里的 imageView得手动删除，image会被swapchain自动删除
     for(auto spcImg : swapChainImages) {
@@ -76,7 +76,7 @@ void Swapchain::init() {
     for(const auto &img : images) {
         SwapChainImage scImg{};
         scImg.image = img;
-        scImg.imageView = ImageUtils::createImageView(bindLogicDevice,img, swapChainFormat, VK_IMAGE_ASPECT_COLOR_BIT );
+        scImg.imageView = FnImage::createImageView(bindLogicDevice,img, swapChainFormat, VK_IMAGE_ASPECT_COLOR_BIT );
         swapChainImages.emplace_back(scImg);
     }
 }

@@ -82,7 +82,8 @@ void Pipeline::init() {
     VkPipelineRasterizationStateCreateInfo rasterization_ST_CIO{};
     rasterization_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterization_ST_CIO.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterization_ST_CIO.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    //rasterization_ST_CIO.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_ST_CIO.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterization_ST_CIO.depthClampEnable = VK_FALSE;
     rasterization_ST_CIO.rasterizerDiscardEnable = VK_FALSE;
     rasterization_ST_CIO.polygonMode = VK_POLYGON_MODE_FILL;
