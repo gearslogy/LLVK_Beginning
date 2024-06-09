@@ -10,10 +10,10 @@
 struct Vertex{
     glm::vec3 pos;
     glm::vec3 cd;
-
+    glm::vec2 uv;
     // for vulkan
     static VkVertexInputBindingDescription bindings();
-    static std::array<VkVertexInputAttributeDescription,2> attribs();
+    static std::array<VkVertexInputAttributeDescription,3> attribs();
 };
 
 

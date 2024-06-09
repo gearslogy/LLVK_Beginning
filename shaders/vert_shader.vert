@@ -1,11 +1,11 @@
 #version 460 core
 layout(location=0) in vec3 P;
 layout(location=1) in vec3 Cd;
-
+layout(location = 2) in vec2 inTexCoord;
 
 
 layout(location = 0) out vec3 fragColor; //The location keyword is required in vulkan, but not in opengl
-
+layout(location = 1) out vec2 fragTexCoord;
 
 layout(binding = 0) uniform UniformBufferObject {
     vec3 dynamicsColor;
@@ -27,7 +27,10 @@ layout(binding = 1) uniform SURFACE{
 
 
 void main(){
-    gl_Position =  ubo.proj * ubo.view * ubo.model  *vec4(P,1.0);
+     gl_Position =  ubo.proj * ubo.view * ubo.model  *vec4(P,1.0);
+     fragTexCoord = inTexCoord;
+    //gl_Position = vec4(P, 1.0);
     //fragColor = surface.base.rgb;
-    fragColor = ubo.dynamicsColor;
+    //fragColor = ubo.dynamicsColor;
+    fragColor = Cd;
 }

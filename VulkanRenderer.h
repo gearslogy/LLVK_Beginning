@@ -61,6 +61,7 @@ private:
     void createPipeline();
     void createFramebuffers();
     void createCommandPool();
+    void createTexture();
     void createVertexBuffer();
     void createUniformBuffers();
     void createDescriptorPool();

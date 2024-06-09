@@ -7,7 +7,7 @@
 #include <array>
 #include <chrono>
 #include <iostream>
-std::array<VkDescriptorSetLayoutBinding, 2> LayoutBindings::getDescriptorSetLayoutBindings(VkDevice device) {
+std::array<VkDescriptorSetLayoutBinding, 3> LayoutBindings::getDescriptorSetLayoutBindings(VkDevice device) {
     VkDescriptorSetLayoutBinding binding01{};
     VkDescriptorSetLayoutBinding binding02{};
     binding01.binding = 0;
@@ -21,14 +21,22 @@ std::array<VkDescriptorSetLayoutBinding, 2> LayoutBindings::getDescriptorSetLayo
     binding02.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding02.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     binding02.pImmutableSamplers = nullptr;
-    const std::array bindings = {binding01, binding02};
+
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.binding = 2;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    const std::array bindings = {binding01, binding02, samplerLayoutBinding};
     return bindings;
 }
 VkDescriptorSetLayout LayoutBindings::createDescriptorSetLayout(VkDevice device) {
     VkDescriptorSetLayout descriptorSetLayout{};
     VkDescriptorSetLayoutCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    createInfo.bindingCount = 2;
+    createInfo.bindingCount = getDescriptorSetLayoutBindings(device).size();
     createInfo.pBindings = getDescriptorSetLayoutBindings(device).data();
 
     if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
@@ -37,6 +45,16 @@ VkDescriptorSetLayout LayoutBindings::createDescriptorSetLayout(VkDevice device)
     return descriptorSetLayout;
 }
 
+
+void DescriptorManager::createTexture() {
+    imageAndMemory= FnImage::createTexture(bindPhysicalDevice, bindDevice, bindCommandPool, bindQueue,
+          "image.png"
+      );
+    imageView = FnImage::createImageView(bindDevice, imageAndMemory.image,
+        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    imageSampler = FnImage::createImageSampler(bindPhysicalDevice, bindDevice);
+}
 
 
 
@@ -75,9 +93,10 @@ void UniformBuffers_FrameFlighted::updateUniform(uint32_t currentFrame) {
 
     UBO1 ubo1{};
     ubo1.dynamicsColor = { time = std::sin(time),1,1};
-    ubo1.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo1.model = 1.0f;
+    //ubo1.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     //ubo1.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo1.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
+    ubo1.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.2f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
     ubo1.proj = glm::perspective(glm::radians(45.0f), bindSwapChainExtent->width / (float) bindSwapChainExtent->height, 0.1f, 10.0f);
     ubo1.proj[1][1] *= -1;
 
@@ -106,7 +125,7 @@ void DescriptorManager::createDescriptorSetLayout() {
 }
 void DescriptorManager::createUniformBuffers() {
     simpleUniformBuffer.bindDevice = bindDevice;
-    simpleUniformBuffer.bindPhysicalDevice = bindPhyiscalDevice;
+    simpleUniformBuffer.bindPhysicalDevice = bindPhysicalDevice;
     simpleUniformBuffer.bindSwapChainExtent = bindSwapChainExtent;
     simpleUniformBuffer.createUniformBuffers();
 }
@@ -116,16 +135,18 @@ void DescriptorManager::createDescriptorPool() {
     /*
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT}, // 2个Uniform Buffer
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} // 1个Combined Image Sampler
+    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} // 1个Combined Image Sampler
     };*/
 
-    VkDescriptorPoolSize poolSizes[] = {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_ubos * MAX_FRAMES_IN_FLIGHT }
-    };
+    std::array<VkDescriptorPoolSize, 2> poolSizes= {{
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_ubos * MAX_FRAMES_IN_FLIGHT },
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT} // 2 个Combined Image Sampler
+    }};
+
     VkDescriptorPoolCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    createInfo.poolSizeCount = 1;; // 目前一个pool，pool是VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,里面每帧2个UBO
-    createInfo.pPoolSizes = poolSizes;
+    createInfo.poolSizeCount = poolSizes.size() ;
+    createInfo.pPoolSizes = poolSizes.data();
     createInfo.maxSets =  static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);// 我们最大创建MAX_FRAMES_IN_FLIGHT(2)个set，一帧一个
     if(vkCreateDescriptorPool(bindDevice, &createInfo, nullptr, &descriptorPool)!=VK_SUCCESS) {
         throw std::runtime_error{"ERROR create descriptor pool"};
@@ -194,17 +215,40 @@ void DescriptorManager::createDescriptorSets() {
         descriptorWrite2.descriptorCount = 1; // NOT ARRAY UBO
         descriptorWrite2.pBufferInfo = &uboBufferInfo2;
 
-        std::array descriptorWrites = {descriptorWrite1,descriptorWrite2};
-        vkUpdateDescriptorSets(bindDevice, 2, descriptorWrites.data(), 0, nullptr);
+        // image
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = imageView;
+        imageInfo.sampler = imageSampler;
+
+        VkWriteDescriptorSet descriptorWrite3{};
+        descriptorWrite3.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite3.dstSet = descriptorSets[i];
+        descriptorWrite3.dstBinding = 2;
+        descriptorWrite3.dstArrayElement = 0;// NOT ARRAY UBO
+        descriptorWrite3.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrite3.descriptorCount = 1; // NOT ARRAY UBO
+        descriptorWrite3.pImageInfo = &imageInfo;
+
+
+        std::array descriptorWrites = {descriptorWrite1,descriptorWrite2, descriptorWrite3};
+        vkUpdateDescriptorSets(bindDevice,
+            descriptorWrites.size(),
+            descriptorWrites.data(),
+            0,
+            nullptr);
 
     }
-
-
-
 }
 
 void DescriptorManager::cleanup() {
     simpleUniformBuffer.cleanup();
     vkDestroyDescriptorPool(bindDevice, descriptorPool, nullptr);
+    // free image
+    vkDestroyImage(bindDevice, imageAndMemory.image, nullptr);
+    vkDestroySampler(bindDevice,imageSampler,nullptr);
+    vkDestroyImageView(bindDevice,imageView,nullptr);
+    vkFreeMemory(bindDevice, imageAndMemory.memory, nullptr);
+
     vkDestroyDescriptorSetLayout(bindDevice, descriptorSetLayout, nullptr);
 }

@@ -28,18 +28,47 @@
  simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * 3, triangle);
  */
 
- // DRAW QUAD WITH INDEX BUFFER
+// 1.假设正常情况下直觉模型做法：Y是超上。
+// DRAW QUAD WITH INDEX BUFFER.
+// 注意虽然裁剪坐标Y是反得。我们得模型必须按照Y朝上，就是Houdini那样定义。所以下面得模型是这个顺序。
+// 绘制顺序: CCW逆时针绘制.
+// 设置：VkPipelineRasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+// projection矩阵必须ubo1.proj[1][1] *= -1; 要不图像是反得。而且看不见
+
+/*
  static std::vector<Vertex> vertices = {
-     {{-0.5f, -0.5f,0}, {1.0f, 0.0f, 0.0f}},
-     {{0.5f, -0.5f,0}, {0.0f, 1.0f, 0.0f}},
-     {{0.5f, 0.5f,0}, {0.0f, 0.0f, 1.0f}},
-     {{-0.5f, 0.5f,0}, {1.0f, 1.0f, 1.0f}}
+     {{-0.5f, -0.5f,0}, {1.0f, 0.0f, 0.0f}}, // 左下角
+     {{0.5f, -0.5f,0}, {0.0f, 1.0f, 0.0f}},  // 右下角
+     {{0.5f, 0.5f,0}, {0.0f, 0.0f, 1.0f}},   // 右上角
+     {{-0.5f, 0.5f,0}, {1.0f, 1.0f, 1.0f}}   // 左上角
  };
 static std::vector<uint16_t> indices = {
     0, 1, 2, 2, 3, 0
+};*/
+// 2. 当新手vulkan入门时候：
+// 由于这几个坐标是在裁剪坐标下做得，所以意义会成这个样子：
+// Y朝下：
+// 绘制顺序：CW 顺时针
+// 必须设置：VkPipelineRasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+/*
+static std::vector<Vertex> vertices = {
+    {{-0.5f, -0.5f,0}, {1.0f, 0.0f, 0.0f}}, // 左上角
+    {{0.5f, -0.5f,0}, {0.0f, 1.0f, 0.0f}},  // 右上角
+    {{0.5f, 0.5f,0}, {0.0f, 0.0f, 1.0f}},   // 右下角
+    {{-0.5f, 0.5f,0}, {1.0f, 1.0f, 1.0f}}   // 左下角
 };
+*/
 
-
+// with uv
+static std::vector<Vertex> vertices = {
+    {{-0.5f, -0.5f,0}, {1.0f, 0.0f, 0.0f},{ 0.0f, 1.0f } }, // 左下角
+    {{0.5f, -0.5f,0}, {0.0f, 1.0f, 0.0f},{ 1.0f, 1.0f }},  // 右下角
+    {{0.5f, 0.5f,0}, {0.0f, 0.0f, 1.0f}, { 1.0f, 0.0f }},   // 右上角
+    {{-0.5f, 0.5f,0}, {1.0f, 1.0f, 1.0f},{ 0.0f, 0.0f }}   // 左上角
+};
+static std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+};
 
 
 
@@ -87,6 +116,7 @@ int VulkanRenderer::initVulkan() {
         createPipeline();
         createFramebuffers();
         createCommandPool();
+        createTexture();
         createVertexBuffer();
         createUniformBuffers();
         createDescriptorPool();
@@ -264,6 +294,16 @@ void VulkanRenderer::createCommandPool() {
     simpleCommandManager.bindSurface = surfaceKhr;
     simpleCommandManager.createGraphicsCommandPool();
 }
+void VulkanRenderer::createTexture() {
+    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
+    simpleDescriptorManager.bindQueue = mainDevice.graphicsQueue;
+    simpleDescriptorManager.bindCommandPool =simpleCommandManager.graphicsCommandPool;
+    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
+    simpleDescriptorManager.createTexture();
+}
+
+
 void VulkanRenderer::createVertexBuffer() {
     simpleVertexBuffer.bindDevice = mainDevice.logicalDevice;
     simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
@@ -275,21 +315,21 @@ void VulkanRenderer::createVertexBuffer() {
 
 void VulkanRenderer::createUniformBuffers() {
     simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindPhyiscalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleDescriptorManager.createUniformBuffers();
 }
 
 void VulkanRenderer::createDescriptorPool() {
     simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindPhyiscalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleDescriptorManager.createDescriptorPool();
 }
 
 void VulkanRenderer::createDescriptorSets() {
     simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindPhyiscalDevice = mainDevice.physicalDevice;
+    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleDescriptorManager.createDescriptorSets();
 }

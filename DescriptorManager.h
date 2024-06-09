@@ -10,8 +10,9 @@
 #include "BufferManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp> // glm::rotate
+#include "Image.h"
 struct LayoutBindings {
-    static std::array<VkDescriptorSetLayoutBinding,2> getDescriptorSetLayoutBindings(VkDevice device);
+    static std::array<VkDescriptorSetLayoutBinding,3> getDescriptorSetLayoutBindings(VkDevice device);
     static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device);
 };
 
@@ -79,9 +80,14 @@ createSyncObjects();
 */
 struct DescriptorManager {
     VkDevice bindDevice;
-    VkPhysicalDevice bindPhyiscalDevice;
+    VkPhysicalDevice bindPhysicalDevice;
+    VkCommandPool bindCommandPool;
+    VkQueue bindQueue;
     const VkExtent2D *bindSwapChainExtent;
+
+
     void createDescriptorSetLayout();
+    void createTexture();
     void createUniformBuffers();
     void createDescriptorPool();
     void createDescriptorSets();
@@ -90,6 +96,12 @@ struct DescriptorManager {
     UniformBuffers_FrameFlighted simpleUniformBuffer;
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets; // 每帧一个
+
+    // 生成texture
+    ImageAndMemory imageAndMemory;
+    VkImageView imageView;
+    VkSampler imageSampler;
+
 
     void cleanup();
     static constexpr uint32_t num_ubos = 2;
