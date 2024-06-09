@@ -7,7 +7,8 @@
 #include <array>
 #include <chrono>
 #include <iostream>
-std::array<VkDescriptorSetLayoutBinding, 3> LayoutBindings::getDescriptorSetLayoutBindings(VkDevice device) {
+std::array<VkDescriptorSetLayoutBinding, 2> LayoutBindings::getUBODescriptorSetLayoutBindings(VkDevice device) {
+    // 有2个UBO 物体
     VkDescriptorSetLayoutBinding binding01{};
     VkDescriptorSetLayoutBinding binding02{};
     binding01.binding = 0;
@@ -21,31 +22,48 @@ std::array<VkDescriptorSetLayoutBinding, 3> LayoutBindings::getDescriptorSetLayo
     binding02.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding02.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     binding02.pImmutableSamplers = nullptr;
-
+    const std::array bindings = {binding01, binding02};
+    return bindings;
+}
+std::array<VkDescriptorSetLayoutBinding, 1> LayoutBindings::getTextureDescriptorSetLayoutBindings(VkDevice device) {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 2;
+    samplerLayoutBinding.binding = 0; // START FROM 0
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    const std::array bindings = {binding01, binding02, samplerLayoutBinding};
+    const std::array bindings = {samplerLayoutBinding};
     return bindings;
 }
-VkDescriptorSetLayout LayoutBindings::createDescriptorSetLayout(VkDevice device) {
+
+VkDescriptorSetLayout LayoutBindings::createUBODescriptorSetLayout(VkDevice device) {
+    auto uboLayoutBindings = getUBODescriptorSetLayoutBindings(device);
     VkDescriptorSetLayout descriptorSetLayout{};
     VkDescriptorSetLayoutCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    createInfo.bindingCount = getDescriptorSetLayoutBindings(device).size();
-    createInfo.pBindings = getDescriptorSetLayoutBindings(device).data();
-
+    createInfo.bindingCount = uboLayoutBindings.size();
+    createInfo.pBindings = uboLayoutBindings.data();
+    std::cout << "-----------------ubo binding count:" << createInfo.bindingCount << std::endl;
     if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
     return descriptorSetLayout;
 }
 
+VkDescriptorSetLayout LayoutBindings::createTextureDescriptorSetLayout(VkDevice device) {
+    VkDescriptorSetLayout descriptorSetLayout{};
+    VkDescriptorSetLayoutCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    createInfo.bindingCount = getTextureDescriptorSetLayoutBindings(device).size();
+    createInfo.pBindings = getTextureDescriptorSetLayoutBindings(device).data();
+    std::cout << "---------------------texture binding count:" << createInfo.bindingCount << std::endl;
+    if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+    return descriptorSetLayout;
+}
 
+// -----------------------------Simple mangaer functions-------------------------------------------------
 void DescriptorManager::createTexture() {
     imageAndMemory= FnImage::createTexture(bindPhysicalDevice, bindDevice, bindCommandPool, bindQueue,
           "image.png"
@@ -55,9 +73,6 @@ void DescriptorManager::createTexture() {
 
     imageSampler = FnImage::createImageSampler(bindPhysicalDevice, bindDevice);
 }
-
-
-
 void UniformBuffers_FrameFlighted::createUniformBuffers() {
     uboObject1.resize(MAX_FRAMES_IN_FLIGHT);
     uboObject2.resize(MAX_FRAMES_IN_FLIGHT);
@@ -75,7 +90,6 @@ void UniformBuffers_FrameFlighted::createUniformBuffers() {
         vkMapMemory(bindDevice, mem, 0, sizeof(UBO2), 0, &mapped);
     }
 }
-
 void UniformBuffers_FrameFlighted::cleanup() {
     for (auto &bm: uboObject1)
         bm.cleanup(bindDevice);
@@ -84,7 +98,6 @@ void UniformBuffers_FrameFlighted::cleanup() {
     uboObject1.clear();
     uboObject2.clear();
 }
-
 void UniformBuffers_FrameFlighted::updateUniform(uint32_t currentFrame) {
     static auto startTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -119,9 +132,9 @@ void UniformBuffers_FrameFlighted::updateUniform(uint32_t currentFrame) {
     memcpy(mapped2, &ubo2, sizeof(UBO2));
 }
 
-
 void DescriptorManager::createDescriptorSetLayout() {
-    descriptorSetLayout = LayoutBindings::createDescriptorSetLayout(bindDevice);
+    ubo_descriptorSetLayout = LayoutBindings::createUBODescriptorSetLayout(bindDevice);
+    texture_descriptorSetLayout = LayoutBindings::createTextureDescriptorSetLayout(bindDevice);
 }
 void DescriptorManager::createUniformBuffers() {
     simpleUniformBuffer.bindDevice = bindDevice;
@@ -132,12 +145,6 @@ void DescriptorManager::createUniformBuffers() {
 
 
 void DescriptorManager::createDescriptorPool() {
-    /*
-    std::vector<VkDescriptorPoolSize> poolSizes = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT}, // 2个Uniform Buffer
-    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} // 1个Combined Image Sampler
-    };*/
-
     std::array<VkDescriptorPoolSize, 2> poolSizes= {{
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_ubos * MAX_FRAMES_IN_FLIGHT },
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT} // 2 个Combined Image Sampler
@@ -147,7 +154,7 @@ void DescriptorManager::createDescriptorPool() {
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     createInfo.poolSizeCount = poolSizes.size() ;
     createInfo.pPoolSizes = poolSizes.data();
-    createInfo.maxSets =  static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);// 我们最大创建MAX_FRAMES_IN_FLIGHT(2)个set，一帧一个
+    createInfo.maxSets = numCreatedSets;//一帧2个set(set=0服务UBO，set=1服务Texture)  有2帧，所以有4个。一帧操作2个
     if(vkCreateDescriptorPool(bindDevice, &createInfo, nullptr, &descriptorPool)!=VK_SUCCESS) {
         throw std::runtime_error{"ERROR create descriptor pool"};
     }
@@ -155,37 +162,23 @@ void DescriptorManager::createDescriptorPool() {
 }
 
 void DescriptorManager::createDescriptorSets() {
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT); // 每帧一个set. 所以材质里uniform buffer: layout(set = 0, binding = 0) uniform UniformBufferObject { ... } set只能是0
-
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &descriptorSetLayout; // 每个set中的layout都是一样的
-
-    //每帧只有一个set=0，然后layout中是有2个 uniform buffer. 一个binding=0 一个binding=1
-    for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
-        if(vkAllocateDescriptorSets(bindDevice, &allocInfo, &descriptorSets[i]) != VK_SUCCESS) {
-            throw std::runtime_error{"can not create descriptor set"};
-        }
+    descriptorSets.resize(numCreatedSets);
+    std::vector<VkDescriptorSetLayout> layouts(numCreatedSets);
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        layouts[i * 2] = ubo_descriptorSetLayout;
+        layouts[i * 2 + 1] = texture_descriptorSetLayout;
     }
 
-    // same as below code!下面是一次性创建。
-    /*
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.descriptorSetCount = layouts.size();
     allocInfo.pSetLayouts = layouts.data();
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
+    if(vkAllocateDescriptorSets(bindDevice, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error{"can not create descriptor set"};
     }
-    */
 
     // 关联
-
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
         VkDescriptorBufferInfo uboBufferInfo1{};
         uboBufferInfo1.buffer = simpleUniformBuffer.uboObject1[i].buffer;
@@ -199,8 +192,8 @@ void DescriptorManager::createDescriptorSets() {
 
         VkWriteDescriptorSet descriptorWrite1{};
         descriptorWrite1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite1.dstSet = descriptorSets[i];
-        descriptorWrite1.dstBinding = 0;
+        descriptorWrite1.dstSet = descriptorSets[i*2];
+        descriptorWrite1.dstBinding = 0;                            // layout(set=0, binding =0) uniform UniformBufferObject {}
         descriptorWrite1.dstArrayElement = 0;// NOT ARRAY UBO
         descriptorWrite1.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite1.descriptorCount = 1;// NOT ARRAY UBO
@@ -208,8 +201,8 @@ void DescriptorManager::createDescriptorSets() {
 
         VkWriteDescriptorSet descriptorWrite2{};
         descriptorWrite2.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite2.dstSet = descriptorSets[i];
-        descriptorWrite2.dstBinding = 1;
+        descriptorWrite2.dstSet = descriptorSets[i*2];
+        descriptorWrite2.dstBinding = 1;                               //layout(set=0, binding =1) uniform UniformBufferObject {}
         descriptorWrite2.dstArrayElement = 0;// NOT ARRAY UBO
         descriptorWrite2.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite2.descriptorCount = 1; // NOT ARRAY UBO
@@ -221,17 +214,17 @@ void DescriptorManager::createDescriptorSets() {
         imageInfo.imageView = imageView;
         imageInfo.sampler = imageSampler;
 
-        VkWriteDescriptorSet descriptorWrite3{};
-        descriptorWrite3.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite3.dstSet = descriptorSets[i];
-        descriptorWrite3.dstBinding = 2;
-        descriptorWrite3.dstArrayElement = 0;// NOT ARRAY UBO
-        descriptorWrite3.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrite3.descriptorCount = 1; // NOT ARRAY UBO
-        descriptorWrite3.pImageInfo = &imageInfo;
+        VkWriteDescriptorSet textureWrite{};
+        textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        textureWrite.dstSet = descriptorSets[i*2 + 1];
+        textureWrite.dstBinding = 0;     // 注意从0 开始绑定 贴图， layout(set=1, binding = 0) uniform sampler2D texSampler;
+        textureWrite.dstArrayElement = 0;// NOT ARRAY UBO
+        textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        textureWrite.descriptorCount = 1; // NOT ARRAY UBO
+        textureWrite.pImageInfo = &imageInfo;
 
 
-        std::array descriptorWrites = {descriptorWrite1,descriptorWrite2, descriptorWrite3};
+        std::array descriptorWrites = {descriptorWrite1,descriptorWrite2, textureWrite};
         vkUpdateDescriptorSets(bindDevice,
             descriptorWrites.size(),
             descriptorWrites.data(),
@@ -250,5 +243,6 @@ void DescriptorManager::cleanup() {
     vkDestroyImageView(bindDevice,imageView,nullptr);
     vkFreeMemory(bindDevice, imageAndMemory.memory, nullptr);
 
-    vkDestroyDescriptorSetLayout(bindDevice, descriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(bindDevice, ubo_descriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(bindDevice, texture_descriptorSetLayout, nullptr);
 }

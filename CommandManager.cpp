@@ -122,9 +122,10 @@ void CommandManager::recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageInde
                            bindVertexBuffers.vertexBuffers.data(),
                            bindVertexBuffers.offsets.data());
         vkCmdBindIndexBuffer(cmdBuffer, bindIndexBuffer.indexBuffer, bindIndexBuffer.offset,bindIndexBuffer.indexType);
+
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            bindPipeLineLayout, 0, 1,
-            &(*bindDescriptorSets)[*bindCurrentFrame],
+            bindPipeLineLayout, 0, 2,
+            &(*bindDescriptorSets)[*bindCurrentFrame * 2],
             0, nullptr);
 
         vkCmdDrawIndexed(cmdBuffer,bindIndexBuffer.indexCount,1,0,0,0 );

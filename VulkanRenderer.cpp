@@ -274,7 +274,8 @@ void VulkanRenderer::createPipeline(){
     simplePipeline.bindDevice = mainDevice.logicalDevice;
     simplePipeline.bindExtent = simpleSwapchain.swapChainExtent;
     simplePipeline.bindRenderPass = simplePass.pass;
-    simplePipeline.bindDescriptorSetLayout = simpleDescriptorManager.descriptorSetLayout;
+    simplePipeline.bindDescriptorSetLayouts[0] = simpleDescriptorManager.ubo_descriptorSetLayout;
+    simplePipeline.bindDescriptorSetLayouts[1] = simpleDescriptorManager.texture_descriptorSetLayout;
     simplePipeline.init();
 }
 void VulkanRenderer::createRenderpass(){

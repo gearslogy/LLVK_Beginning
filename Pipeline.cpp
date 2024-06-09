@@ -116,8 +116,8 @@ void Pipeline::init() {
     // 9. pipeline layout
     VkPipelineLayoutCreateInfo layout_CIO{};
     layout_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_CIO.setLayoutCount = 1;
-    layout_CIO.pSetLayouts = &bindDescriptorSetLayout;
+    layout_CIO.setLayoutCount = bindDescriptorSetLayouts.size();
+    layout_CIO.pSetLayouts = bindDescriptorSetLayouts.data();
     layout_CIO.pushConstantRangeCount = 0;
     layout_CIO.pPushConstantRanges = nullptr;
 

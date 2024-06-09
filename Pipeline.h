@@ -5,13 +5,13 @@
 #ifndef PIPELINE_H
 #define PIPELINE_H
 #include <vulkan/vulkan.h>
-
+#include <array>
 class VulkanRenderer;
 struct Pipeline {
     VkDevice bindDevice{};   // REF object
     VkExtent2D bindExtent{}; // REF object
     VkRenderPass bindRenderPass{}; // REF object
-    VkDescriptorSetLayout bindDescriptorSetLayout;
+    std::array<VkDescriptorSetLayout,2> bindDescriptorSetLayouts;
 
     // created object
     VkPipeline graphicsPipeline{};

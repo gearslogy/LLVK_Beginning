@@ -11,9 +11,12 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp> // glm::rotate
 #include "Image.h"
+#include "Utils.h"
 struct LayoutBindings {
-    static std::array<VkDescriptorSetLayoutBinding,3> getDescriptorSetLayoutBindings(VkDevice device);
-    static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device);
+    static std::array<VkDescriptorSetLayoutBinding,2> getUBODescriptorSetLayoutBindings(VkDevice device);
+    static std::array<VkDescriptorSetLayoutBinding,1> getTextureDescriptorSetLayoutBindings(VkDevice device);
+    static VkDescriptorSetLayout createUBODescriptorSetLayout(VkDevice device);
+    static VkDescriptorSetLayout createTextureDescriptorSetLayout(VkDevice device);
 };
 
 
@@ -92,16 +95,27 @@ struct DescriptorManager {
     void createDescriptorPool();
     void createDescriptorSets();
 
-    VkDescriptorSetLayout descriptorSetLayout;
+    // 我们一帧将构建2个set，一个UBO，一个是texture
+    VkDescriptorSetLayout ubo_descriptorSetLayout;      // only for control cbuffer
+    VkDescriptorSetLayout texture_descriptorSetLayout;  // only for control texture
+
     UniformBuffers_FrameFlighted simpleUniformBuffer;
     VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets; // 每帧一个
+
+    /*假设 MAX_FRAME_FLIGHTED = 2
+                              帧0                          帧1
+    构建4个set.实际会开辟4个set.[ubo_layout,texture_layout,   ubo_layout,texture_layout]
+    ubo的set = 0
+    texture 的set = 1
+    */
+    std::vector<VkDescriptorSet> descriptorSets; // 每帧2个set, 所以4个
+    static constexpr int numCreatedSets = 2 * static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) ; // 每帧2个set, 所以4个
+
 
     // 生成texture
     ImageAndMemory imageAndMemory;
     VkImageView imageView;
     VkSampler imageSampler;
-
 
     void cleanup();
     static constexpr uint32_t num_ubos = 2;
