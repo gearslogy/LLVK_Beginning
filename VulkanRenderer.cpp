@@ -308,6 +308,7 @@ void VulkanRenderer::createDepthResources() {
     depthImageAndMemory = FnImage::createImageAndMemory(mainDevice.physicalDevice,mainDevice.logicalDevice,
         simpleSwapchain.swapChainExtent.width,
         simpleSwapchain.swapChainExtent.height,
+        1,
         depthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -315,7 +316,7 @@ void VulkanRenderer::createDepthResources() {
     );
     depthImageView = FnImage::createImageView(mainDevice.logicalDevice,
         depthImageAndMemory.image,
-        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1);
 }
 
 void VulkanRenderer::createRenderpass(){

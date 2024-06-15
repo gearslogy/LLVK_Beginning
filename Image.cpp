@@ -1,8 +1,9 @@
-//
+﻿//
 // Created by liuyangping on 2024/5/28.
 //
 #include <stdexcept>
 #include "Image.h"
+#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
 #include "libs/VulkanMemoryAllocator-3.0.1/include/vk_mem_alloc.h"
@@ -13,7 +14,8 @@
 VkImageView FnImage::createImageView(VkDevice device,
                                      VkImage image,
                                      VkFormat format,
-                                     VkImageAspectFlags aspectFlags) {
+                                     VkImageAspectFlags aspectFlags, uint32_t mipLvels) {
+    std::cout << "[[imageview]]create miplevels:" << mipLvels << std::endl;
     VkImageViewCreateInfo viewCreateInfo{};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewCreateInfo.image = image;
@@ -26,7 +28,7 @@ VkImageView FnImage::createImageView(VkDevice device,
     viewCreateInfo.subresourceRange.aspectMask = aspectFlags;
     // (COLOR_BIT) VK_IMAGE_ASPECT_COLOR_BIT VK_IMAGE_ASPECT_DEPTH_BIT ...
     viewCreateInfo.subresourceRange.baseMipLevel = 0; // only look the level 0
-    viewCreateInfo.subresourceRange.levelCount = 1; // number of mipmap levels to view
+    viewCreateInfo.subresourceRange.levelCount = mipLvels; // number of mipmap levels to view
     viewCreateInfo.subresourceRange.baseArrayLayer = 0;
     viewCreateInfo.subresourceRange.layerCount = 1; // number of array levels to view
 
@@ -38,14 +40,14 @@ VkImageView FnImage::createImageView(VkDevice device,
 }
 
 
-ImageAndMemory FnImage::createImageAndMemory( VkPhysicalDevice physicalDevice,
-    VkDevice device,
-    uint32_t width,uint32_t height,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usageFlags,
-    VkMemoryPropertyFlags propertyFlags) {
-
+ImageAndMemory FnImage::createImageAndMemory(VkPhysicalDevice physicalDevice,
+                                             VkDevice device,
+                                             uint32_t width, uint32_t height,
+                                             uint32_t mipLevels,
+                                             VkFormat format,
+                                             VkImageTiling tiling,
+                                             VkImageUsageFlags usageFlags,
+                                             VkMemoryPropertyFlags propertyFlags) {
     ImageAndMemory imageAndMemory{};
 
     VkImageCreateInfo imageInfo{};
@@ -54,7 +56,7 @@ ImageAndMemory FnImage::createImageAndMemory( VkPhysicalDevice physicalDevice,
     imageInfo.extent.width = width;
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = 1;
+    imageInfo.mipLevels = mipLevels;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;
     imageInfo.tiling = tiling;
@@ -71,7 +73,7 @@ ImageAndMemory FnImage::createImageAndMemory( VkPhysicalDevice physicalDevice,
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(physicalDevice,memRequirements.memoryTypeBits, propertyFlags);
+    allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, propertyFlags);
 
     if (vkAllocateMemory(device, &allocInfo, nullptr, &imageAndMemory.memory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
@@ -90,6 +92,9 @@ ImageAndMemory FnImage::createTexture(VkPhysicalDevice physicalDevice, VkDevice 
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
     }
+    // caculate num mip levels
+    auto mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+
     // 1.Create staging
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -105,25 +110,39 @@ ImageAndMemory FnImage::createTexture(VkPhysicalDevice physicalDevice, VkDevice 
 
     // 2.create image and memory
     ImageAndMemory ret{};
+
     constexpr VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-    ret = createImageAndMemory(physicalDevice, device, texWidth, texHeight,
+    /*注意这个要换
+    ret = createImageAndMemory(physicalDevice, device, texWidth, texHeight, mipLevels,
                                format, VK_IMAGE_TILING_OPTIMAL,
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
+                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);*/
+    // Change this to add VK_IMAGE_USAGE_TRANSFER_SRC_BIT. mipmap can be generated as a target or source.....
+    ret = createImageAndMemory(physicalDevice, device, texWidth, texHeight, mipLevels,
+                                   format, VK_IMAGE_TILING_OPTIMAL,
+                                   VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // 3. copy buffer to image
     transitionImageLayout(device, poolToCopyStagingToImage, queueToSubmitCopyStagingToImageCommand,
                           ret.image, format,
-                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+
         copyBufferToImage(device, poolToCopyStagingToImage, queueToSubmitCopyStagingToImageCommand, stagingBuffer,
                           ret.image, texHeight, texHeight);
+    /*
     transitionImageLayout(device,poolToCopyStagingToImage,queueToSubmitCopyStagingToImageCommand,
-        ret.image,format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        ret.image,format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);
+        */
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
+    generateMipmaps(physicalDevice, device,
+        poolToCopyStagingToImage, queueToSubmitCopyStagingToImageCommand,
+        ret.image,
+        format, texWidth,texHeight, mipLevels);
 
+    ret.mipLevels = mipLevels;
     return ret;
 }
 
@@ -131,7 +150,8 @@ ImageAndMemory FnImage::createTexture(VkPhysicalDevice physicalDevice, VkDevice 
 void FnImage::transitionImageLayout(VkDevice device,
                                     VkCommandPool pool, VkQueue queue,
                                     VkImage image, VkFormat format,
-                                    VkImageLayout oldLayout, VkImageLayout newLayout) {
+                                    VkImageLayout oldLayout, VkImageLayout newLayout,
+                                    uint32_t mipLevels) {
     // copy staging -> image
     auto commandBuffer = FnCommand::beginSingleTimeCommand(device, pool);
     VkImageMemoryBarrier barrier{};
@@ -143,7 +163,7 @@ void FnImage::transitionImageLayout(VkDevice device,
     barrier.image = image;
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.levelCount = mipLevels;
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount = 1;
 
@@ -224,7 +244,7 @@ VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice d
     createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     createInfo.mipLodBias = 0;
     createInfo.minLod = 0.0f;
-    createInfo.maxLod = 0.0f;
+    createInfo.maxLod = VK_LOD_CLAMP_NONE; // 1000.0f
     VkSampler textureSampler;
     if (vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
@@ -261,4 +281,106 @@ VkFormat FnImage::findDepthFormat(VkPhysicalDevice physicalDevice) {
        );
 
 }
+
+void FnImage::generateMipmaps(
+                            VkPhysicalDevice physicalDevice,
+                            VkDevice device,
+                            VkCommandPool pool,
+                            VkQueue queue,
+                            VkImage image,
+                            VkFormat imageFormat,
+                            int32_t texWidth, int32_t texHeight,
+                            uint32_t mipLevels) {
+
+    // image format supports linear blitting?
+    VkFormatProperties formatProperties;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
+
+
+    auto commandBuffer = FnCommand::beginSingleTimeCommand(device, pool);
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.image = image;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.levelCount = 1;
+    int32_t mipWidth = texWidth;
+    int32_t mipHeight = texHeight;
+
+
+
+    for (uint32_t i = 1; i < mipLevels; i++) {
+
+        std::cout << "process level:" << i << std::endl;
+        barrier.subresourceRange.baseMipLevel = i - 1;// 永远用上一层
+        // DST->SRC
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; // 注意这里，以前必须是staging -> DST
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        // WRITE->READ(为了读取，然后复制出来到每一层level)
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        // 第一步，先把上一层 layout 从 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ---> VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+        vkCmdPipelineBarrier(commandBuffer,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                        0, nullptr,
+                        0, nullptr,
+                        1, &barrier);
+
+        // 第二步，类似复制， 从上一层到从0开始 -> (1,2,3,4....)
+        VkImageBlit blit{};
+        blit.srcOffsets[0] = {0, 0, 0};
+        blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+        blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.srcSubresource.mipLevel = i - 1;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = 1;
+        blit.dstOffsets[0] = {0, 0, 0};
+        blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+        blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.dstSubresource.mipLevel = i;
+        blit.dstSubresource.baseArrayLayer = 0;
+        blit.dstSubresource.layerCount = 1;
+
+        vkCmdBlitImage(commandBuffer,
+                       image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       1, &blit,
+                       VK_FILTER_LINEAR);
+
+        // 第三步，当从上一层复制过来之后
+        // 设置当层layout VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL -> VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(commandBuffer,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                       0, nullptr,
+                       0, nullptr,
+                       1, &barrier);
+        // 每一次执行完，都给宽度高度/2
+        if (mipWidth > 1) mipWidth /= 2;
+        if (mipHeight > 1) mipHeight /= 2;
+
+    }
+
+    // 由于最后一层没有执行转换VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL -> VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(commandBuffer,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                0, nullptr,
+                0, nullptr,
+                1, &barrier);
+
+    FnCommand::endSingleTimeCommand(device, pool, queue, commandBuffer);
+}
+
+
 
