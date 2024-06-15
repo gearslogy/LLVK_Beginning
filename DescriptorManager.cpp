@@ -14,13 +14,13 @@ std::array<VkDescriptorSetLayoutBinding, 2> LayoutBindings::getUBODescriptorSetL
     binding01.binding = 0;
     binding01.descriptorCount = 1; // descriptorCount specifies the number of values in the array
     binding01.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    binding01.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    binding01.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     binding01.pImmutableSamplers = nullptr;
 
     binding02.binding = 1;
     binding02.descriptorCount = 1; // descriptorCount specifies the number of values in the array
     binding02.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    binding02.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    binding02.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     binding02.pImmutableSamplers = nullptr;
     const std::array bindings = {binding01, binding02};
     return bindings;
@@ -43,7 +43,7 @@ VkDescriptorSetLayout LayoutBindings::createUBODescriptorSetLayout(VkDevice devi
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     createInfo.bindingCount = uboLayoutBindings.size();
     createInfo.pBindings = uboLayoutBindings.data();
-    std::cout << "-----------------ubo binding count:" << createInfo.bindingCount << std::endl;
+
     if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
@@ -56,7 +56,7 @@ VkDescriptorSetLayout LayoutBindings::createTextureDescriptorSetLayout(VkDevice 
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     createInfo.bindingCount = getTextureDescriptorSetLayoutBindings(device).size();
     createInfo.pBindings = getTextureDescriptorSetLayoutBindings(device).data();
-    std::cout << "---------------------texture binding count:" << createInfo.bindingCount << std::endl;
+
     if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
@@ -64,9 +64,9 @@ VkDescriptorSetLayout LayoutBindings::createTextureDescriptorSetLayout(VkDevice 
 }
 
 // -----------------------------Simple mangaer functions-------------------------------------------------
-void DescriptorManager::createTexture() {
+void DescriptorManager::createTexture(const char *tex) {
     imageAndMemory= FnImage::createTexture(bindPhysicalDevice, bindDevice, bindCommandPool, bindQueue,
-          "image.png"
+          tex
       );
     imageView = FnImage::createImageView(bindDevice, imageAndMemory.image,
         VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -105,11 +105,11 @@ void UniformBuffers_FrameFlighted::updateUniform(uint32_t currentFrame) {
 
 
     UBO1 ubo1{};
-    ubo1.dynamicsColor = { time = std::sin(time),1,1};
+    ubo1.screenSize = {bindSwapChainExtent->width, bindSwapChainExtent->height};
     ubo1.model = 1.0f;
     //ubo1.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     //ubo1.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo1.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.2f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
+    ubo1.view = glm::lookAt(glm::vec3(1, 0.0f, 3), glm::vec3(0.0f, -0.2f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
     ubo1.proj = glm::perspective(glm::radians(45.0f), bindSwapChainExtent->width / (float) bindSwapChainExtent->height, 0.1f, 10.0f);
     ubo1.proj[1][1] *= -1;
 
@@ -117,7 +117,7 @@ void UniformBuffers_FrameFlighted::updateUniform(uint32_t currentFrame) {
     UBO2 ubo2{};
     ubo2.baseAmp = std::sin(time);
     ubo2.specularAmp = std::cos(time);
-    std::cout << "time:"<< time << "      "  <<ubo2.specularAmp<< std::endl;
+    //std::cout << "time:"<< time << "      "  <<ubo2.specularAmp<< std::endl;
     ubo2.base = {1,0,0,1};
     ubo2.specular = {0,1,0,1};
     ubo2.normal = {0,0,1,1};

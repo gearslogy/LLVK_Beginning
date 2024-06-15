@@ -60,6 +60,7 @@ static std::vector<Vertex> vertices = {
 */
 
 // with uv
+/*
 static std::vector<Vertex> vertices = {
     {{-0.5f, -0.5f,0}, {1.0f, 0.0f, 0.0f},{ 0.0f, 1.0f } }, // 左下角
     {{0.5f, -0.5f,0}, {0.0f, 1.0f, 0.0f},{ 1.0f, 1.0f }},  // 右下角
@@ -69,8 +70,26 @@ static std::vector<Vertex> vertices = {
 static std::vector<uint16_t> indices = {
     0, 1, 2, 2, 3, 0
 };
+*/
 
+/*
+static float offset= 0.3;
+static std::vector<Vertex> vertices = {
+    {{-0.5f - offset, -0.5f,0}, {1.0f, 0.0f, 0.0f},{0,1,0},{ 0.0f, 1.0f } }, // 左下角
+    {{0.5f - offset, -0.5f,0}, {0.0f, 1.0f, 0.0f},{0,1,0},{ 1.0f, 1.0f }},  // 右下角
+    {{0.5f - offset, 0.5f,0}, {0.0f, 0.0f, 1.0f},{0,1,0}, { 1.0f, 0.0f }},   // 右上角
+    {{-0.5f - offset, 0.5f,0}, {1.0f, 1.0f, 1.0f},{0,1,0},{ 0.0f, 0.0f }},   // 左上角
 
+    {{-0.5f + offset, -0.5f,-0.5}, {1.0f, 0.0f, 0.0f},{0,1,0},{ 0.0f, 1.0f } }, // 左下角
+    {{0.5f +offset, -0.5f,-0.5}, {0.0f, 1.0f, 0.0f},{0,1,0},{ 1.0f, 1.0f }},  // 右下角
+    {{0.5f +offset, 0.5f,-0.5}, {0.0f, 0.0f, 1.0f},{0,1,0}, { 1.0f, 0.0f }},   // 右上角
+    {{-0.5f + offset, 0.5f,-0.5}, {1.0f, 1.0f, 1.0f},{0,1,0},{ 0.0f, 0.0f }}   // 左上角
+};
+static std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4
+};
+*/
 
 
 
@@ -114,9 +133,11 @@ int VulkanRenderer::initVulkan() {
         createRenderpass();
         createDescriptorSetLayout();
         createPipeline();
+        createDepthResources();
         createFramebuffers();
         createCommandPool();
         createTexture();
+        loadModel();
         createVertexBuffer();
         createUniformBuffers();
         createDescriptorPool();
@@ -154,6 +175,9 @@ void VulkanRenderer::cleanup() {
     glfwTerminate();
 }
 void VulkanRenderer::cleanupSwapChain() {
+    vkDestroyImage(mainDevice.logicalDevice, depthImageAndMemory.image, nullptr);
+    vkDestroyImageView(mainDevice.logicalDevice, depthImageView, nullptr);
+    vkFreeMemory(mainDevice.logicalDevice, depthImageAndMemory.memory, nullptr);
     simpleFramebuffer.cleanup();
     simpleSwapchain.cleanup();
 }
@@ -167,6 +191,7 @@ void VulkanRenderer::recreateSwapChain() {
     vkDeviceWaitIdle(mainDevice.logicalDevice);
     cleanupSwapChain();
     createSwapChain();
+    createDepthResources();
     createFramebuffers();
 }
 
@@ -278,8 +303,24 @@ void VulkanRenderer::createPipeline(){
     simplePipeline.bindDescriptorSetLayouts[1] = simpleDescriptorManager.texture_descriptorSetLayout;
     simplePipeline.init();
 }
+void VulkanRenderer::createDepthResources() {
+    auto depthFormat = FnImage::findDepthFormat(mainDevice.physicalDevice);
+    depthImageAndMemory = FnImage::createImageAndMemory(mainDevice.physicalDevice,mainDevice.logicalDevice,
+        simpleSwapchain.swapChainExtent.width,
+        simpleSwapchain.swapChainExtent.height,
+        depthFormat,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
+    depthImageView = FnImage::createImageView(mainDevice.logicalDevice,
+        depthImageAndMemory.image,
+        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
 void VulkanRenderer::createRenderpass(){
     simplePass.bindDevice = mainDevice.logicalDevice;
+    simplePass.bindPhysicalDevice = mainDevice.physicalDevice;
     simplePass.init();
 }
 void VulkanRenderer::createFramebuffers() {
@@ -287,6 +328,7 @@ void VulkanRenderer::createFramebuffers() {
     simpleFramebuffer.bindRenderPass = simplePass.pass;
     simpleFramebuffer.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleFramebuffer.bindSwapChainImages = &simpleSwapchain.swapChainImages;
+    simpleFramebuffer.bindDepthImageView = depthImageView;
     simpleFramebuffer.init();
 }
 void VulkanRenderer::createCommandPool() {
@@ -301,8 +343,13 @@ void VulkanRenderer::createTexture() {
     simpleDescriptorManager.bindQueue = mainDevice.graphicsQueue;
     simpleDescriptorManager.bindCommandPool =simpleCommandManager.graphicsCommandPool;
     simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    simpleDescriptorManager.createTexture();
+    simpleDescriptorManager.createTexture("content/viking_room.png");
 }
+void VulkanRenderer::loadModel() {
+    //simpleObjLoader.readFile("content/pig.obj");
+    simpleObjLoader.readFile("content/viking_room.obj");
+}
+
 
 
 void VulkanRenderer::createVertexBuffer() {
@@ -310,8 +357,10 @@ void VulkanRenderer::createVertexBuffer() {
     simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
     simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
-    simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * vertices.size(), vertices.data());
-    simpleVertexBuffer.createIndexBuffer(sizeof(uint16_t)*indices.size(), indices.data());
+    simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleObjLoader.vertices.size(),
+        simpleObjLoader.vertices.data());
+    simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleObjLoader.indices.size(),
+        simpleObjLoader.indices.data());
 }
 
 void VulkanRenderer::createUniformBuffers() {
@@ -360,20 +409,19 @@ void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.createCommandBuffers();*/
 
 
-
     // DRAW QUAD WITH INDEX BUFFER
     std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
     std::vector<VkDeviceSize> offsets = {0};
     simpleCommandManager.bindVertexBuffers = {
         std::move(vertexBuffer),
         std::move(offsets),
-        0,1, vertices.size()
+        0,1, simpleObjLoader.vertices.size()
     };
     simpleCommandManager.bindIndexBuffer = {
         simpleVertexBuffer.createdIndexedBuffers[0].buffer,
         0,
-        VK_INDEX_TYPE_UINT16,
-        indices.size()
+        VK_INDEX_TYPE_UINT32,
+        simpleObjLoader.indices.size()
     };
 
 }

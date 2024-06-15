@@ -9,6 +9,7 @@
 #include "Utils.h"
 #include "BufferManager.h"
 #include "CommandManager.h"
+
 VkImageView FnImage::createImageView(VkDevice device,
                                      VkImage image,
                                      VkFormat format,
@@ -150,21 +151,6 @@ void FnImage::transitionImageLayout(VkDevice device,
     VkPipelineStageFlags sourceStage;
     VkPipelineStageFlags destinationStage;
 
-    /*
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED and newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL and newLayout ==
-               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else throw std::runtime_error{"unsupported layout transition"};*/
     if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
         barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -177,7 +163,15 @@ void FnImage::transitionImageLayout(VkDevice device,
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else {
+    }
+    else if(oldLayout == VK_IMAGE_LAYOUT_UNDEFINED and newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    }
+    else {
         throw std::invalid_argument("unsupported layout transition!");
     }
 
@@ -239,4 +233,32 @@ VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice d
 }
 
 
+VkFormat FnImage::findSupportedFormat(VkPhysicalDevice physicalDevice,
+    const std::vector<VkFormat> &candidates,
+    VkImageTiling tiling,
+    VkFormatFeatureFlags features) {
+
+
+    for(const auto &format: candidates) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props );
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+            return format;
+        }
+        if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+    throw std::runtime_error("failed to find supported format!");
+}
+
+VkFormat FnImage::findDepthFormat(VkPhysicalDevice physicalDevice) {
+    return findSupportedFormat(
+            physicalDevice,
+           {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+           VK_IMAGE_TILING_OPTIMAL,
+           VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+       );
+
+}
 

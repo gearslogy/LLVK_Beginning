@@ -18,7 +18,8 @@ void Frambuffer::init() {
     for (size_t i = 0; i < swapChainFramebuffers.size(); i++)
     {
         std::array attachments = {
-            (*bindSwapChainImages)[i].imageView
+            (*bindSwapChainImages)[i].imageView,
+            bindDepthImageView
         };
         VkFramebufferCreateInfo framebufferCreateInfo = {};
         framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

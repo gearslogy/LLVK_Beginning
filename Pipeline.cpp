@@ -125,8 +125,17 @@ void Pipeline::init() {
     auto result = vkCreatePipelineLayout(bindDevice, &layout_CIO, nullptr, &pipelineLayout);
     if(result != VK_SUCCESS) throw std::runtime_error{"ERROR create pipeline layout"};
 
-    // 10 TODO depth stencil testing
-    VkPipelineDepthStencilStateCreateInfo ds_ST_;
+    // 10
+    VkPipelineDepthStencilStateCreateInfo ds_ST_CIO{};
+    ds_ST_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    ds_ST_CIO.depthTestEnable = VK_TRUE;
+    ds_ST_CIO.depthWriteEnable = VK_TRUE;
+    ds_ST_CIO.depthCompareOp = VK_COMPARE_OP_LESS;
+    ds_ST_CIO.depthBoundsTestEnable = VK_FALSE;
+    ds_ST_CIO.stencilTestEnable = VK_FALSE;
+    ds_ST_CIO.front = {}; // Optional
+    ds_ST_CIO.back = {}; // Optional
+
 
     // 11. PIPELINE
     VkGraphicsPipelineCreateInfo pipeline_CIO{};
@@ -140,7 +149,7 @@ void Pipeline::init() {
     pipeline_CIO.pRasterizationState = &rasterization_ST_CIO;
     pipeline_CIO.pMultisampleState = &multisample_ST_CIO;
     pipeline_CIO.pColorBlendState = &blend_ST_CIO;
-    pipeline_CIO.pDepthStencilState = nullptr;
+    pipeline_CIO.pDepthStencilState = &ds_ST_CIO;
     pipeline_CIO.layout = pipelineLayout;
     pipeline_CIO.renderPass = bindRenderPass ;
     pipeline_CIO.subpass = 0; // ONLY USE ONE PASS

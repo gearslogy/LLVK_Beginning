@@ -17,6 +17,7 @@
 #include "Device.h"
 #include "BufferManager.h"
 #include "DescriptorManager.h"
+#include "GeoVertexDescriptions.h"
 class VulkanRenderer {
 public :
     VulkanRenderer();
@@ -49,6 +50,9 @@ private:
     int currentFrame{0};
     BufferManager simpleVertexBuffer;
     DescriptorManager simpleDescriptorManager;
+    ImageAndMemory depthImageAndMemory;
+    VkImageView depthImageView;
+    ObjLoader simpleObjLoader{};
 
     // create functions
     void createInstance();
@@ -59,9 +63,11 @@ private:
     void createRenderpass();
     void createDescriptorSetLayout();
     void createPipeline();
+    void createDepthResources();
     void createFramebuffers();
     void createCommandPool();
     void createTexture();
+    void loadModel();
     void createVertexBuffer();
     void createUniformBuffers();
     void createDescriptorPool();

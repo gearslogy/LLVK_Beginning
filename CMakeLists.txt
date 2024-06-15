@@ -24,7 +24,7 @@ file(GLOB SOURCES VulkanRenderer*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
-
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_ENABLE_EXPERIMENTAL)
 
 MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )
 MESSAGE("VULKAN_SDK  Path----> $ENV{VULKAN_SDK}" )

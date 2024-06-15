@@ -21,7 +21,7 @@ struct LayoutBindings {
 
 
 struct alignas(16) UBO1 {
-    glm::vec3 dynamicsColor; // 4byte * 3
+    alignas(16) glm::vec2 screenSize;
     alignas(16) glm::mat4 model{1.0f}; // 4byte * 4
     alignas(16) glm::mat4 view{1.0f};  // 4byte * 4
     alignas(16) glm::mat4 proj{1.0f};  // 4byte * 4
@@ -90,7 +90,7 @@ struct DescriptorManager {
 
 
     void createDescriptorSetLayout();
-    void createTexture();
+    void createTexture(const char *tex);
     void createUniformBuffers();
     void createDescriptorPool();
     void createDescriptorSets();

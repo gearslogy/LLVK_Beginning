@@ -13,6 +13,7 @@ struct Frambuffer {
     VkDevice bindDevice;
     VkRenderPass bindRenderPass;
     const std::vector<SwapChainImage> *bindSwapChainImages;
+    VkImageView bindDepthImageView;
     const VkExtent2D *bindSwapChainExtent;
     // created object
     std::vector<VkFramebuffer> swapChainFramebuffers;
