@@ -6,6 +6,7 @@
 #include "Utils.h"
 #include <iostream>
 #include <array>
+#include "GeoVertexDescriptions.h"
 VkCommandBuffer FnCommand::beginSingleTimeCommand(VkDevice device, VkCommandPool pool) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -49,6 +50,27 @@ VkCommandPool FnCommand::createCommandPool(VkDevice device, uint32_t queueFamily
             throw std::runtime_error("Failed to create a Command Pool!");
     }
     return ret;
+}
+
+FnCommand::RenderCommandBeginInfo FnCommand::createCommandBufferBeginInfo(const VkFramebuffer &framebuffer,
+                                                                    const VkRenderPass &renderpass,
+                                                                    const VkExtent2D *swapChainExtent,
+                                                                    const std::vector<VkClearValue> &clearValues) {
+
+    // cmd begin
+    VkCommandBufferBeginInfo cmdBufBeginInfo{};
+    cmdBufBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBufBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    // pass begin
+    VkRenderPassBeginInfo renderPassBeginInfo{};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.framebuffer = framebuffer;
+    renderPassBeginInfo.renderPass = renderpass;
+    renderPassBeginInfo.renderArea.extent = *swapChainExtent;
+    renderPassBeginInfo.renderArea.offset = {0, 0};
+    renderPassBeginInfo.pClearValues = clearValues.data();
+    renderPassBeginInfo.clearValueCount = clearValues.size();
+    return {cmdBufBeginInfo, renderPassBeginInfo};
 }
 
 
@@ -95,6 +117,7 @@ void CommandManager::recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageInde
     renderPassBeginInfo.renderArea.offset = {0,0};
     renderPassBeginInfo.pClearValues = clearValues.data();
     renderPassBeginInfo.clearValueCount = clearValues.size();
+
     auto result = vkBeginCommandBuffer(cmdBuffer, &cmdBufBeginInfo);
     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
     vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -136,6 +159,21 @@ void CommandManager::recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageInde
     if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
+}
+
+
+
+void CommandManager::setViewPortAndScissor(VkCommandBuffer cmdBuffer) {
+    VkViewport viewport{};
+    viewport.width = static_cast<float>(bindSwapChainExtent->width);
+    viewport.height = static_cast<float>(bindSwapChainExtent->height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    viewport.x = 0;
+    viewport.y = 0;
+    vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+    VkRect2D scissor{{0,0}, *bindSwapChainExtent};
+    vkCmdSetScissor(cmdBuffer,0, 1, &scissor);
 }
 
 

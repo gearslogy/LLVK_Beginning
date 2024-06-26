@@ -29,6 +29,7 @@ private:
     // support functions
     static bool checkDeviceExtensionSupport(VkPhysicalDevice device,
         const std::vector<const char*> &checkExtensions) ;
+    static uint32_t getMaxPushConstantsSize(VkPhysicalDevice device);
 private:
     inline static const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 };

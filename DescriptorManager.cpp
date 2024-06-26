@@ -109,8 +109,8 @@ void UniformBuffers_FrameFlighted::updateUniform(uint32_t currentFrame) {
     ubo1.model = 1.0f;
     //ubo1.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     //ubo1.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo1.view = glm::lookAt(glm::vec3(1, 0.0f, 3), glm::vec3(0.0f, -0.2f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
-    ubo1.proj = glm::perspective(glm::radians(45.0f), bindSwapChainExtent->width / (float) bindSwapChainExtent->height, 0.1f, 10.0f);
+    ubo1.view = glm::lookAt(glm::vec3(0, 80.0f, 200), glm::vec3(0.0f, 52, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
+    ubo1.proj = glm::perspective(glm::radians(45.0f), bindSwapChainExtent->width / (float) bindSwapChainExtent->height, 0.1f, 2000.0f);
     ubo1.proj[1][1] *= -1;
 
 

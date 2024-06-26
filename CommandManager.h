@@ -6,12 +6,29 @@
 #define COMMANDBUFFER_H
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <stdexcept>
+#include <vector>
 
 struct FnCommand {
     // single time command
     static VkCommandBuffer beginSingleTimeCommand(VkDevice device, VkCommandPool pool);
+
     static void endSingleTimeCommand(VkDevice device, VkCommandPool pool, VkQueue queue, VkCommandBuffer cmdBuf);
-    static VkCommandPool createCommandPool(VkDevice device,uint32_t queueFamilyIndex, const VkCommandPoolCreateInfo *poolCreateInfo = nullptr);
+
+    static VkCommandPool createCommandPool(VkDevice device, uint32_t queueFamilyIndex,
+                                           const VkCommandPoolCreateInfo *poolCreateInfo = nullptr);
+
+
+    // when command begin
+    struct RenderCommandBeginInfo {
+        VkCommandBufferBeginInfo commandBufferBeginInfo;
+        VkRenderPassBeginInfo renderPassBeginInfo;
+    };
+    static RenderCommandBeginInfo createCommandBufferBeginInfo(const VkFramebuffer &framebuffer,
+                                                         const VkRenderPass &renderpass,
+                                                         const VkExtent2D *swapChainExtent,
+                                                         const std::vector<VkClearValue> &clearValues);
+
 };
 
 
@@ -53,8 +70,42 @@ struct CommandManager {
     void cleanup();
     void recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageIndex);
 
+    // call in every frame
+    void recordCommandWithGeometry(const auto &geometry, VkCommandBuffer cmdBuffer, uint32_t imageIndex) {
+        static_assert(requires { geometry.vertices; });
+        static_assert(requires { geometry.indices; });
+        // select framebuffer
+        std::vector<VkClearValue> clearValues(2);
+        clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
+        clearValues[1].depthStencil = {1.0f, 0};
+        const VkFramebuffer &framebuffer = (*bindSwapChainFramebuffers)[imageIndex];
+        auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
+            bindRenderPass,
+            bindSwapChainExtent,clearValues);
+
+        auto result = vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
+        if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
+        vkCmdBeginRenderPass(cmdBuffer, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS ,bindPipeline);
+        setViewPortAndScissor(cmdBuffer);
+
+        renderIndicesGeometryCommand(geometry, cmdBuffer, [cmdBuffer,this]() {
+            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    bindPipeLineLayout, 0, 2,
+                    &(*bindDescriptorSets)[*bindCurrentFrame * 2],
+                    0, nullptr);
+        });
+        vkCmdEndRenderPass(cmdBuffer);
+        if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+
+    }
     void createGraphicsCommandPool();
     void createCommandBuffers();
+
+    void setViewPortAndScissor(VkCommandBuffer cmdBuffer);
+
 
 };
 

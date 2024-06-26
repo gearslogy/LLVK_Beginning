@@ -53,6 +53,8 @@ private:
     ImageAndMemory depthImageAndMemory;
     VkImageView depthImageView;
     ObjLoader simpleObjLoader{};
+    Quad simpleQuad{};
+
 
     // create functions
     void createInstance();

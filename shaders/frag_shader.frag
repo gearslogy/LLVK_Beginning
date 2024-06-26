@@ -36,17 +36,17 @@ void main(){
     //tex = mix(tex,vec3(depth), phase);
     //phase = float(gl_FragCoord.x > 400);
     //tex = mix(tex,fragN, phase);
-    float headLight = dot(fragN, normalize(vec3(0.5,0.5,0.8) ) );
-    headLight = clamp(headLight, 0.2, 1);
-    tex = pow(tex, vec3(1.0/2.2)) * headLight;
+    //float headLight = dot(fragN, normalize(vec3(0.5,0.5,0.8) ) );
+    //headLight = clamp(headLight, 0.2, 1);
+    tex = pow(tex, vec3(1.0/2.2)) ;
 
     // mix N
     float phase = float( gl_FragCoord.x > ubo.screenSize.x * .5);
-    tex = mix(tex,fragN, phase);
+    //tex = mix(tex,fragN, phase);
 
     // mix depth
     //float phase2 = float( gl_FragCoord.x > ubo.screenSize.x * 0.666);
     //tex = mix(tex,vec3(depth), phase2);
 
-    outColor =  vec4(tex * headLight, 1.0) ;
+    outColor =  vec4(tex , 1.0) ;
 }

@@ -26,6 +26,8 @@ void Device::getPhysicalDevice() {
     for(auto &device: physicalDevices){
         if(checkDeviceSuitable(device)){ // Once we discover the graphics family
             physicalDevice = device;
+            auto maxPushConstantSize = getMaxPushConstantsSize(physicalDevice) ;
+            std::cout << "[[Device::getPhysicalDevice]]: MaxPushConstantsSize:" << maxPushConstantSize<< ", The number of floats that can fit:"<< maxPushConstantSize / sizeof(float) << std::endl;
             break;
         }
     }
@@ -105,4 +107,11 @@ bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vec
         }
     };
     return accumCheck == checkExtensions.size();
+}
+
+uint32_t Device::getMaxPushConstantsSize(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    uint32_t maxPushConstantsSize = deviceProperties.limits.maxPushConstantsSize;
+    return maxPushConstantsSize;
 }

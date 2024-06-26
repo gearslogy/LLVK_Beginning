@@ -344,11 +344,14 @@ void VulkanRenderer::createTexture() {
     simpleDescriptorManager.bindQueue = mainDevice.graphicsQueue;
     simpleDescriptorManager.bindCommandPool =simpleCommandManager.graphicsCommandPool;
     simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    simpleDescriptorManager.createTexture("content/viking_room.png");
+    //simpleDescriptorManager.createTexture("content/viking_room.png");
+    simpleDescriptorManager.createTexture("content/veqhch1/veqhch1_4K_Albedo.jpg");
 }
 void VulkanRenderer::loadModel() {
     //simpleObjLoader.readFile("content/pig.obj");
-    simpleObjLoader.readFile("content/viking_room.obj");
+    //simpleObjLoader.readFile("content/viking_room.obj");
+    simpleObjLoader.readFile("content/veqhch1/veqhch1_LOD0.obj");
+    //simpleQuad.init();
 }
 
 
@@ -358,10 +361,22 @@ void VulkanRenderer::createVertexBuffer() {
     simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
     simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
+    /*
     simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleObjLoader.vertices.size(),
         simpleObjLoader.vertices.data());
     simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleObjLoader.indices.size(),
-        simpleObjLoader.indices.data());
+        simpleObjLoader.indices.data());*/
+
+
+    //render quad
+    /*
+   simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleQuad.vertices.size(),
+       simpleQuad.vertices.data());
+   simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleQuad.indices.size(),
+       simpleQuad.indices.data());*/
+
+    //createVertexAndIndexBuffer(simpleVertexBuffer, simpleQuad);
+    createVertexAndIndexBuffer(simpleVertexBuffer, simpleObjLoader);
 }
 
 void VulkanRenderer::createUniformBuffers() {
@@ -410,7 +425,7 @@ void VulkanRenderer::createCommandBuffers() {
     simpleCommandManager.createCommandBuffers();*/
 
 
-    // DRAW QUAD WITH INDEX BUFFER
+    /*
     std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
     std::vector<VkDeviceSize> offsets = {0};
     simpleCommandManager.bindVertexBuffers = {
@@ -423,8 +438,22 @@ void VulkanRenderer::createCommandBuffers() {
         0,
         VK_INDEX_TYPE_UINT32,
         simpleObjLoader.indices.size()
-    };
+    };*/
 
+    /*
+    std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
+    std::vector<VkDeviceSize> offsets = {0};
+    simpleCommandManager.bindVertexBuffers = {
+        std::move(vertexBuffer),
+        std::move(offsets),
+        0,1, simpleQuad.vertices.size()
+    };
+    simpleCommandManager.bindIndexBuffer = {
+        simpleVertexBuffer.createdIndexedBuffers[0].buffer,
+        0,
+        VK_INDEX_TYPE_UINT32,
+        simpleQuad.indices.size()
+    };*/
 }
 
 
@@ -468,7 +497,9 @@ void VulkanRenderer::draw() {
 
     VkCommandBuffer commandBufferToSubmit = simpleCommandManager.commandBuffers[currentFrame];
     vkResetCommandBuffer(commandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0);
-    simpleCommandManager.recordCommand(commandBufferToSubmit, imageIndex);
+    //simpleCommandManager.recordCommand(commandBufferToSubmit, imageIndex);
+    //simpleCommandManager.recordCommandWithGeometry(simpleQuad, commandBufferToSubmit, imageIndex);
+    simpleCommandManager.recordCommandWithGeometry(simpleObjLoader, commandBufferToSubmit, imageIndex);
     //std::cout << "record:" << currentFrame << std::endl;
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -498,7 +529,6 @@ void VulkanRenderer::draw() {
     if(result == VK_ERROR_OUT_OF_DATE_KHR or result == VK_SUBOPTIMAL_KHR or framebufferResized) {
         framebufferResized = false;
         recreateSwapChain();
-        std::cout << magic_enum::enum_name(result) <<"222\n";
     }else if(result != VK_SUCCESS) {
         throw std::runtime_error{"failed to present swapchain image"};
     }

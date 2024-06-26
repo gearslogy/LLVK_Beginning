@@ -31,11 +31,8 @@ layout(set=0, binding = 1) uniform SURFACE{
 
 
 void main(){
-     gl_Position =  ubo.proj * ubo.view * ubo.model  *vec4(P,1.0);
-     fragTexCoord = inTexCoord;
-    //gl_Position = vec4(P, 1.0);
-    //fragColor = surface.base.rgb;
-    //fragColor = ubo.dynamicsColor;
+    gl_Position =  ubo.proj * ubo.view * ubo.model  *vec4(P,1.0);
+    fragTexCoord = inTexCoord;
     fragN = N;
     fragColor = Cd;
 }
