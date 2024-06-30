@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(CP_02)
 
 set(CMAKE_CXX_STANDARD 23)
-set(GLFW_PATH D:/plugin_dev/libs/glfw-3.4.bin.WIN64)
+set(GLFW_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw-3.4.bin.WIN64)
 set(GLFW_PATH_INCLUDE ${GLFW_PATH}/include)
 set(GLFW_PATH_LIB ${GLFW_PATH}/lib-vc2019)
 
@@ -21,6 +21,7 @@ file(GLOB SOURCES VulkanRenderer*
         BufferManager*
         GeoVertexDescriptions*
         DescriptorManager*
+        PushConstant*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
@@ -33,7 +34,7 @@ set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslc.exe)
 
 set(compile_shader_folder ${CMAKE_SOURCE_DIR}/build/bin/shaders)
 file(MAKE_DIRECTORY ${compile_shader_folder}) # 确保输出目录存在
-file(GLOB_RECURSE shader_sources shaders/*.frag shaders/*.vert)
+file(GLOB_RECURSE shader_sources shaders/*.frag shaders/*.vert shaders/quad/*.frag shaders/quad/*.vert)
 
 foreach(shader_source IN LISTS shader_sources)
     get_filename_component(shader_name "${shader_source}" NAME_WE)

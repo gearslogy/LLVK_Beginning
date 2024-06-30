@@ -8,7 +8,8 @@
 #include <vector>
 #include <stdexcept>
 #include <vector>
-
+#include "PushConstant.h"
+#include <iostream>
 struct FnCommand {
     // single time command
     static VkCommandBuffer beginSingleTimeCommand(VkDevice device, VkCommandPool pool);
@@ -88,6 +89,21 @@ struct CommandManager {
         vkCmdBeginRenderPass(cmdBuffer, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS ,bindPipeline);
         setViewPortAndScissor(cmdBuffer);
+        // 更新当前帧的 Push Constants
+        //std::cout << "push range1:" << 0 << " " << sizeof(PushVertexStageData) << std::endl;
+        vkCmdPushConstants(cmdBuffer,
+            bindPipeLineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(PushVertexStageData),
+            &PushConstant::vertexPushConstants[*bindCurrentFrame]);
+        //std::cout << "push range2:" << sizeof(PushFragmentStageData) << " " << sizeof(PushVertexStageData) << std::endl;
+        vkCmdPushConstants(cmdBuffer,
+            bindPipeLineLayout,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            sizeof(PushVertexStageData), // 偏移量为 Vertex Push Constant 的大小
+            sizeof(PushFragmentStageData),
+            &PushConstant::fragmentPushConstants[*bindCurrentFrame]);
 
         renderIndicesGeometryCommand(geometry, cmdBuffer, [cmdBuffer,this]() {
             vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,

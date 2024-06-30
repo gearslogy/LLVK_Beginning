@@ -141,6 +141,11 @@ void CommandManager::recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageInde
         vkCmdDraw(cmdBuffer,bindVertexBuffers.vertexCount, 1,0, 0);
         */
         // draw index buffer
+    // 更新当前帧的 Push Constants
+    vkCmdPushConstants(cmdBuffer, bindPipeLineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+        sizeof(PushVertexStageData), &PushConstant::vertexPushConstants[*bindCurrentFrame]);
+    vkCmdPushConstants(cmdBuffer, bindPipeLineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+        sizeof(PushVertexStageData), sizeof(PushFragmentStageData), &PushConstant::fragmentPushConstants[*bindCurrentFrame]);
         vkCmdBindVertexBuffers(cmdBuffer,
                            bindVertexBuffers.firstBinding,
                            bindVertexBuffers.bindingCount,

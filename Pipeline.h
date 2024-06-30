@@ -6,7 +6,7 @@
 #define PIPELINE_H
 #include <vulkan/vulkan.h>
 #include <array>
-class VulkanRenderer;
+#include "PushConstant.h"
 struct Pipeline {
     VkDevice bindDevice{};   // REF object
     VkExtent2D bindExtent{}; // REF object

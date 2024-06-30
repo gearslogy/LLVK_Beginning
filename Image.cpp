@@ -15,7 +15,7 @@ VkImageView FnImage::createImageView(VkDevice device,
                                      VkImage image,
                                      VkFormat format,
                                      VkImageAspectFlags aspectFlags, uint32_t mipLvels) {
-    std::cout << "[[imageview]]create miplevels:" << mipLvels << std::endl;
+    std::cout << "[[createImageView()]]create miplevels:" << mipLvels << std::endl;
     VkImageViewCreateInfo viewCreateInfo{};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewCreateInfo.image = image;
@@ -314,7 +314,7 @@ void FnImage::generateMipmaps(
 
     for (uint32_t i = 1; i < mipLevels; i++) {
 
-        std::cout << "process level:" << i << std::endl;
+        //std::cout << "process level:" << i << std::endl;
         barrier.subresourceRange.baseMipLevel = i - 1;// 永远用上一层
         // DST->SRC
         barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; // 注意这里，以前必须是staging -> DST

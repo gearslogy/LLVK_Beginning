@@ -11,6 +11,8 @@
 #include <string>
 #include <fstream>
 #include <format>
+
+constexpr bool ALWAYS_TRUE = true;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 struct QueueFamilyIndices{

@@ -493,6 +493,15 @@ void VulkanRenderer::draw() {
         throw std::runtime_error{"failed to acquire swap chain image!"};
     }
     simpleDescriptorManager.simpleUniformBuffer.updateUniform(currentFrame);
+
+    // update the PushConstants of the CPP
+    PushConstant::update<VK_SHADER_STAGE_VERTEX_BIT>(currentFrame, [](PushVertexStageData &dataToChange) {
+        dataToChange = {0,1,0,0};
+    });
+    PushConstant::update<VK_SHADER_STAGE_FRAGMENT_BIT>(currentFrame, [](PushFragmentStageData &dataToChange) {
+        dataToChange ={1,0,0,1};
+    });
+
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
 
     VkCommandBuffer commandBufferToSubmit = simpleCommandManager.commandBuffers[currentFrame];

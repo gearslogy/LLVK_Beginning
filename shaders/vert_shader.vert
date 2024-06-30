@@ -10,6 +10,12 @@ layout(location = 1) out vec3 fragN;
 layout(location = 2) out vec2 fragTexCoord;
 
 
+layout(push_constant) uniform PushConstantsVertex {
+    float P_xOffset;
+    float P_yOffset;
+    float P_zOffset;
+    float P_wOffset;
+} pcv;
 
 layout(set=0, binding = 0) uniform UniformBufferObject {
     vec2 screenSize;

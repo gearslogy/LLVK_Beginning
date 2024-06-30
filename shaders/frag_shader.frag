@@ -10,6 +10,15 @@ layout (location = 0) out vec4 outColor;
 // uniform texture
 layout(set=1, binding = 0) uniform sampler2D texSampler;
 
+
+layout(push_constant) uniform PushConstantsFragment {
+    layout(offset = 16) float hasDiffTex;
+    layout(offset = 20) float hasRoughTex;
+    layout(offset = 24) float hasUv;
+    layout(offset = 28) float hasCd;
+} pcf;
+
+
 float near = 0.1;
 float far  = 10.0;
 float LinearizeDepth(float depth)
@@ -47,6 +56,8 @@ void main(){
     // mix depth
     //float phase2 = float( gl_FragCoord.x > ubo.screenSize.x * 0.666);
     //tex = mix(tex,vec3(depth), phase2);
-
-    outColor =  vec4(tex , 1.0) ;
+    // test PushConstant
+    vec3 testPushConstant = vec3(pcf.hasDiffTex, pcf.hasRoughTex, pcf.hasUv);
+    //outColor =  vec4(tex , 1.0) ;
+    outColor =  vec4(testPushConstant, 1.0) ;
 }
