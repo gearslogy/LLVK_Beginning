@@ -29,6 +29,28 @@ struct FnCommand {
                                                          const VkRenderPass &renderpass,
                                                          const VkExtent2D *swapChainExtent,
                                                          const std::vector<VkClearValue> &clearValues);
+    //vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+    static VkViewport viewport(VkCommandBuffer cmdBuffer, auto width, auto height) {
+        VkViewport viewport{};
+        viewport.width = static_cast<float>(width);
+        viewport.height = static_cast<float>(height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        viewport.x = 0;
+        viewport.y = 0;
+        return viewport;
+    }
+    //vkCmdSetScissor(cmdBuffer,0, 1, &rect2D);
+    static VkRect2D scissor(VkCommandBuffer cmdBuffer,auto width,auto height){
+        VkRect2D rect2D {};
+        rect2D.extent.width = static_cast<int32_t>(width);
+        rect2D.extent.height = static_cast<int32_t>(height);
+        rect2D.offset.x = 0;
+        rect2D.offset.y = 0;
+        return rect2D;
+    }
+
+
 
 };
 
@@ -50,79 +72,6 @@ struct CmdBindIndexBuffer {
     VkDeviceSize offset;
     VkIndexType indexType;
     size_t indexCount;  // only use vkCmdDrawIndexed
-};
-
-struct CommandManager {
-    VkDevice bindLogicDevice{};
-    VkPhysicalDevice bindPhysicalDevice{};
-    VkSurfaceKHR bindSurface{};
-    const std::vector<VkFramebuffer> *bindSwapChainFramebuffers;
-    const VkExtent2D *bindSwapChainExtent;
-    VkRenderPass bindRenderPass;
-    VkPipeline bindPipeline; // which pipeline to rendering
-    VkPipelineLayout bindPipeLineLayout;
-    CmdBindVertexBuffers bindVertexBuffers;
-    CmdBindIndexBuffer bindIndexBuffer;
-    const std::vector<VkDescriptorSet> *bindDescriptorSets;
-    const int *bindCurrentFrame;
-    // created
-    VkCommandPool graphicsCommandPool{};
-    std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer
-    void cleanup();
-    void recordCommand(VkCommandBuffer cmdBuffer, uint32_t imageIndex);
-
-    // call in every frame
-    void recordCommandWithGeometry(const auto &geometry, VkCommandBuffer cmdBuffer, uint32_t imageIndex) {
-        static_assert(requires { geometry.vertices; });
-        static_assert(requires { geometry.indices; });
-        // select framebuffer
-        std::vector<VkClearValue> clearValues(2);
-        clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
-        clearValues[1].depthStencil = {1.0f, 0};
-        const VkFramebuffer &framebuffer = (*bindSwapChainFramebuffers)[imageIndex];
-        auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
-            bindRenderPass,
-            bindSwapChainExtent,clearValues);
-
-        auto result = vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo);
-        if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-        vkCmdBeginRenderPass(cmdBuffer, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS ,bindPipeline);
-        setViewPortAndScissor(cmdBuffer);
-        // 更新当前帧的 Push Constants
-        //std::cout << "push range1:" << 0 << " " << sizeof(PushVertexStageData) << std::endl;
-        vkCmdPushConstants(cmdBuffer,
-            bindPipeLineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(PushVertexStageData),
-            &PushConstant::vertexPushConstants[*bindCurrentFrame]);
-        //std::cout << "push range2:" << sizeof(PushFragmentStageData) << " " << sizeof(PushVertexStageData) << std::endl;
-        vkCmdPushConstants(cmdBuffer,
-            bindPipeLineLayout,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            sizeof(PushVertexStageData), // 偏移量为 Vertex Push Constant 的大小
-            sizeof(PushFragmentStageData),
-            &PushConstant::fragmentPushConstants[*bindCurrentFrame]);
-
-        renderIndicesGeometryCommand(geometry, cmdBuffer, [cmdBuffer,this]() {
-            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    bindPipeLineLayout, 0, 2,
-                    &(*bindDescriptorSets)[*bindCurrentFrame * 2],
-                    0, nullptr);
-        });
-        vkCmdEndRenderPass(cmdBuffer);
-        if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to record command buffer!");
-        }
-
-    }
-    void createGraphicsCommandPool();
-    void createCommandBuffers();
-
-    void setViewPortAndScissor(VkCommandBuffer cmdBuffer);
-
-
 };
 
 

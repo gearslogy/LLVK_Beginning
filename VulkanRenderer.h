@@ -7,7 +7,6 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include "Pipeline.h"
 #include "RenderPass.h"
 #include "Utils.h"
 #include "VulkanValidation.h"
@@ -17,17 +16,19 @@
 #include "Device.h"
 #include "BufferManager.h"
 #include "DescriptorManager.h"
-#include "GeoVertexDescriptions.h"
+#include "PipelineCache.h"
+
 class VulkanRenderer {
 public :
     VulkanRenderer();
+    virtual ~VulkanRenderer() ;
     void initWindow();
     int initVulkan();
     void mainLoop();
     void cleanup();
     void run();
     void draw();
-private:
+protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;
     VkInstance instance{};
@@ -39,23 +40,21 @@ private:
 
     // Objects
     DebugV2::CustomDebug simpleDebug;
-    Pipeline simplePipeline;
+    //Pipeline simplePipeline;
     RenderPass simplePass;
     Swapchain simpleSwapchain;
     Frambuffer simpleFramebuffer;
-    CommandManager simpleCommandManager;
+    VkCommandPool graphicsCommandPool;
+    std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
     int currentFrame{0};
-    BufferManager simpleVertexBuffer;
-    DescriptorManager simpleDescriptorManager;
     ImageAndMemory depthImageAndMemory;
     VkImageView depthImageView;
-    ObjLoader simpleObjLoader{};
-    Quad simpleQuad{};
-
-
+    PipelineCache simplePipelineCache{};
+    VkFramebuffer activeSwapChainFramebuffer{}; // swapchain frame buffer. we have three images in our swapchain
+    VkCommandBuffer activedFrameCommandBuferToSubmit{}; // we have two command buffer.active for the render rerord-command
     // create functions
     void createInstance();
     void createDebugCallback();
@@ -63,17 +62,13 @@ private:
     void createSurface();
     void createSwapChain();
     void createRenderpass();
-    void createDescriptorSetLayout();
-    void createPipeline();
+    //void createDescriptorSetLayout(); //user
+    void createPipelineCache();
+    //void createPipeline();            // user
     void createDepthResources();
-    void createFramebuffers();
+    void createFramebuffers(); // call at : init() recreateSwapChain()
     void createCommandPool();
-    void createTexture();
-    void loadModel();
-    void createVertexBuffer();
-    void createUniformBuffers();
-    void createDescriptorPool();
-    void createDescriptorSets();
+
     void createCommandBuffers();
     void createSyncObjects();
 
@@ -82,6 +77,11 @@ private:
     void recreateSwapChain();
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
 
+    // interface
+    virtual void cleanupObjects(){};
+    virtual void recordCommandBuffer(){};
+    virtual void prepare() {}
+    virtual void render() = 0;
 
 
 };

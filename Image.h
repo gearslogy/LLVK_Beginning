@@ -11,7 +11,7 @@
 struct ImageAndMemory {
     VkImage image{};
     VkDeviceMemory memory{};
-    uint32_t mipLevels; // using FnImage::createTexture() func will fill this field
+    uint32_t mipLevels{}; // using FnImage::createTexture() func will fill this field
 };
 
 // ImageFunction
@@ -32,7 +32,6 @@ struct FnImage {
         VkImageTiling tiling, // VK_IMAGE_TILING_OPTIMAL
         VkImageUsageFlags usageFlags, // VK_IMAGE_USAGE_TRANSFER_SRC_BIT
         VkMemoryPropertyFlags propertyFlags// VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-
     );
 
     // need manully destory:vkDestoryImage() vkDestoryMemory()
@@ -60,11 +59,15 @@ struct FnImage {
     static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
                                       VkImageTiling tiling,
                                       VkFormatFeatureFlags features);
+
     static VkFormat findDepthFormat(VkPhysicalDevice physicalDevice);
+    static bool findDepthStencilFormat(VkPhysicalDevice physicalDevice);
 
     static bool hasStencilComponent(VkFormat format) {
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
+
+
 
     static void generateMipmaps(
                                 VkPhysicalDevice physicalDevice,

@@ -21,7 +21,7 @@ void RenderPass::init() {
     attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     //depth attachment
     attachments[1].format = FnImage::findDepthFormat(bindPhysicalDevice);
-    std::cout << "[[RENDER PASS]]:selected depth format:" <<magic_enum::enum_name(attachments[1].format) << std::endl;
+    std::cout << "[[RENDER PASS]]:selected depth format:" <<magic_enum::enum_name(attachments[1].format) <<  " idx:"<<attachments[1].format << std::endl;
     attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
     attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

@@ -65,6 +65,10 @@ VkDescriptorSetLayout LayoutBindings::createTextureDescriptorSetLayout(VkDevice 
 
 // -----------------------------Simple mangaer functions-------------------------------------------------
 void DescriptorManager::createTexture(const char *tex) {
+    assert(bindPhysicalDevice!=VK_NULL_HANDLE);
+    assert(bindDevice!=VK_NULL_HANDLE);
+    assert(bindCommandPool!=VK_NULL_HANDLE);
+    assert(bindQueue!=VK_NULL_HANDLE);
     imageAndMemory= FnImage::createTexture(bindPhysicalDevice, bindDevice, bindCommandPool, bindQueue,
           tex
       );

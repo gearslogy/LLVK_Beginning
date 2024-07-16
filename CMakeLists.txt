@@ -22,6 +22,7 @@ file(GLOB SOURCES VulkanRenderer*
         GeoVertexDescriptions*
         DescriptorManager*
         PushConstant*
+        renderer/*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
@@ -58,11 +59,11 @@ foreach(shader_source IN LISTS shader_sources)
 endforeach()
 
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS} ${GLFW_PATH_INCLUDE})
+target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS} ${GLFW_PATH_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH_LIB})
 target_link_libraries (${PROJECT_NAME} ${Vulkan_LIBRARIES} glfw3)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/bin)
 set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
-
+target_compile_definitions(${PROJECT_NAME} PRIVATE MAGIC_ENUM_RANGE_MIN=-200 MAGIC_ENUM_RANGE_MAX=500 )
 

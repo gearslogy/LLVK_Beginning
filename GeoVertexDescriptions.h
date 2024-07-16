@@ -11,18 +11,37 @@
 #include <array>
 #include <vector>
 #include <unordered_map>
+
+
+struct Instance {
+    glm::vec3 P;
+    glm::vec3 scale;
+    glm::vec3 rotation;
+    uint32_t texIndex;
+};
+
 struct Vertex{
     glm::vec3 P{};
     glm::vec3 Cd{};
     glm::vec3 N{};
     glm::vec2 uv{};
-    // for vulkan
-    static VkVertexInputBindingDescription bindings();
-    // P Cd N uv
-    static std::array<VkVertexInputAttributeDescription,4> attribs();
+
+
     bool operator==(const Vertex& other) const {
         return P == other.P && Cd== other.Cd && uv == other.uv;
     }
+
+    // basic
+    static VkVertexInputBindingDescription bindings();
+    static std::array<VkVertexInputAttributeDescription,4> attribs();    // P Cd N uv
+    // INSTANCE
+    static std::array<VkVertexInputBindingDescription,2> instancedBindings();
+    static std::array<VkVertexInputAttributeDescription,8> instancedAttribs(); // P Cd N uv I.P I.Scale I.rot I.texIdx
+
+    static constexpr int vertex_buffer_binding_id = 0;   // basic    buffer id should be at 0
+    static constexpr int instance_buffer_binding_id = 1; // instance buffer id should be at 1
+
+
 };
 
 
@@ -64,7 +83,7 @@ namespace std {
     };
 }
 
-static inline void createVertexAndIndexBuffer(auto &&bufferManager, auto &geometry) {
+inline void createVertexAndIndexBuffer(auto &&bufferManager, auto &geometry) {
     static_assert(requires { geometry.vertices; });
     static_assert(requires { geometry.indices; });
     static_assert(requires { bufferManager.createdBuffers; });

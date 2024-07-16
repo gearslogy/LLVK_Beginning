@@ -1,9 +1,9 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include "VulkanRenderer.h"
-
+#include "renderer/BasicRenderer.h"
 int main() {
-    VulkanRenderer app;
+    BasicRenderer app;
     try {
         app.run();
     }

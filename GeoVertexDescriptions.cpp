@@ -7,7 +7,7 @@
 #include "libs/tiny_obj_loader.h"
 VkVertexInputBindingDescription Vertex::bindings() {
     VkVertexInputBindingDescription desc{};
-    desc.binding = 0;
+    desc.binding = vertex_buffer_binding_id;
     desc.stride = sizeof(Vertex);
     desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     return desc;
@@ -16,27 +16,73 @@ VkVertexInputBindingDescription Vertex::bindings() {
 
 std::array<VkVertexInputAttributeDescription,4> Vertex::attribs() {
     std::array<VkVertexInputAttributeDescription,4> desc{};
-    desc[0].binding = 0;
+    desc[0].binding = vertex_buffer_binding_id;
     desc[0].location = 0;
     desc[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     desc[0].offset = offsetof(Vertex, P);
 
-    desc[1].binding = 0;
+    desc[1].binding = vertex_buffer_binding_id;
     desc[1].location = 1;
     desc[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     desc[1].offset = offsetof(Vertex, Cd);
 
-    desc[2].binding = 0;
+    desc[2].binding = vertex_buffer_binding_id;
     desc[2].location = 2;
     desc[2].format = VK_FORMAT_R32G32B32_SFLOAT;
     desc[2].offset = offsetof(Vertex, N);
 
-    desc[3].binding = 0;
+    desc[3].binding = vertex_buffer_binding_id;
     desc[3].location = 3;
     desc[3].format = VK_FORMAT_R32G32_SFLOAT;
     desc[3].offset = offsetof(Vertex, uv);
     return desc;
 }
+
+std::array<VkVertexInputBindingDescription,2>  Vertex::instancedBindings() {
+    VkVertexInputBindingDescription desc0{};
+    desc0.binding = vertex_buffer_binding_id;
+    desc0.stride = sizeof(Vertex);
+    desc0.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputBindingDescription desc1{};
+    desc1.binding = instance_buffer_binding_id;
+    desc1.stride = sizeof(Instance);
+    desc1.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    return {desc0,desc1};
+}
+
+std::array<VkVertexInputAttributeDescription, 8> Vertex::instancedAttribs() {
+    std::array<VkVertexInputAttributeDescription,8> desc{};
+    desc[0].binding = vertex_buffer_binding_id;
+    desc[0].location = 0;
+    desc[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    desc[0].offset = offsetof(Vertex, P);
+
+    desc[1].binding = vertex_buffer_binding_id;
+    desc[1].location = 1;
+    desc[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    desc[1].offset = offsetof(Vertex, Cd);
+
+    desc[2].binding = vertex_buffer_binding_id;
+    desc[2].location = 2;
+    desc[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+    desc[2].offset = offsetof(Vertex, N);
+
+    desc[3].binding = vertex_buffer_binding_id;
+    desc[3].location = 3;
+    desc[3].format = VK_FORMAT_R32G32_SFLOAT;
+    desc[3].offset = offsetof(Vertex, uv);
+
+    desc[4] = { 4,instance_buffer_binding_id,VK_FORMAT_R32G32B32_SFLOAT , offsetof(Instance, P)};
+    desc[5] = { 5,instance_buffer_binding_id,VK_FORMAT_R32G32B32_SFLOAT , offsetof(Instance, P)};
+    desc[6] = { 6,instance_buffer_binding_id,VK_FORMAT_R32G32B32_SFLOAT , offsetof(Instance, P)};
+    desc[7] = { 7,instance_buffer_binding_id,VK_FORMAT_R32_UINT , offsetof(Instance, P)};
+
+    return desc;
+}
+
+
+
 
 void ObjLoader::readFile(const char *geoPath) {
     tinyobj::attrib_t attrib;
@@ -47,8 +93,8 @@ void ObjLoader::readFile(const char *geoPath) {
     if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, geoPath)) {
         throw std::runtime_error(err);
     }
-    bool hasNormal = attrib.normals.size()!=0;
-    bool hasST = attrib.texcoords.size()!=0;
+    bool hasNormal = !attrib.normals.empty();
+    bool hasST = !attrib.texcoords.empty();
 
     std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 

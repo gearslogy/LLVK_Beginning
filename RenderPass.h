@@ -9,7 +9,7 @@
 
 struct RenderPass {
     VkDevice bindDevice{}; // bind device
-    VkPhysicalDevice bindPhysicalDevice;
+    VkPhysicalDevice bindPhysicalDevice{};
     // created object
     VkRenderPass pass{};
     // function

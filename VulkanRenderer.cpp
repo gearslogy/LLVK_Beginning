@@ -95,7 +95,9 @@ static std::vector<uint16_t> indices = {
 
 
 
-VulkanRenderer::VulkanRenderer() {}
+VulkanRenderer::VulkanRenderer()=default;
+VulkanRenderer::~VulkanRenderer(){};
+
 
 
 void VulkanRenderer::initWindow() {
@@ -131,17 +133,11 @@ int VulkanRenderer::initVulkan() {
         createPhyiscalAndLogicDevice();
         createSwapChain();
         createRenderpass();
-        createDescriptorSetLayout();
-        createPipeline();
+        createPipelineCache();
         createDepthResources();
         createFramebuffers();
         createCommandPool();
-        createTexture();
-        loadModel();
-        createVertexBuffer();
-        createUniformBuffers();
-        createDescriptorPool();
-        createDescriptorSets();
+        prepare();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -154,16 +150,16 @@ int VulkanRenderer::initVulkan() {
 void VulkanRenderer::cleanup() {
     // Wait until no actions being run on device before destroying
     vkDeviceWaitIdle(mainDevice.logicalDevice);
+    cleanupObjects();
     cleanupSwapChain();
-    simpleDescriptorManager.cleanup();
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
         vkDestroySemaphore(mainDevice.logicalDevice, imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(mainDevice.logicalDevice, renderFinishedSemaphores[i], nullptr);
         vkDestroyFence(mainDevice.logicalDevice,inFlightFences[i], nullptr);
     }
-    simpleCommandManager.cleanup();
-    simpleVertexBuffer.cleanup();
-    simplePipeline.cleanup();
+    simplePipelineCache.cleanup();
+    vkDestroyCommandPool(mainDevice.logicalDevice, graphicsCommandPool, nullptr);
+
     simplePass.cleanup();
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
     mainDevice.cleanup();
@@ -290,19 +286,29 @@ void VulkanRenderer::createSwapChain() {
     simpleSwapchain.bindWindow = window;
     simpleSwapchain.init();
 }
+/*
 void VulkanRenderer::createDescriptorSetLayout() {
     simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
     simpleDescriptorManager.createDescriptorSetLayout();
 }
-
+*/
+void VulkanRenderer::createPipelineCache() {
+    simplePipelineCache.bindDevice = mainDevice.logicalDevice;
+    simplePipelineCache.init();
+    simplePipelineCache.loadCache();// actully it's trying load cache
+}
+/*
 void VulkanRenderer::createPipeline(){
     simplePipeline.bindDevice = mainDevice.logicalDevice;
     simplePipeline.bindExtent = simpleSwapchain.swapChainExtent;
     simplePipeline.bindRenderPass = simplePass.pass;
     simplePipeline.bindDescriptorSetLayouts[0] = simpleDescriptorManager.ubo_descriptorSetLayout;
     simplePipeline.bindDescriptorSetLayouts[1] = simpleDescriptorManager.texture_descriptorSetLayout;
+    simplePipeline.bindPipelineCache = &simplePipelineCache;
     simplePipeline.init();
-}
+    // after create all pipeline, THEN WRITE PIPELINE CACHE
+    simplePipelineCache.writeCache();
+}*/
 void VulkanRenderer::createDepthResources() {
     auto depthFormat = FnImage::findDepthFormat(mainDevice.physicalDevice);
     depthImageAndMemory = FnImage::createImageAndMemory(mainDevice.physicalDevice,mainDevice.logicalDevice,
@@ -333,47 +339,31 @@ void VulkanRenderer::createFramebuffers() {
     simpleFramebuffer.init();
 }
 void VulkanRenderer::createCommandPool() {
-    simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
-    simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleCommandManager.bindSurface = surfaceKhr;
-    simpleCommandManager.createGraphicsCommandPool();
-}
-void VulkanRenderer::createTexture() {
-    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindQueue = mainDevice.graphicsQueue;
-    simpleDescriptorManager.bindCommandPool =simpleCommandManager.graphicsCommandPool;
-    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    //simpleDescriptorManager.createTexture("content/viking_room.png");
-    simpleDescriptorManager.createTexture("content/veqhch1/veqhch1_4K_Albedo.jpg");
-}
-void VulkanRenderer::loadModel() {
-    //simpleObjLoader.readFile("content/pig.obj");
-    //simpleObjLoader.readFile("content/viking_room.obj");
-    simpleObjLoader.readFile("content/veqhch1/veqhch1_LOD0.obj");
-    //simpleQuad.init();
+    QueueFamilyIndices queueFamilyIndices = getQueueFamilies(surfaceKhr, mainDevice.physicalDevice);
+    graphicsCommandPool = FnCommand::createCommandPool(mainDevice.logicalDevice, queueFamilyIndices.graphicsFamily);
 }
 
 
 
+/*
 void VulkanRenderer::createVertexBuffer() {
     simpleVertexBuffer.bindDevice = mainDevice.logicalDevice;
     simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
     simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
     simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
-    /*
-    simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleObjLoader.vertices.size(),
-        simpleObjLoader.vertices.data());
-    simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleObjLoader.indices.size(),
-        simpleObjLoader.indices.data());*/
+
+    //simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleObjLoader.vertices.size(),
+        //simpleObjLoader.vertices.data());
+    //simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleObjLoader.indices.size(),
+        //simpleObjLoader.indices.data());
 
 
     //render quad
-    /*
-   simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleQuad.vertices.size(),
-       simpleQuad.vertices.data());
-   simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleQuad.indices.size(),
-       simpleQuad.indices.data());*/
+
+   //simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleQuad.vertices.size(),
+//       simpleQuad.vertices.data());
+//   simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleQuad.indices.size(),
+//       simpleQuad.indices.data());
 
     //createVertexAndIndexBuffer(simpleVertexBuffer, simpleQuad);
     createVertexAndIndexBuffer(simpleVertexBuffer, simpleObjLoader);
@@ -399,61 +389,23 @@ void VulkanRenderer::createDescriptorSets() {
     simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
     simpleDescriptorManager.createDescriptorSets();
 }
-
+*/
 
 void VulkanRenderer::createCommandBuffers() {
-    simpleCommandManager.bindLogicDevice = mainDevice.logicalDevice;
-    simpleCommandManager.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleCommandManager.bindSurface = surfaceKhr;
-    simpleCommandManager.bindSwapChainFramebuffers = &simpleFramebuffer.swapChainFramebuffers;
-    simpleCommandManager.bindRenderPass = simplePass.pass;
-    simpleCommandManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    simpleCommandManager.bindPipeline = simplePipeline.graphicsPipeline;
-    simpleCommandManager.bindPipeLineLayout = simplePipeline.pipelineLayout;
-    simpleCommandManager.bindDescriptorSets = &simpleDescriptorManager.descriptorSets;
-    simpleCommandManager.bindCurrentFrame = &currentFrame;
-    simpleCommandManager.createCommandBuffers();
+    commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    std::cout << __FUNCTION__ << " create swapChainCommandBuffers MAX_FRAMES_IN_FLIGHT size:" << commandBuffers.size() << std::endl;
+    VkCommandBufferAllocateInfo cbAllocInfo = {};
+    cbAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbAllocInfo.commandPool = graphicsCommandPool ;
+    cbAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;	// VK_COMMAND_BUFFER_LEVEL_PRIMARY	: Buffer you submit directly to queue. Cant be called by other buffers.
+    // VK_COMMAND_BUFFER_LEVEL_SECONARY	: Buffer can't be called directly. Can be called from other buffers via "vkCmdExecuteCommands" when recording commands in primary buffer
+    cbAllocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
 
-    /* DRAW TRANGLE
-    std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
-    std::vector<VkDeviceSize> offsets = {0};
-    simpleCommandManager.bindVertexBuffers = {
-        std::move(vertexBuffer),
-        std::move(offsets),
-        0,1, 3
-    };
-    simpleCommandManager.createCommandBuffers();*/
-
-
-    /*
-    std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
-    std::vector<VkDeviceSize> offsets = {0};
-    simpleCommandManager.bindVertexBuffers = {
-        std::move(vertexBuffer),
-        std::move(offsets),
-        0,1, simpleObjLoader.vertices.size()
-    };
-    simpleCommandManager.bindIndexBuffer = {
-        simpleVertexBuffer.createdIndexedBuffers[0].buffer,
-        0,
-        VK_INDEX_TYPE_UINT32,
-        simpleObjLoader.indices.size()
-    };*/
-
-    /*
-    std::vector          vertexBuffer = { simpleVertexBuffer.createdBuffers[0].buffer};
-    std::vector<VkDeviceSize> offsets = {0};
-    simpleCommandManager.bindVertexBuffers = {
-        std::move(vertexBuffer),
-        std::move(offsets),
-        0,1, simpleQuad.vertices.size()
-    };
-    simpleCommandManager.bindIndexBuffer = {
-        simpleVertexBuffer.createdIndexedBuffers[0].buffer,
-        0,
-        VK_INDEX_TYPE_UINT32,
-        simpleQuad.indices.size()
-    };*/
+    // Allocate command buffers and place handles in array of buffers
+    VkResult result = vkAllocateCommandBuffers(mainDevice.logicalDevice, &cbAllocInfo, commandBuffers.data());
+    if (result != VK_SUCCESS){
+        throw std::runtime_error("Failed to allocate Command Buffers!");
+    }
 }
 
 
@@ -492,24 +444,27 @@ void VulkanRenderer::draw() {
     }else if(result !=VK_SUCCESS and result!=VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error{"failed to acquire swap chain image!"};
     }
+    /* user setup
     simpleDescriptorManager.simpleUniformBuffer.updateUniform(currentFrame);
 
     // update the PushConstants of the CPP
+
     PushConstant::update<VK_SHADER_STAGE_VERTEX_BIT>(currentFrame, [](PushVertexStageData &dataToChange) {
         dataToChange = {0,1,0,0};
     });
     PushConstant::update<VK_SHADER_STAGE_FRAGMENT_BIT>(currentFrame, [](PushFragmentStageData &dataToChange) {
         dataToChange ={1,0,0,1};
-    });
+    });*/
 
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
 
-    VkCommandBuffer commandBufferToSubmit = simpleCommandManager.commandBuffers[currentFrame];
-    vkResetCommandBuffer(commandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0);
-    //simpleCommandManager.recordCommand(commandBufferToSubmit, imageIndex);
-    //simpleCommandManager.recordCommandWithGeometry(simpleQuad, commandBufferToSubmit, imageIndex);
-    simpleCommandManager.recordCommandWithGeometry(simpleObjLoader, commandBufferToSubmit, imageIndex);
-    //std::cout << "record:" << currentFrame << std::endl;
+    activedFrameCommandBuferToSubmit = commandBuffers[currentFrame];
+    vkResetCommandBuffer(activedFrameCommandBuferToSubmit,/*VkCommandBufferResetFlagBits*/ 0);
+    activeSwapChainFramebuffer = simpleFramebuffer.swapChainFramebuffers[imageIndex];
+
+    render(); // call the pure virtual function
+
+
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount  = 1;
@@ -517,7 +472,7 @@ void VulkanRenderer::draw() {
     constexpr VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBufferToSubmit;
+    submitInfo.pCommandBuffers = &activedFrameCommandBuferToSubmit;
     // 渲染完成信号，发射renderFinishedSemaphores
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
