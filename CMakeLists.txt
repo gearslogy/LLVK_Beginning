@@ -23,6 +23,7 @@ file(GLOB SOURCES VulkanRenderer*
         DescriptorManager*
         PushConstant*
         renderer/*
+        renderer/*/*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
@@ -35,7 +36,7 @@ set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslc.exe)
 
 set(compile_shader_folder ${CMAKE_SOURCE_DIR}/build/bin/shaders)
 file(MAKE_DIRECTORY ${compile_shader_folder}) # 确保输出目录存在
-file(GLOB_RECURSE shader_sources shaders/*.frag shaders/*.vert shaders/quad/*.frag shaders/quad/*.vert)
+file(GLOB_RECURSE shader_sources shaders/*.frag shaders/*.vert shaders/*/*)
 
 foreach(shader_source IN LISTS shader_sources)
     get_filename_component(shader_name "${shader_source}" NAME_WE)

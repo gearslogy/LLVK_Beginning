@@ -2,8 +2,11 @@
 #include <GLFW/glfw3.h>
 #include "VulkanRenderer.h"
 #include "renderer/BasicRenderer.h"
+#include "renderer/DynamicsUBO/dynamicsUBO.h"
+
 int main() {
-    BasicRenderer app;
+    //BasicRenderer app;
+    DynamicsUBO app;
     try {
         app.run();
     }

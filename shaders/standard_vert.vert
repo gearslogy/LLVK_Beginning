@@ -11,23 +11,14 @@ layout(location = 2) out vec2 fragTexCoord;
 
 
 
-layout (set=0, binding = 0) uniform UboView
-{
-    mat4 projection;
-    mat4 view;
-} uboView;
-
-layout (set=0, binding = 1) uniform UboInstance
-{
+layout(set=0, binding = 0) uniform UniformBufferObject {
     mat4 model;
-} uboInstance;
+    mat4 view;
+    mat4 proj;
+}ubo;
 
-
-void main()
-{
-    mat4 modelView = uboView.view * uboInstance.model;
-    vec3 worldPos = vec3(modelView * vec4(P, 1.0));
-    gl_Position = uboView.projection * modelView * vec4(P.xyz, 1.0);
+void main(){
+    gl_Position =  ubo.proj * ubo.view * ubo.model  *vec4(P,1.0);
     fragTexCoord = inTexCoord;
     fragN = N;
     fragColor = Cd;

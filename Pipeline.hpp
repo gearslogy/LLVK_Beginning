@@ -8,33 +8,27 @@
 #include <array>
 #include "PushConstant.h"
 #include <concepts>
-struct PipelineCache;
+#include "Utils.h"
+namespace LLVK {
 
-namespace FnPipelineConcept {
-    template<typename T>
-   concept is_range = requires(T var){
-        var.size();
-        var.data();
-    };
-};
 
 struct FnPipeline {
     static VkShaderModule createShaderModuleFromSpvFile(const char *shaderPath, VkDevice device);
     static VkPipelineShaderStageCreateInfo shaderStageCreateInfo(VkShaderStageFlagBits stage,
         VkShaderModule shaderModule);
-    // no push constants API
-    static VkPipelineLayoutCreateInfo layoutCreateInfo(
-                const VkDescriptorSetLayout* pSetLayouts,
-                uint32_t setLayoutCount = 1);
+    // no push constants layout API
+    static VkPipelineLayoutCreateInfo layoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,uint32_t setLayoutCount = 1);
+    static VkPipelineLayoutCreateInfo layoutCreateInfo(const LLVK::Concept::is_range auto & layouts) ;
 
+    // input asseambly
     static VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo(
             VkPrimitiveTopology topology,
             VkPipelineInputAssemblyStateCreateFlags flags,
             VkBool32 primitiveRestartEnable);
 
     // vertex bindings & attribs
-    static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo(const FnPipelineConcept::is_range auto & bindings,
-        const FnPipelineConcept::is_range auto &attribs) {
+    static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo(const LLVK::Concept::is_range auto & bindings,
+        const LLVK::Concept::is_range auto &attribs) {
         VkPipelineVertexInputStateCreateInfo ret{};
         ret.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         ret.vertexBindingDescriptionCount = bindings.size();
@@ -46,7 +40,14 @@ struct FnPipeline {
     // viewport and scissor
     static VkPipelineViewportStateCreateInfo viewPortStateCreateInfo(uint32_t viewPortCount=1, uint32_t scissorCount=1);
     //dynamics state
-    static VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo(const FnPipelineConcept::is_range auto &dynamicStates) {
+    static std::vector<VkDynamicState> simpleDynamicsStates() {
+        std::vector<VkDynamicState> dynamicStates;
+        dynamicStates.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
+        dynamicStates.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
+        dynamicStates.emplace_back(VK_DYNAMIC_STATE_LINE_WIDTH);
+        return dynamicStates;
+    }
+    static VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo(const Concept::is_range auto &dynamicStates) {
         VkPipelineDynamicStateCreateInfo ret{};
         ret.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         ret.dynamicStateCount = dynamicStates.size();
@@ -68,15 +69,12 @@ struct FnPipeline {
     static VkPipelineColorBlendAttachmentState simpleOpaqueColorBlendAttacmentState();
     static VkPipelineColorBlendAttachmentState simpleColorBlendAttacmentState();
     // blend attacment create info
-    static VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo(const FnPipelineConcept::is_range auto &attachments);
+    static VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo(const Concept::is_range auto &attachments);
 
 
     static VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfoEnabled();
 
 };
-
-
-
 
 
 inline VkShaderModule FnPipeline::createShaderModuleFromSpvFile(const char *shaderPath, VkDevice device) {
@@ -92,6 +90,16 @@ inline VkPipelineLayoutCreateInfo FnPipeline::layoutCreateInfo(const VkDescripto
     pipelineLayoutCreateInfo.pSetLayouts = pSetLayouts;
     return pipelineLayoutCreateInfo;
 }
+inline VkPipelineLayoutCreateInfo FnPipeline::layoutCreateInfo(const LLVK::Concept::is_range auto &layouts) {
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
+    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCreateInfo.setLayoutCount = layouts.size();
+    pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
+    return pipelineLayoutCreateInfo;
+}
+
+
+
 
 inline VkPipelineShaderStageCreateInfo FnPipeline::shaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
     VkPipelineShaderStageCreateInfo ret{};
@@ -167,7 +175,7 @@ inline VkPipelineColorBlendAttachmentState FnPipeline::simpleOpaqueColorBlendAtt
     return pipelineColorBlendAttachmentState;
 }
 
-inline VkPipelineColorBlendStateCreateInfo FnPipeline::colorBlendStateCreateInfo(const FnPipelineConcept::is_range auto &attachments) {
+inline VkPipelineColorBlendStateCreateInfo FnPipeline::colorBlendStateCreateInfo(const Concept::is_range auto &attachments) {
     VkPipelineColorBlendStateCreateInfo ret{};
     ret.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     ret.logicOpEnable = VK_FALSE;
@@ -189,6 +197,8 @@ inline VkPipelineDepthStencilStateCreateInfo FnPipeline::depthStencilStateCreate
 }
 
 
+
+}
 
 
 #endif //PIPELINE_H

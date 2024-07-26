@@ -12,7 +12,7 @@ void SimplePipeline::cleanup() {
 }
 
 void SimplePipeline::init() {
-
+    using FnPipeline = LLVK::FnPipeline;
     const auto vertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/shader_vert.spv",  bindDevice);
     const auto fragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/shader_frag.spv",  bindDevice);
     VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertModule);

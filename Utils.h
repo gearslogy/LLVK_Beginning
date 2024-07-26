@@ -11,9 +11,33 @@
 #include <string>
 #include <fstream>
 #include <format>
-
+#include <ranges>
 constexpr bool ALWAYS_TRUE = true;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
+namespace LLVK {
+    namespace Concept {
+        template<typename T>
+        concept is_range = requires(T var){
+            var.size();
+            var.data();
+        };
+    }
+
+    constexpr auto xrange(int start,const Concept::is_range auto &container) {
+        return std::views::iota(0, static_cast<int>(std::size(container)) );
+    }
+
+}
+
+/*
+namespace ranges {
+    template <typename Rng, template <typename...> class Cont = std::vector>
+    auto to(Rng&& rng) {
+        using value_type = std::ranges::range_value_t<Rng>;
+        return Cont<value_type>(std::ranges::begin(rng), std::ranges::end(rng));
+    }
+}*/
 
 struct QueueFamilyIndices{
     int graphicsFamily{-1};

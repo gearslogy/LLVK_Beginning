@@ -138,6 +138,7 @@ int VulkanRenderer::initVulkan() {
         createFramebuffers();
         createCommandPool();
         prepare();
+        simplePipelineCache.writeCache();
         createCommandBuffers();
         createSyncObjects();
     }

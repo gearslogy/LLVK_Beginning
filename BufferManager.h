@@ -29,8 +29,12 @@ struct FnBuffer {
 struct BufferAndMemory {
     VkBuffer buffer;
     VkDeviceMemory memory;
+
     void cleanup(VkDevice device);
+    // when create
+    VkDeviceSize size;
 };
+
 struct BufferManager {
     VkDevice bindDevice;
     VkPhysicalDevice bindPhysicalDevice;
@@ -43,6 +47,7 @@ struct BufferManager {
     // The following functions are just for learning
     void createVertexBuffer(size_t bufferSize, const void *verticesBufferData);
     void createVertexBufferWithStagingBuffer(size_t bufferSize, const void *verticesBufferData);
+    
 
     // create index vertex buffer
     void createIndexBuffer(size_t indexBufferSize, const void *indicesData);

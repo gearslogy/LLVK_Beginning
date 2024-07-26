@@ -5,6 +5,7 @@
 #ifndef SIMPLEPIPELINE_H
 #define SIMPLEPIPELINE_H
 #include "Pipeline.hpp"
+struct PipelineCache;
 struct SimplePipeline {
     VkDevice bindDevice{};   // REF object
     VkRenderPass bindRenderPass{}; // REF object
