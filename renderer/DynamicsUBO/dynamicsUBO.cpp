@@ -3,9 +3,10 @@
 #include "Pipeline.hpp"
 #include <ranges>
 #include <algorithm>
-#include "Pipeline.hpp"
 #include <random>
 #include "LLVK_Math.hpp"
+#include "CommandManager.h"
+LLVK_NAMESPACE_BEGIN
 void DynamicsUBO::cleanupObjects() {
 
     auto device = mainDevice.logicalDevice;
@@ -25,10 +26,8 @@ void DynamicsUBO::cleanupObjects() {
     vkDestroyPipeline(device,plantPipeline,nullptr);
     geometryBufferManager.cleanup();
     // uniform buffer clean up
-    vkDestroyBuffer(device, uniformBuffers.viewBuffer, nullptr);
-    vkDestroyBuffer(device, uniformBuffers.dynamicBuffer, nullptr);
-    vkFreeMemory(device, uniformBuffers.viewMemory, nullptr);
-    vkFreeMemory(device, uniformBuffers.dynamicMemory, nullptr);
+    plantUniformBuffers.viewBuffer.cleanup();
+    plantUniformBuffers.dynamicBuffer.cleanup();
     if (uboDataDynamic.model) {
         alignedFree(uboDataDynamic.model);
     }
@@ -37,7 +36,11 @@ void DynamicsUBO::cleanupObjects() {
 }
 
 
-void DynamicsUBO::loadTexture() {
+void DynamicsUBO::createTextures(const Concept::is_range auto &files) {
+
+}
+
+void DynamicsUBO::loadPlantTextures() {
     const auto phyDevice = mainDevice.physicalDevice;
     const auto device = mainDevice.logicalDevice;
     std::vector<std::string> files{
@@ -48,7 +51,6 @@ void DynamicsUBO::loadTexture() {
         "content/plants/gardenplants/ForestFern_2K_Roughness.jpg",
         "content/plants/gardenplants/ForestFern_2K_Translucency.jpg",
     };
-
     auto createTextureAndMemory = [this](const auto &file) {
         return FnImage::createTexture(mainDevice.physicalDevice, mainDevice.logicalDevice, graphicsCommandPool, mainDevice.graphicsQueue,file);
     };
@@ -56,13 +58,49 @@ void DynamicsUBO::loadTexture() {
     auto createImageView = [this](const ImageAndMemory &rhs) {
         return FnImage::createImageView( mainDevice.logicalDevice, rhs.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, rhs.mipLevels);
     };
+
     // create image and device_mem
     auto plant_image_mems = files | std::views::transform(createTextureAndMemory);
     std::ranges::copy(plant_image_mems, this->plantsImageMems.begin());
     // create image views
     auto image_views = plantsImageMems | std::views::transform(createImageView);
     std::ranges::copy(image_views, this->plantsImageViews.begin());
+
+}
+
+void DynamicsUBO::loadGroundTextures() {
+    const auto phyDevice = mainDevice.physicalDevice;
+    const auto device = mainDevice.logicalDevice;
+    std::vector<std::string> files{
+        "content/ground/xbreair_2K_Albedo.jpg",
+        "content/ground/xbreair_2K_AO.jpg",
+        "content/ground/xbreair_2K_Displacement.jpg",
+        "content/ground/xbreair_2K_Normal.jpg",
+        "content/ground/xbreair_2K_Roughness.jpg",
+    };
+    auto createTextureAndMemory = [this](const auto &file) {
+        return FnImage::createTexture(mainDevice.physicalDevice, mainDevice.logicalDevice, graphicsCommandPool, mainDevice.graphicsQueue,file);
+    };
+
+    auto createImageView = [this](const ImageAndMemory &rhs) {
+        return FnImage::createImageView( mainDevice.logicalDevice, rhs.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, rhs.mipLevels);
+    };
+
+    // create image and device_mem
+    auto plant_image_mems = files | std::views::transform(createTextureAndMemory);
+    std::ranges::copy(plant_image_mems, this->plantsImageMems.begin());
+    // create image views
+    auto image_views = plantsImageMems | std::views::transform(createImageView);
+    std::ranges::copy(image_views, this->plantsImageViews.begin());
+
+}
+
+void DynamicsUBO::loadTexture() {
+    const auto phyDevice = mainDevice.physicalDevice;
+    const auto device = mainDevice.logicalDevice;
     sampler = FnImage::createImageSampler(phyDevice, device); // create sampler
+    loadPlantTextures();
+    //loadGroundTextures();
 }
 void DynamicsUBO::loadModel() {
     plantGeo.readFile("content/plants/gardenplants/var0.obj");
@@ -107,17 +145,6 @@ void DynamicsUBO::setupDescriptors() {
     if(vkAllocateDescriptorSets(device, &plantSetAllocateInfo,plantDescriptorSets) != VK_SUCCESS)
         throw std::runtime_error{"can not create descriptor set"};
 
-    // -- writeset --
-    // ubo
-    VkDescriptorBufferInfo uboVsDescBufferInfo{};
-    uboVsDescBufferInfo.buffer = uniformBuffers.viewBuffer;
-    uboVsDescBufferInfo.offset = 0;
-    uboVsDescBufferInfo.range = sizeof(uboVS);
-    // dynamics ubo
-    VkDescriptorBufferInfo dynamicsDescBufferInfo{};
-    dynamicsDescBufferInfo.buffer = uniformBuffers.dynamicBuffer;
-    dynamicsDescBufferInfo.offset = 0;
-    dynamicsDescBufferInfo.range = dynamicAlignment; //
 
     // texture. shared sampler!
     auto createDescritporImageInfo = [this](const VkImageView &imageView)->VkDescriptorImageInfo {
@@ -128,14 +155,17 @@ void DynamicsUBO::setupDescriptors() {
         return ret;
     };
     std::array<VkDescriptorImageInfo,plantNumPlantsImages> plantDescriptorImageInfos{};
-    auto iter_plantDescriptorImageInfos = LLVK::xrange(0,plantDescriptorImageInfos) |
+    auto iter_plantDescriptorImageInfos = xrange(0,plantDescriptorImageInfos) |
         std::views::transform([this](auto idx){return plantsImageViews[idx];}) | std::views::transform(createDescritporImageInfo);
     std::ranges::copy(iter_plantDescriptorImageInfos, plantDescriptorImageInfos.begin());
 
+    // dynamics descritpor buffer info should modify
+    plantUniformBuffers.dynamicBuffer.descBufferInfo.range = dynamicAlignment; // ! important !
+
     // -- write set end--
     const std::array writeSets{
-        FnDesc::writeDescriptorSet(plantDescriptorSets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboVsDescBufferInfo ), // set=0 binding=0
-        FnDesc::writeDescriptorSet(plantDescriptorSets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &dynamicsDescBufferInfo ),// set=0 binding=1
+        FnDesc::writeDescriptorSet(plantDescriptorSets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &plantUniformBuffers.viewBuffer.descBufferInfo ), // set=0 binding=0
+        FnDesc::writeDescriptorSet(plantDescriptorSets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &plantUniformBuffers.dynamicBuffer.descBufferInfo ),// set=0 binding=1
         FnDesc::writeDescriptorSet(plantDescriptorSets[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &plantDescriptorImageInfos[0] ),// set=1 binding=0    };
         FnDesc::writeDescriptorSet(plantDescriptorSets[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &plantDescriptorImageInfos[1] ),// set=1 binding=1    };
         FnDesc::writeDescriptorSet(plantDescriptorSets[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &plantDescriptorImageInfos[2] ),// set=1 binding=2    };
@@ -147,7 +177,6 @@ void DynamicsUBO::setupDescriptors() {
 
 }
 void DynamicsUBO::preparePipelines() {
-    using FnPipeline = LLVK::FnPipeline;
     auto device = mainDevice.logicalDevice;
     const auto vertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/dynamicsUBO_vert.spv",  device);
     const auto fragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/dynamicsUBO_frag.spv",  device);
@@ -213,6 +242,11 @@ void DynamicsUBO::preparePipelines() {
 void DynamicsUBO::prepareUniformBuffers() {
     auto device = mainDevice.logicalDevice;
     auto phyDevice = mainDevice.physicalDevice;
+    plantUniformBuffers.viewBuffer.bindDevice = device;
+    plantUniformBuffers.viewBuffer.bindPhysicalDevice = phyDevice;
+    plantUniformBuffers.dynamicBuffer.bindDevice = device;
+    plantUniformBuffers.dynamicBuffer.bindPhysicalDevice = phyDevice;
+
     VkPhysicalDeviceProperties gpuProps{};
     vkGetPhysicalDeviceProperties(phyDevice, &gpuProps);
     const size_t minUBOAlignment = gpuProps.limits.minUniformBufferOffsetAlignment; // RTX 3070 64
@@ -231,21 +265,13 @@ void DynamicsUBO::prepareUniformBuffers() {
     uboDataDynamic.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment); // 动态内存对齐开辟
     assert(uboDataDynamic.model);
     // Static shared uniform buffer object with projection and view matrix
-    FnBuffer::createBuffer(phyDevice, mainDevice.logicalDevice,sizeof(uboVS),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers.viewBuffer, uniformBuffers.viewMemory );
-    uniformBuffers.viewSize = sizeof(uboVS);
+    plantUniformBuffers.viewBuffer.create(sizeof(uboVS));
     // Uniform buffer object with per-object matrices
-    FnBuffer::createBuffer(phyDevice, device,bufferSize,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, uniformBuffers.dynamicBuffer, uniformBuffers.dynamicMemory );
-    uniformBuffers.dynamicBufferSize = bufferSize;
+    std::cout << "created dynamicBuffer size = " << bufferSize << std::endl;                    // 64
+    plantUniformBuffers.dynamicBuffer.create(bufferSize, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     // Map persistent
-    if(vkMapMemory(device, uniformBuffers.viewMemory, 0, sizeof(uboVS), 0, &uniformBuffers.viewMapped) != VK_SUCCESS)
-        throw std::runtime_error{"ERROR map memory"};
-    if(vkMapMemory(device, uniformBuffers.dynamicMemory, 0, bufferSize , 0, &uniformBuffers.dynamicMapped)!=VK_SUCCESS)
-        throw std::runtime_error{"ERROR map memory"};
-
+    plantUniformBuffers.viewBuffer.map();
+    plantUniformBuffers.dynamicBuffer.map();
 
     updateUniformBuffers();
     updateDynamicUniformBuffer();
@@ -257,7 +283,7 @@ void DynamicsUBO::updateUniformBuffers() {
     uboVS.projection =  glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 2000.0f);
     uboVS.projection[1][1] *= -1;
     uboVS.view =  glm::lookAt(glm::vec3(0, 80.0f, 200), glm::vec3(0.0f, 0, 40.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
-    memcpy(uniformBuffers.viewMapped, &uboVS, sizeof(uboVS));
+    memcpy(plantUniformBuffers.viewBuffer.mapped, &uboVS, sizeof(uboVS));
 }
 
 void DynamicsUBO::updateDynamicUniformBuffer() {
@@ -265,19 +291,19 @@ void DynamicsUBO::updateDynamicUniformBuffer() {
     float radius = 180;
     for (const auto &idx : std::views::iota(0, OBJECT_INSTANCES)) {
 
-        auto pos = glm::vec3{LLVK::random_double(-1,1)*radius, 0, LLVK::random_double(-1,1)*radius    };
+        auto pos = glm::vec3{random_double(-1,1)*radius, 0, random_double(-1,1)*radius    };
         auto axis = glm::vec3{0,1,0};
-        float angle = LLVK::random_double(0,1)*360;
+        float angle = random_double(0,1)*360;
         auto rot = glm::rotate(glm::mat4{1.0f},angle,axis);
         uboDataDynamic.model[idx] = glm::translate(rot, pos);
     }
 
-    memcpy(uniformBuffers.dynamicMapped, uboDataDynamic.model, uniformBuffers.dynamicBufferSize);
+    memcpy(plantUniformBuffers.dynamicBuffer.mapped, uboDataDynamic.model, plantUniformBuffers.dynamicBuffer.descBufferInfo.range);
     // Flush to make changes visible to the host
     VkMappedMemoryRange mappedMemoryRange {};
     mappedMemoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-    mappedMemoryRange.memory = uniformBuffers.dynamicMemory;
-    mappedMemoryRange.size = uniformBuffers.dynamicBufferSize;
+    mappedMemoryRange.memory =plantUniformBuffers.dynamicBuffer.memory;
+    mappedMemoryRange.size = plantUniformBuffers.dynamicBuffer.memorySize;
     vkFlushMappedMemoryRanges(mainDevice.logicalDevice, 1, &mappedMemoryRange);
 }
 
@@ -333,4 +359,4 @@ void DynamicsUBO::recordCommandBuffer() {
     }
 }
 
-
+LLVK_NAMESPACE_END

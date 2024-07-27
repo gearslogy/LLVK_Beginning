@@ -2,10 +2,7 @@
 // Created by star on 3/27/2024.
 //
 
-#ifndef CP_02_UTILS_H
-#define CP_02_UTILS_H
-
-
+#pragma once
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <string>
@@ -15,20 +12,24 @@
 constexpr bool ALWAYS_TRUE = true;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-namespace LLVK {
-    namespace Concept {
-        template<typename T>
-        concept is_range = requires(T var){
-            var.size();
-            var.data();
-        };
-    }
+#define LLVK_NAMESPACE_BEGIN namespace LLVK{
+#define LLVK_NAMESPACE_END }
 
-    constexpr auto xrange(int start,const Concept::is_range auto &container) {
-        return std::views::iota(0, static_cast<int>(std::size(container)) );
-    }
-
+LLVK_NAMESPACE_BEGIN
+// concept
+namespace Concept {
+    template<typename T>
+    concept is_range = requires(T var){
+        var.size();
+        var.data();
+    };
 }
+
+// functions
+inline constexpr auto xrange(int start,const Concept::is_range auto &container) {
+    return std::views::iota(0, static_cast<int>(std::size(container)) );
+}
+LLVK_NAMESPACE_END
 
 /*
 namespace ranges {
@@ -139,5 +140,3 @@ inline uint32_t findMemoryType(VkPhysicalDevice device,uint32_t typeFilter, VkMe
     throw std::runtime_error{"can not get memory type"};
 }
 
-
-#endif //CP_02_UTILS_H

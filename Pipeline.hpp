@@ -2,14 +2,13 @@
 // Created by star on 4/25/2024.
 //
 
-#ifndef PIPELINE_H
-#define PIPELINE_H
+#pragma once
+
 #include <vulkan/vulkan.h>
 #include <array>
-#include "PushConstant.h"
-#include <concepts>
 #include "Utils.h"
-namespace LLVK {
+
+LLVK_NAMESPACE_BEGIN
 
 
 struct FnPipeline {
@@ -18,7 +17,7 @@ struct FnPipeline {
         VkShaderModule shaderModule);
     // no push constants layout API
     static VkPipelineLayoutCreateInfo layoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,uint32_t setLayoutCount = 1);
-    static VkPipelineLayoutCreateInfo layoutCreateInfo(const LLVK::Concept::is_range auto & layouts) ;
+    static VkPipelineLayoutCreateInfo layoutCreateInfo(const Concept::is_range auto & layouts) ;
 
     // input asseambly
     static VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo(
@@ -27,8 +26,8 @@ struct FnPipeline {
             VkBool32 primitiveRestartEnable);
 
     // vertex bindings & attribs
-    static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo(const LLVK::Concept::is_range auto & bindings,
-        const LLVK::Concept::is_range auto &attribs) {
+    static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo(const Concept::is_range auto & bindings,
+        const Concept::is_range auto &attribs) {
         VkPipelineVertexInputStateCreateInfo ret{};
         ret.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         ret.vertexBindingDescriptionCount = bindings.size();
@@ -90,15 +89,13 @@ inline VkPipelineLayoutCreateInfo FnPipeline::layoutCreateInfo(const VkDescripto
     pipelineLayoutCreateInfo.pSetLayouts = pSetLayouts;
     return pipelineLayoutCreateInfo;
 }
-inline VkPipelineLayoutCreateInfo FnPipeline::layoutCreateInfo(const LLVK::Concept::is_range auto &layouts) {
+inline VkPipelineLayoutCreateInfo FnPipeline::layoutCreateInfo(const Concept::is_range auto &layouts) {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount = layouts.size();
     pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
     return pipelineLayoutCreateInfo;
 }
-
-
 
 
 inline VkPipelineShaderStageCreateInfo FnPipeline::shaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule) {
@@ -196,9 +193,6 @@ inline VkPipelineDepthStencilStateCreateInfo FnPipeline::depthStencilStateCreate
     return ds_ST_CIO;
 }
 
+LLVK_NAMESPACE_END
 
 
-}
-
-
-#endif //PIPELINE_H

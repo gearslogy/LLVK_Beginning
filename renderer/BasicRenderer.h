@@ -9,6 +9,7 @@
 #include "DescriptorManager.h"
 #include "BufferManager.h"
 #include "SimplePipeline.h"
+LLVK_NAMESPACE_BEGIN
 struct BasicRenderer : public VulkanRenderer{
     BasicRenderer(): VulkanRenderer(){}
 
@@ -40,4 +41,4 @@ struct BasicRenderer : public VulkanRenderer{
     SimplePipeline simplePipeline{};
 };
 
-
+LLVK_NAMESPACE_END
