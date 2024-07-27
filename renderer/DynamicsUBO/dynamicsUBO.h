@@ -10,6 +10,7 @@
 // Vertex layout for this example
 // Wrapper functions for aligned memory allocation
 // There is currently no standard for this in C++ that works across all platforms and vendors, so we abstract this
+LLVK_NAMESPACE_BEGIN
 inline void* alignedAlloc(size_t size, size_t alignment)
 {
     void *data = nullptr;
@@ -33,7 +34,7 @@ inline void alignedFree(void* data)
 }
 
 
-namespace LLVK::FnDescriptor {
+namespace FnDescriptor {
     // (VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT, arrayCount);
     inline VkDescriptorSetLayoutBinding setLayoutBinding(VkDescriptorType type, uint32_t binding,VkShaderStageFlagBits stageBit, uint32_t arrayCount= 1) {
         VkDescriptorSetLayoutBinding ret{};
@@ -128,8 +129,39 @@ namespace LLVK::FnDescriptor {
 
 }
 
+struct UBOBuffer {
+    VkBuffer buffer{}; // ubo VS buffer
+    VkDeviceMemory memory{};
+    void * mapped{};
+    VkDeviceSize memorySize{};
+    VkDescriptorBufferInfo descBufferInfo{};
 
-struct GeneralBuffer {
+    VkDevice bindDevice{};
+    VkPhysicalDevice bindPhysicalDevice{};
+    void create(VkDeviceSize bufferSize, VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+        assert(bindDevice!=nullptr);
+        assert(bindPhysicalDevice!=nullptr);
+        FnBuffer::createBuffer(bindPhysicalDevice, bindDevice, bufferSize,
+                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer,
+                               memory);
+        memorySize = bufferSize;
+        descBufferInfo.buffer = buffer;
+        descBufferInfo.offset = 0;
+        //plantUniformBuffers.dynamicBuffer.descBufferInfo.range = dynamicAlignment;
+        descBufferInfo.range = bufferSize; // in dynamic ubo, it't should be per block size.
+
+    }
+    void cleanup() {
+        assert(bindDevice!=nullptr);
+        assert(bindPhysicalDevice!=nullptr);
+        vkDestroyBuffer(bindDevice, buffer, nullptr);
+        vkFreeMemory(bindDevice, memory, nullptr);
+    }
+    void map() {
+        if(vkMapMemory(bindDevice, memory, 0, memorySize, 0, &mapped) != VK_SUCCESS)
+            throw std::runtime_error{"ERROR map memory"};
+    }
 
 };
 
@@ -150,16 +182,16 @@ struct DynamicsUBO : public VulkanRenderer{
 
     // BUFFER
     struct {
+        UBOBuffer viewBuffer{};
+        UBOBuffer dynamicBuffer{};
+    } plantUniformBuffers;
+
+    struct {
         VkBuffer viewBuffer; // ubo VS buffer
         VkDeviceMemory viewMemory;
         void * viewMapped;
-        VkDeviceSize viewSize;
+    } groundUniformBuffers;
 
-        VkBuffer dynamicBuffer; //dynamic ubo instance buffer
-        VkDeviceMemory dynamicMemory;
-        void *dynamicMapped;
-        VkDeviceSize dynamicBufferSize;
-    } uniformBuffers;
 
 
     // Store random per-object rotations
@@ -179,6 +211,10 @@ struct DynamicsUBO : public VulkanRenderer{
     VkPipeline plantPipeline{ VK_NULL_HANDLE };
     std::array<ImageAndMemory, plantNumPlantsImages> plantsImageMems{};
     std::array<VkImageView, plantNumPlantsImages> plantsImageViews{};
+
+
+
+
     VkSampler sampler{};
 
 
@@ -210,10 +246,13 @@ struct DynamicsUBO : public VulkanRenderer{
     }
 
     ObjLoader plantGeo{};
-    //ObjLoader groundGeo{};
+    ObjLoader groundGeo{};
     BufferManager geometryBufferManager{};
 
-
+private:
+    void loadPlantTextures();
+    void loadGroundTextures();
+    void createTextures(const Concept::is_range auto &files);
 };
 
-
+LLVK_NAMESPACE_END

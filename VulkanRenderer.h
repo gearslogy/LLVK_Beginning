@@ -8,15 +8,14 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include "RenderPass.h"
-#include "Utils.h"
 #include "VulkanValidation.h"
 #include "Swapchain.h"
 #include "Frambuffer.h"
-#include "CommandManager.h"
 #include "Device.h"
-#include "BufferManager.h"
-#include "DescriptorManager.h"
 #include "PipelineCache.h"
+#include "Image.h"
+LLVK_NAMESPACE_BEGIN
+
 
 class VulkanRenderer {
 public :
@@ -85,4 +84,5 @@ protected:
 
 
 };
+LLVK_NAMESPACE_END
 #endif //CP_01_VULKANRENDERER_H

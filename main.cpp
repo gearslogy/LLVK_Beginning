@@ -6,7 +6,8 @@
 
 int main() {
     //BasicRenderer app;
-    DynamicsUBO app;
+    LLVK::DynamicsUBO app;
+
     try {
         app.run();
     }

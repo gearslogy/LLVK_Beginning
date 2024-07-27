@@ -14,7 +14,7 @@
 #include "magic_enum.hpp"
 #include <format>
 #include <filesystem>
-
+#include "CommandManager.h"
 #include "GeoVertexDescriptions.h"
 
 
@@ -93,7 +93,7 @@ static std::vector<uint16_t> indices = {
 
 
 
-
+LLVK_NAMESPACE_BEGIN
 
 VulkanRenderer::VulkanRenderer()=default;
 VulkanRenderer::~VulkanRenderer(){};
@@ -502,3 +502,4 @@ void VulkanRenderer::draw() {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+LLVK_NAMESPACE_END

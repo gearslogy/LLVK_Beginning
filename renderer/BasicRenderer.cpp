@@ -5,6 +5,8 @@
 #include "BasicRenderer.h"
 #include "Image.h"
 #include "PushConstant.h"
+#include "CommandManager.h"
+LLVK_NAMESPACE_BEGIN
 void BasicRenderer::cleanupObjects() {
     geometryBufferManager.cleanup();
     simpleDescriptorManager.cleanup();
@@ -111,3 +113,4 @@ void BasicRenderer::recordCommandBuffer() {
     }
 }
 
+LLVK_NAMESPACE_END
