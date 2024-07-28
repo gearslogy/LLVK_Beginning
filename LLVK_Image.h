@@ -7,7 +7,9 @@
 #include <vulkan/vulkan.h>
 #include <string>
 #include <vector>
+#include "Utils.h"
 
+LLVK_NAMESPACE_BEGIN
 struct ImageAndMemory {
     VkImage image{};
     VkDeviceMemory memory{};
@@ -82,6 +84,6 @@ struct FnImage {
 };
 
 
-
+LLVK_NAMESPACE_END
 
 #endif //IMAGES_H

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <filesystem>
+LLVK_NAMESPACE_BEGIN
 constexpr const char* cacheFolder = "content/engine";
 constexpr const char* cacheName = "pipeline_cache.bin";
 namespace fs = std::filesystem;
@@ -49,4 +50,4 @@ void PipelineCache::writeCache() {
 void PipelineCache::cleanup() {
     vkDestroyPipelineCache(bindDevice,pipelineCache, nullptr);
 }
-
+LLVK_NAMESPACE_END

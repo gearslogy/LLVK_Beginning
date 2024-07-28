@@ -8,8 +8,9 @@
 #include <vector>
 #include <stdexcept>
 #include <vector>
-#include "PushConstant.h"
+#include "PushConstant.hpp"
 #include <iostream>
+LLVK_NAMESPACE_BEGIN
 struct FnCommand {
     // single time command
     static VkCommandBuffer beginSingleTimeCommand(VkDevice device, VkCommandPool pool);
@@ -75,5 +76,5 @@ struct CmdBindIndexBuffer {
 };
 
 
-
+LLVK_NAMESPACE_END
 #endif //COMMANDBUFFER_H

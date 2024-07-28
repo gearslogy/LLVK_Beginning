@@ -13,7 +13,7 @@
 #include "Frambuffer.h"
 #include "Device.h"
 #include "PipelineCache.h"
-#include "Image.h"
+#include "LLVK_Image.h"
 LLVK_NAMESPACE_BEGIN
 
 

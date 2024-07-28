@@ -5,9 +5,11 @@
 #include "RenderPass.h"
 #include "Utils.h"
 #include <array>
-#include "Image.h"
+#include "LLVK_Image.h"
 #include <iostream>
 #include "magic_enum.hpp"
+LLVK_NAMESPACE_BEGIN
+
 void RenderPass::init() {
     std::array<VkAttachmentDescription,2> attachments{};
     //color attachment
@@ -75,4 +77,4 @@ void RenderPass::cleanup() {
     vkDestroyRenderPass(bindDevice, pass, nullptr);
 }
 
-
+LLVK_NAMESPACE_END

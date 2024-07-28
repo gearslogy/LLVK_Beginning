@@ -10,23 +10,14 @@ set(GLFW_PATH_LIB ${GLFW_PATH}/lib-vc2019)
 
 FIND_PACKAGE(Vulkan)
 
-file(GLOB SOURCES VulkanRenderer*
-        RenderPass*
-        Pipeline*
-        Command*
-        Swapchain*
-        Image*
-        Frambuffer*
-        Device*
-        BufferManager*
-        GeoVertexDescriptions*
-        DescriptorManager*
-        PushConstant*
+file(GLOB SOURCES *.h *.cpp
         renderer/*
         renderer/*/*
 )
 
-add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
+add_executable(${PROJECT_NAME} main.cpp ${SOURCES}
+        LLVK_Descriptor.hpp
+        LLVK_SYS.hpp)
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_ENABLE_EXPERIMENTAL)
 # GLM_ENABLE_EXPERIMENTAL for hash: #include <glm/gtx/hash.hpp>
 MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )

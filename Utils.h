@@ -9,27 +9,20 @@
 #include <fstream>
 #include <format>
 #include <ranges>
-constexpr bool ALWAYS_TRUE = true;
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-
-#define LLVK_NAMESPACE_BEGIN namespace LLVK{
-#define LLVK_NAMESPACE_END }
+#include "LLVK_SYS.hpp"
 
 LLVK_NAMESPACE_BEGIN
-// concept
-namespace Concept {
-    template<typename T>
-    concept is_range = requires(T var){
-        var.size();
-        var.data();
-    };
-}
 
 // functions
-inline constexpr auto xrange(int start,const Concept::is_range auto &container) {
-    return std::views::iota(0, static_cast<int>(std::size(container)) );
+namespace UT_Fn {
+    inline constexpr auto xrange(int start,const Concept::is_range auto &container) {
+        return std::views::iota(0, static_cast<int>(std::size(container)) );
+    }
+
+    inline constexpr auto cleanup_range_resources(Concept::is_range auto &&range) {
+        for(auto &t : range) t.cleanup();
+    }
 }
-LLVK_NAMESPACE_END
 
 /*
 namespace ranges {
@@ -140,3 +133,4 @@ inline uint32_t findMemoryType(VkPhysicalDevice device,uint32_t typeFilter, VkMe
     throw std::runtime_error{"can not get memory type"};
 }
 
+LLVK_NAMESPACE_END

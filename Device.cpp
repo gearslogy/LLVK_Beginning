@@ -8,6 +8,7 @@
 #include  "Utils.h"
 #include "Swapchain.h"
 #include <set>
+LLVK_NAMESPACE_BEGIN
 void Device::init() {
     getPhysicalDevice();
     createLogicDevice();
@@ -115,3 +116,4 @@ uint32_t Device::getMaxPushConstantsSize(VkPhysicalDevice device) {
     uint32_t maxPushConstantsSize = deviceProperties.limits.maxPushConstantsSize;
     return maxPushConstantsSize;
 }
+LLVK_NAMESPACE_END

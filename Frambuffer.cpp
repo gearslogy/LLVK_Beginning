@@ -5,6 +5,7 @@
 #include "Frambuffer.h"
 #include <array>
 #include <iostream>
+LLVK_NAMESPACE_BEGIN
 void Frambuffer::cleanup() {
     for (auto buffer: swapChainFramebuffers) {
         vkDestroyFramebuffer(bindDevice, buffer, nullptr);
@@ -38,3 +39,4 @@ void Frambuffer::init() {
     }
 }
 
+LLVK_NAMESPACE_END

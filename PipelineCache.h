@@ -6,7 +6,8 @@
 #define PIPELINECACHE_H
 
 #include <vulkan/vulkan.h>
-
+#include "LLVK_SYS.hpp"
+LLVK_NAMESPACE_BEGIN
 struct PipelineCache {
     VkDevice bindDevice{};
 
@@ -19,7 +20,7 @@ struct PipelineCache {
     void loadCache();
 
 };
-
+LLVK_NAMESPACE_END
 
 
 #endif //PIPELINECACHE_H

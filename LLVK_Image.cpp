@@ -2,7 +2,7 @@
 // Created by liuyangping on 2024/5/28.
 //
 #include <stdexcept>
-#include "Image.h"
+#include "LLVK_Image.h"
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
@@ -11,6 +11,7 @@
 #include "BufferManager.h"
 #include "CommandManager.h"
 
+LLVK_NAMESPACE_BEGIN
 VkImageView FnImage::createImageView(VkDevice device,
                                      VkImage image,
                                      VkFormat format,
@@ -393,5 +394,5 @@ void FnImage::generateMipmaps(
     FnCommand::endSingleTimeCommand(device, pool, queue, commandBuffer);
 }
 
-
+LLVK_NAMESPACE_END
 

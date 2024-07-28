@@ -7,7 +7,8 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
-
+#include "LLVK_SYS.hpp"
+LLVK_NAMESPACE_BEGIN
 struct FnBuffer {
     static void createBuffer(
         VkPhysicalDevice physicalDevice,
@@ -54,6 +55,6 @@ struct BufferManager {
     std::vector<BufferAndMemory> createdIndexedBuffers;
 };
 
-
+LLVK_NAMESPACE_END
 
 #endif //BUFFERMANAGER_H
