@@ -6,7 +6,8 @@
 #include <array>
 #include "GeoVertexDescriptions.h"
 #include "PipelineCache.h"
-#include "PushConstant.h"
+#include "PushConstant.hpp"
+LLVK_NAMESPACE_BEGIN
 void SimplePipeline::cleanup() {
     vkDestroyPipeline(bindDevice, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(bindDevice, pipelineLayout, nullptr);
@@ -81,3 +82,4 @@ void SimplePipeline::init() {
     vkDestroyShaderModule(bindDevice, vertModule, nullptr);
     vkDestroyShaderModule(bindDevice, fragModule, nullptr);
 }
+LLVK_NAMESPACE_END

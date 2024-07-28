@@ -5,6 +5,7 @@
 #ifndef SIMPLEPIPELINE_H
 #define SIMPLEPIPELINE_H
 #include "Pipeline.hpp"
+LLVK_NAMESPACE_BEGIN
 struct PipelineCache;
 struct SimplePipeline {
     VkDevice bindDevice{};   // REF object
@@ -20,5 +21,5 @@ struct SimplePipeline {
     void init();
     void cleanup();
 };
-
+LLVK_NAMESPACE_END
 #endif //SIMPLEPIPELINE_H

@@ -7,7 +7,8 @@
 #include "magic_enum.hpp"
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include "Image.h"
+#include "LLVK_Image.h"
+LLVK_NAMESPACE_BEGIN
 void Swapchain::cleanup() {
     // swapchain里的 imageView得手动删除，image会被swapchain自动删除
     for(auto spcImg : swapChainImages) {
@@ -126,3 +127,4 @@ VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &input) co
     }
 }
 
+LLVK_NAMESPACE_END

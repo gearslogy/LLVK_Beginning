@@ -8,6 +8,8 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
+#include "LLVK_SYS.hpp"
+LLVK_NAMESPACE_BEGIN
 struct Device {
     // need to transfer from VulkanRenderer class
     VkInstance bindInstance;
@@ -34,6 +36,6 @@ private:
     inline static const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 };
 
-
+LLVK_NAMESPACE_END
 
 #endif //DEVICE_H

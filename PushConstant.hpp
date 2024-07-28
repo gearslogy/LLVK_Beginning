@@ -9,6 +9,7 @@
 #include "Utils.h"
 
 // only test
+LLVK_NAMESPACE_BEGIN
 struct PushVertexStageData{
     static constexpr uint32_t shader_stage_type = VK_SHADER_STAGE_VERTEX_BIT;
     float P_xOffset{};
@@ -50,5 +51,5 @@ struct PushConstant {
     static inline std::array<PushVertexStageData,MAX_FRAMES_IN_FLIGHT> vertexPushConstants{};
     static inline std::array<PushFragmentStageData,MAX_FRAMES_IN_FLIGHT> fragmentPushConstants{};
 };
-
+LLVK_NAMESPACE_END
 #endif //PUSHCONSTANT_H

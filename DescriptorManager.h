@@ -10,8 +10,9 @@
 #include "BufferManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp> // glm::rotate
-#include "Image.h"
+#include "LLVK_Image.h"
 #include "Utils.h"
+LLVK_NAMESPACE_BEGIN
 struct LayoutBindings {
     static std::array<VkDescriptorSetLayoutBinding,2> getUBODescriptorSetLayoutBindings(VkDevice device);
     static std::array<VkDescriptorSetLayoutBinding,1> getTextureDescriptorSetLayoutBindings(VkDevice device);
@@ -121,6 +122,6 @@ struct DescriptorManager {
     static constexpr uint32_t num_ubos = 2;
 };
 
-
+LLVK_NAMESPACE_END
 
 #endif //DESCRIPTORMANAGER_H

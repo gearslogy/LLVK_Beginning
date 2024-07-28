@@ -8,6 +8,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include "Utils.h"
+LLVK_NAMESPACE_BEGIN
 struct Frambuffer {
     // REF OBJECT
     VkDevice bindDevice;
@@ -21,7 +22,7 @@ struct Frambuffer {
     void cleanup();
 
 };
-
+LLVK_NAMESPACE_END
 
 
 #endif //FRAMBUFFER_H

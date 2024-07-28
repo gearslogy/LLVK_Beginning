@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <iostream>
+LLVK_NAMESPACE_BEGIN
 std::array<VkDescriptorSetLayoutBinding, 2> LayoutBindings::getUBODescriptorSetLayoutBindings(VkDevice device) {
     // 有2个UBO 物体
     VkDescriptorSetLayoutBinding binding01{};
@@ -250,3 +251,4 @@ void DescriptorManager::cleanup() {
     vkDestroyDescriptorSetLayout(bindDevice, ubo_descriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(bindDevice, texture_descriptorSetLayout, nullptr);
 }
+LLVK_NAMESPACE_END

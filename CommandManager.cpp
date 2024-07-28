@@ -7,6 +7,7 @@
 #include <iostream>
 #include <array>
 #include "GeoVertexDescriptions.h"
+LLVK_NAMESPACE_BEGIN
 VkCommandBuffer FnCommand::beginSingleTimeCommand(VkDevice device, VkCommandPool pool) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -73,7 +74,7 @@ FnCommand::RenderCommandBeginInfo FnCommand::createCommandBufferBeginInfo(const 
     return {cmdBufBeginInfo, renderPassBeginInfo};
 }
 
-
+LLVK_NAMESPACE_END
 
 
 

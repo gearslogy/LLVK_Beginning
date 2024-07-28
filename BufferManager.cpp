@@ -10,7 +10,7 @@
 
 
 
-
+LLVK_NAMESPACE_BEGIN
 void FnBuffer::createBuffer(
     VkPhysicalDevice physicalDevice,
     VkDevice device,
@@ -138,4 +138,4 @@ void BufferManager::createIndexBuffer(size_t indexBufferSize, const void *indice
     createdIndexedBuffers.emplace_back(indexBuffer, indexMemory);
 }
 
-
+LLVK_NAMESPACE_END

@@ -3,8 +3,8 @@
 //
 
 #include "BasicRenderer.h"
-#include "Image.h"
-#include "PushConstant.h"
+#include "LLVK_Image.h"
+#include "PushConstant.hpp"
 #include "CommandManager.h"
 LLVK_NAMESPACE_BEGIN
 void BasicRenderer::cleanupObjects() {

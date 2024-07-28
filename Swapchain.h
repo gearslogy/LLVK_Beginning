@@ -7,7 +7,9 @@
 
 #include <vulkan/vulkan.h>
 #include "Utils.h"
+
 struct GLFWwindow;
+LLVK_NAMESPACE_BEGIN
 struct Swapchain {
     // all of this is ref object
     VkPhysicalDevice bindPhyiscalDevice{};
@@ -39,6 +41,6 @@ private:
     static inline constexpr VkPresentModeKHR presentModeChoose_secondary{VK_PRESENT_MODE_FIFO_KHR};
 };
 
-
+LLVK_NAMESPACE_END
 
 #endif //SWAPCHAIN_H
