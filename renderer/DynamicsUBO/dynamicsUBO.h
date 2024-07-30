@@ -52,6 +52,10 @@ struct DynamicsUBO : public VulkanRenderer{
 
     VkSampler sampler{};
 
+    std::array<UBOTexture,5> groundTextures;
+
+
+
     void cleanupObjects() override;
     void loadTexture();
     void loadModel();
@@ -85,9 +89,6 @@ struct DynamicsUBO : public VulkanRenderer{
 private:
     void loadPlantTextures();
     void loadGroundTextures();
-    void createTextures(const Concept::is_range auto &files) {
-
-    }
 };
 
 LLVK_NAMESPACE_END

@@ -72,6 +72,7 @@ struct FnPipeline {
 
 
     static VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfoEnabled();
+    static VkGraphicsPipelineCreateInfo pipelineCreateInfo();
 
 };
 
@@ -191,6 +192,15 @@ inline VkPipelineDepthStencilStateCreateInfo FnPipeline::depthStencilStateCreate
     ds_ST_CIO.front = {}; // Optional
     ds_ST_CIO.back = {}; // Optional
     return ds_ST_CIO;
+}
+
+inline VkGraphicsPipelineCreateInfo FnPipeline::pipelineCreateInfo() {
+    VkGraphicsPipelineCreateInfo pipeline_CIO{};
+    pipeline_CIO.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    // can create multi pipeline that derive from one another for optimisation
+    pipeline_CIO.basePipelineHandle = VK_NULL_HANDLE; // exsting pipeline to derive from.
+    pipeline_CIO.basePipelineIndex = -1;              // or index of pipeline being created to derive from
+    return pipeline_CIO;
 }
 
 LLVK_NAMESPACE_END

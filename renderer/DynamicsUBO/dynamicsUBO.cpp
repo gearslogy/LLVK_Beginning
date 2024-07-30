@@ -11,6 +11,7 @@ void DynamicsUBO::cleanupObjects() {
 
     auto device = mainDevice.logicalDevice;
     UT_Fn::cleanup_range_resources(plantTextures);
+    UT_Fn::cleanup_range_resources(groundTextures);
     vkDestroySampler(device, sampler, nullptr);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkDestroyPipelineLayout(device,plantPipelineLayout,nullptr);
@@ -49,12 +50,9 @@ void DynamicsUBO::loadPlantTextures() {
         tex.create(file,sampler);
     }
 
-
-
 }
 
 void DynamicsUBO::loadGroundTextures() {
-
     const auto phyDevice = mainDevice.physicalDevice;
     const auto device = mainDevice.logicalDevice;
     std::vector<std::string> files{
@@ -64,7 +62,14 @@ void DynamicsUBO::loadGroundTextures() {
         "content/ground/xbreair_2K_Normal.jpg",
         "content/ground/xbreair_2K_Roughness.jpg",
     };
-
+    for(auto&& [file, tex] : std::views::zip(files, groundTextures)) {
+        // first bind obj
+        tex.requiredObjs.device = device;
+        tex.requiredObjs.physicalDevice = phyDevice;
+        tex.requiredObjs.commandPool = graphicsCommandPool;
+        tex.requiredObjs.queue = mainDevice.graphicsQueue;
+        tex.create(file,sampler);
+    }
 
 }
 
@@ -73,13 +78,13 @@ void DynamicsUBO::loadTexture() {
     const auto device = mainDevice.logicalDevice;
     sampler = FnImage::createImageSampler(phyDevice, device); // create sampler. shared sampler for all image
     loadPlantTextures();
-    //loadGroundTextures();
+    loadGroundTextures();
 }
 void DynamicsUBO::loadModel() {
     plantGeo.readFile("content/plants/gardenplants/var0.obj");
     createVertexAndIndexBuffer(geometryBufferManager, plantGeo);
-    //groundGeo.readFile("content/ground/ground.obj");
-    //createVertexAndIndexBuffer(geometryBufferManager, groundGeo);
+    groundGeo.readFile("content/ground/ground.obj");
+    createVertexAndIndexBuffer(geometryBufferManager, groundGeo);
 }
 
 void DynamicsUBO::setupDescriptors() {
@@ -170,8 +175,7 @@ void DynamicsUBO::preparePipelines() {
     // 10
     VkPipelineDepthStencilStateCreateInfo ds_ST_CIO = FnPipeline::depthStencilStateCreateInfoEnabled();
     // 11. PIPELINE
-    VkGraphicsPipelineCreateInfo pipeline_CIO{};
-    pipeline_CIO.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    VkGraphicsPipelineCreateInfo pipeline_CIO = FnPipeline::pipelineCreateInfo();
     pipeline_CIO.stageCount = 2;
     pipeline_CIO.pStages = shaderStates;
     pipeline_CIO.pVertexInputState = &vertexInput_ST_CIO;
@@ -185,17 +189,12 @@ void DynamicsUBO::preparePipelines() {
     pipeline_CIO.layout = plantPipelineLayout;
     pipeline_CIO.renderPass = simplePass.pass ;
     pipeline_CIO.subpass = 0; // ONLY USE ONE PASS
-    // can create multi pipeline that derive from one atnoher for optimisation
-    pipeline_CIO.basePipelineHandle = VK_NULL_HANDLE; // exsting pipeline to derive from.
-    pipeline_CIO.basePipelineIndex = -1;              // or index of pipeline being created to derive from
     result = vkCreateGraphicsPipelines(device, simplePipelineCache.pipelineCache,
         1, &pipeline_CIO, nullptr, &plantPipeline);
     if(result!= VK_SUCCESS) throw std::runtime_error{"Failed created graphics pipeline"};
     // finally destory shader module
     vkDestroyShaderModule(device, plantVertModule, nullptr);
     vkDestroyShaderModule(device, plantFragModule, nullptr);
-
-
 
 }
 
