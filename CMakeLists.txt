@@ -24,23 +24,31 @@ MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )
 MESSAGE("VULKAN_SDK  Path----> $ENV{VULKAN_SDK}" )
 
 set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslc.exe)
-
+set(shader_include_folder ${CMAKE_SOURCE_DIR}/shaders/include)
+file(GLOB include_files ${shader_include_folder}/*)
 set(compile_shader_folder ${CMAKE_SOURCE_DIR}/build/bin/shaders)
 file(MAKE_DIRECTORY ${compile_shader_folder}) # 确保输出目录存在
-file(GLOB_RECURSE shader_sources shaders/*.frag shaders/*.vert shaders/*/*)
+file(GLOB_RECURSE shader_sources
+        shaders/*.frag
+        shaders/*.vert
+        shaders/dynamicsUBO/*.frag
+        shaders/dynamicsUBO/*.vert
+        shaders/quad/*.frag
+        shaders/quad/*.vert
+)
 
 foreach(shader_source IN LISTS shader_sources)
     get_filename_component(shader_name "${shader_source}" NAME_WE)
     get_filename_component(shader_ext "${shader_source}" EXT)
     set(output_path "${compile_shader_folder}/${shader_name}.spv")
-    set(CMD ${glsl_compiler_exec_path}  ${shader_source} -o ${output_path})
+    set(CMD ${glsl_compiler_exec_path} -I ${shader_include_folder} ${shader_source} -o ${output_path})
     MESSAGE("[[AOT SHADER]]: ${output_path}")
     MESSAGE("[[AOT COMMAND:]] ${CMD}")
     #我们需要使用 add_custom_command 配合 OUTPUT 来指定一个输出文件，
     #这样 CMake 才能正确地跟踪文件的依赖关系，并在源文件发生变化时重新生成输出文件。
     add_custom_command(
             OUTPUT ${output_path}
-            DEPENDS ${shader_source}
+            DEPENDS ${shader_source} ${include_files}
             COMMAND ${CMD}
             COMMENT "Compiling shader >> ${shader_name}${shader_ext}"
     )

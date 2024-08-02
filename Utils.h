@@ -15,13 +15,31 @@ LLVK_NAMESPACE_BEGIN
 
 // functions
 namespace UT_Fn {
-    inline constexpr auto xrange(int start,const Concept::is_range auto &container) {
+    constexpr auto xrange(int start,const Concept::is_range auto &container) {
         return std::views::iota(0, static_cast<int>(std::size(container)) );
     }
-
-    inline constexpr auto cleanup_range_resources(Concept::is_range auto &&range) {
+    constexpr auto xrange(const Concept::is_range auto &container) {
+        return xrange(0, container);
+    }
+    constexpr auto enumerate(Concept::is_range auto && container) {
+        return std::views::zip(xrange(container), container);
+    }
+    constexpr auto cleanup_range_resources(Concept::is_range auto &&range) {
         for(auto &t : range) t.cleanup();
     }
+    constexpr auto cleanup_shader_module(VkDevice device, auto ... module) {
+        (vkDestroyShaderModule(device, module, nullptr),...);
+    }
+    constexpr auto cleanup_descriptor_set_layout(VkDevice device, auto ... layout) {
+        (vkDestroyDescriptorSetLayout(device, layout, nullptr),...);
+    }
+    constexpr auto cleanup_pipeline_layout(VkDevice device, auto ... layout) {
+       ( vkDestroyPipelineLayout(device,layout,nullptr),... );
+    }
+    constexpr auto cleanup_pipeline(VkDevice device, auto ... pipeline) {
+        (vkDestroyPipeline(device,pipeline,nullptr),...);
+    }
+
 }
 
 /*

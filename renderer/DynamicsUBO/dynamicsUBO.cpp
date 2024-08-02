@@ -14,12 +14,13 @@ void DynamicsUBO::cleanupObjects() {
     UT_Fn::cleanup_range_resources(groundTextures);
     vkDestroySampler(device, sampler, nullptr);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-    vkDestroyPipelineLayout(device,plantPipelineLayout,nullptr);
-    vkDestroyDescriptorSetLayout(device, plantUBOSetLayout, nullptr);
-    vkDestroyDescriptorSetLayout(device, plantTextureSetLayout, nullptr);
-    vkDestroyPipeline(device,plantPipeline,nullptr);
+    UT_Fn::cleanup_descriptor_set_layout(device,plantUBOSetLayout, plantTextureSetLayout);
+    UT_Fn::cleanup_descriptor_set_layout(device,standardPipeline.uboSetLayout, standardPipeline.textureSetLayout);
+    UT_Fn::cleanup_pipeline_layout(device,standardPipeline.pipelineLayout, plantPipelineLayout);
+    UT_Fn::cleanup_pipeline(device, plantPipeline, standardPipeline.pipeline);
     geometryBufferManager.cleanup();
     // uniform buffer clean up
+    standardUniformBuffer.cleanup();
     plantUniformBuffers.viewBuffer.cleanup();
     plantUniformBuffers.dynamicBuffer.cleanup();
     if (uboDataDynamic.model) {
@@ -31,6 +32,7 @@ void DynamicsUBO::cleanupObjects() {
 
 
 void DynamicsUBO::loadPlantTextures() {
+    std::cout << "[[load plant texture]]\n";
     const auto phyDevice = mainDevice.physicalDevice;
     const auto device = mainDevice.logicalDevice;
     std::vector<std::string> files{
@@ -53,6 +55,7 @@ void DynamicsUBO::loadPlantTextures() {
 }
 
 void DynamicsUBO::loadGroundTextures() {
+    std::cout << "[[load ground texture]]\n";
     const auto phyDevice = mainDevice.physicalDevice;
     const auto device = mainDevice.logicalDevice;
     std::vector<std::string> files{
@@ -83,21 +86,26 @@ void DynamicsUBO::loadTexture() {
 void DynamicsUBO::loadModel() {
     plantGeo.readFile("content/plants/gardenplants/var0.obj");
     createVertexAndIndexBuffer(geometryBufferManager, plantGeo);
-    groundGeo.readFile("content/ground/ground.obj");
+    groundGeo.readFile("content/ground/ground2.obj");
     createVertexAndIndexBuffer(geometryBufferManager, groundGeo);
 }
 
 void DynamicsUBO::setupDescriptors() {
-    namespace FnDesc = LLVK::FnDescriptor;
+    namespace FnDesc = FnDescriptor;
     auto device = mainDevice.logicalDevice;
 
     std::array<VkDescriptorPoolSize, 3> poolSizes= {{
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},         // VP Matrix
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2},         // VP Matrix
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1 }, // M Matrix
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, plantNumPlantsImages}   // 6个Combined Image Sampler
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, plantNumPlantsImages * 2}   // plant:6 Combined Image Sampler, ground:5 combined image sampler
     }};
+    // 2个set(set=0服务UBO，set=1服务Texture)
+    // set0 set1 : plant
+    // set2 set3 : ground
+    // so we need four set
+    VkDescriptorPoolCreateInfo createInfo = FnDesc::poolCreateInfo(poolSizes, 2*2); //
 
-    VkDescriptorPoolCreateInfo createInfo = FnDesc::poolCreateInfo(poolSizes, 2); // 2个set(set=0服务UBO，set=1服务Texture)
+    createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; // allow use free single/multi set: vkFreeDescriptorSets()
     if(vkCreateDescriptorPool(device, &createInfo, nullptr, &descriptorPool)!=VK_SUCCESS)
         throw std::runtime_error{"ERROR create descriptor pool"};
 
@@ -107,7 +115,7 @@ void DynamicsUBO::setupDescriptors() {
     const std::array set0_bindings = {set0_binding0, set0_binding1};
     const VkDescriptorSetLayoutCreateInfo ubo_createInfo = FnDesc::setLayoutCreateInfo(set0_bindings);
     if(vkCreateDescriptorSetLayout(device, &ubo_createInfo, nullptr, &plantUBOSetLayout)!=VK_SUCCESS)
-        throw std::runtime_error{"Error create set layout"};
+        throw std::runtime_error{"Error create plant ubo set layout"};
 
     // create texture set layout, albedo/AO/disp/N/Roughness/Opacity
     constexpr auto combinedImageLayoutBinding = [](const int &binding){return FnDesc::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,binding, VK_SHADER_STAGE_FRAGMENT_BIT);};
@@ -115,28 +123,50 @@ void DynamicsUBO::setupDescriptors() {
     const auto set1_textureBindings=  std::ranges::to<std::vector<VkDescriptorSetLayoutBinding>>(bindings);
     const VkDescriptorSetLayoutCreateInfo tex_createInfo = FnDesc::setLayoutCreateInfo(set1_textureBindings);
     if(vkCreateDescriptorSetLayout(device, &tex_createInfo, nullptr, &plantTextureSetLayout)!=VK_SUCCESS)
-        throw std::runtime_error{"error create set layout"};
+        throw std::runtime_error{"Error create plant tex set layout"};
 
     // create plant sets based on setLayouts
     const std::array plantLayouts{plantUBOSetLayout, plantTextureSetLayout};
     const auto plantSetAllocateInfo = FnDesc::setAllocateInfo(descriptorPool,plantLayouts);
     if(vkAllocateDescriptorSets(device, &plantSetAllocateInfo,plantDescriptorSets) != VK_SUCCESS)
-        throw std::runtime_error{"can not create descriptor set"};
+        throw std::runtime_error{"can not create plant descriptor set"};
 
     // dynamics descritpor buffer info should modify
     plantUniformBuffers.dynamicBuffer.descBufferInfo.range = dynamicAlignment; // ! important !
 
     // -- write set end--
-    std::vector writeSets{
+    std::vector plantWriteSets{
         FnDesc::writeDescriptorSet(plantDescriptorSets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &plantUniformBuffers.viewBuffer.descBufferInfo ), // set=0 binding=0
         FnDesc::writeDescriptorSet(plantDescriptorSets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &plantUniformBuffers.dynamicBuffer.descBufferInfo ),// set=0 binding=1
     };
-    for(auto &&[k,v] : std::views::zip(UT_Fn::xrange(0,plantTextures),plantTextures  ) ) {
+    for(auto &&[k,v] : UT_Fn::enumerate(plantTextures) ) {
         auto writeSet = FnDesc::writeDescriptorSet(plantDescriptorSets[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k, &v.descImageInfo );
-        writeSets.emplace_back(writeSet);
+        plantWriteSets.emplace_back(writeSet);
     }
-    vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
+    vkUpdateDescriptorSets(device, static_cast<uint32_t>(plantWriteSets.size()), plantWriteSets.data(), 0, nullptr);
 
+
+
+    // ------------------ next ground descriptor set. use same layout that is plant layout-----------------------
+    const std::array standard_set0_bindings = {set0_binding0};
+    const VkDescriptorSetLayoutCreateInfo standard_ubo_createInfo = FnDesc::setLayoutCreateInfo(standard_set0_bindings);
+    if(vkCreateDescriptorSetLayout(device, &standard_ubo_createInfo, nullptr, &standardPipeline.uboSetLayout)!=VK_SUCCESS) // set = 0
+        throw std::runtime_error{"Error create standard ubo set layout"};
+    if(vkCreateDescriptorSetLayout(device, &tex_createInfo, nullptr, &standardPipeline.textureSetLayout)!=VK_SUCCESS)      // set = 1
+        throw std::runtime_error{"Error create standard tex set layout"};
+    //create pipeline layout of standard
+    const std::array standardLayouts{standardPipeline.uboSetLayout, standardPipeline.textureSetLayout};
+    const auto standardSetAllocateInfo = FnDesc::setAllocateInfo(descriptorPool,standardLayouts);
+    if(vkAllocateDescriptorSets(device, &standardSetAllocateInfo,standardPipeline.sets) != VK_SUCCESS)
+        throw std::runtime_error{"can not create standard descriptor set"};
+    std::vector standardWriteSets{
+        FnDesc::writeDescriptorSet(standardPipeline.sets[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &standardUniformBuffer.descBufferInfo ), // set=0 binding=0 ubo
+    };
+    for(auto &&[k,v] : UT_Fn::enumerate(groundTextures) ) {
+        auto writeSet = FnDesc::writeDescriptorSet(standardPipeline.sets[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k, &v.descImageInfo );       // set=1 binding=0-5 textures
+        standardWriteSets.emplace_back(writeSet);
+    }
+    vkUpdateDescriptorSets(device, static_cast<uint32_t>(standardWriteSets.size()), standardWriteSets.data(), 0, nullptr);
 }
 void DynamicsUBO::preparePipelines() {
     auto device = mainDevice.logicalDevice;
@@ -193,18 +223,44 @@ void DynamicsUBO::preparePipelines() {
         1, &pipeline_CIO, nullptr, &plantPipeline);
     if(result!= VK_SUCCESS) throw std::runtime_error{"Failed created graphics pipeline"};
     // finally destory shader module
-    vkDestroyShaderModule(device, plantVertModule, nullptr);
-    vkDestroyShaderModule(device, plantFragModule, nullptr);
+    UT_Fn::cleanup_shader_module(device, plantVertModule, plantFragModule);
+
+    // create standard pipeline.
+    const auto standardVertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/standard_vert.spv",  device);
+    const auto standardfragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/standard_frag.spv",  device);
+    VkPipelineShaderStageCreateInfo standardVert_SCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, standardVertModule);
+    VkPipelineShaderStageCreateInfo standardFrag_SCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, standardfragModule);
+    VkPipelineShaderStageCreateInfo standardShaderStates[] = {standardVert_SCIO, standardFrag_SCIO};
+    //  2. vertex same as plant
+    //  3. assembly
+    //  4. viewport and scissor
+    //  5. dynamic state
+    //  6. rasterization
+    VkPipelineRasterizationStateCreateInfo standardRasterization_ST_CIO = FnPipeline::rasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    //  7. multisampling
+    //  8. blending
+    //  9. pipeline Layout
+    // create pipeline layout
+    const std::array standardLayouts{standardPipeline.uboSetLayout, standardPipeline.textureSetLayout};
+    VkPipelineLayoutCreateInfo standardLayout_CIO = FnPipeline::layoutCreateInfo(standardLayouts);
+    result = vkCreatePipelineLayout(device, &standardLayout_CIO, nullptr, &standardPipeline.pipelineLayout);
+    if(result != VK_SUCCESS) throw std::runtime_error{"ERROR create pipeline layout"};
+
+    // 10. DS same
+    // 11. PIPELINE
+    pipeline_CIO.stageCount = 2;
+    pipeline_CIO.pStages = standardShaderStates;
+    pipeline_CIO.layout = standardPipeline.pipelineLayout;
+    result = vkCreateGraphicsPipelines(device, simplePipelineCache.pipelineCache,
+        1, &pipeline_CIO, nullptr, &standardPipeline.pipeline);
+    if(result!= VK_SUCCESS) throw std::runtime_error{"Failed created graphics pipeline"};
+    UT_Fn::cleanup_shader_module(device, standardVertModule, standardfragModule);
 
 }
 
 void DynamicsUBO::prepareUniformBuffers() {
     auto device = mainDevice.logicalDevice;
     auto phyDevice = mainDevice.physicalDevice;
-    plantUniformBuffers.viewBuffer.requiredObjs.device = device;
-    plantUniformBuffers.viewBuffer.requiredObjs.physicalDevice = phyDevice;
-    plantUniformBuffers.dynamicBuffer.requiredObjs.device = device;
-    plantUniformBuffers.dynamicBuffer.requiredObjs.physicalDevice = phyDevice;
 
     VkPhysicalDeviceProperties gpuProps{};
     vkGetPhysicalDeviceProperties(phyDevice, &gpuProps);
@@ -219,7 +275,6 @@ void DynamicsUBO::prepareUniformBuffers() {
     std::cout << "minUniformBufferOffsetAlignment = " << minUBOAlignment << std::endl;      // 64
     std::cout << "dynamicAlignment = " << dynamicAlignment << std::endl;                    // 64
 
-
     size_t bufferSize = OBJECT_INSTANCES * dynamicAlignment;
     uboDataDynamic.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment); // 动态内存对齐开辟
     assert(uboDataDynamic.model);
@@ -231,6 +286,16 @@ void DynamicsUBO::prepareUniformBuffers() {
     // Map persistent
     plantUniformBuffers.viewBuffer.map();
     plantUniformBuffers.dynamicBuffer.map();
+    float radius = 150;
+    for (const auto &idx : std::views::iota(0, OBJECT_INSTANCES)) {
+        positions[idx] = glm::vec3{random_double(-1,1)*radius, 0, random_double(-1,1)*radius    };
+        yRotations[idx] = random_double(0,1)*360;
+        scales[idx] = random_double(0,1);
+    }
+
+    // ground uniform buffer
+    standardUniformBuffer.create(sizeof(uboStandardData));
+    standardUniformBuffer.map();
 
     updateUniformBuffers();
     updateDynamicUniformBuffer();
@@ -243,18 +308,21 @@ void DynamicsUBO::updateUniformBuffers() {
     uboVS.projection[1][1] *= -1;
     uboVS.view =  glm::lookAt(glm::vec3(0, 80.0f, 200), glm::vec3(0.0f, 0, 40.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
     memcpy(plantUniformBuffers.viewBuffer.mapped, &uboVS, sizeof(uboVS));
+
+    uboStandardData.model = 1.0f;
+    uboStandardData.proj = uboVS.projection;
+    uboStandardData.view = uboVS.view;
+    memcpy(standardUniformBuffer.mapped, &uboStandardData, sizeof(uboStandardData));
 }
 
 void DynamicsUBO::updateDynamicUniformBuffer() {
     // Dynamic ubo with per-object model matrices indexed by offsets in the command buffer
-    float radius = 180;
     for (const auto &idx : std::views::iota(0, OBJECT_INSTANCES)) {
-
-        auto pos = glm::vec3{random_double(-1,1)*radius, 0, random_double(-1,1)*radius    };
         auto axis = glm::vec3{0,1,0};
-        float angle = random_double(0,1)*360;
-        auto rot = glm::rotate(glm::mat4{1.0f},angle,axis);
-        uboDataDynamic.model[idx] = glm::translate(rot, pos);
+        auto rot = glm::rotate(glm::mat4{1.0f},yRotations[idx],axis);
+        uboDataDynamic.model[idx] = glm::scale(glm::mat4{1.0f}, glm::vec3{scales[idx]});     // S
+        uboDataDynamic.model[idx]*= rot;                                                       // R
+        uboDataDynamic.model[idx] = glm::translate(uboDataDynamic.model[idx], positions[idx]); // T
     }
 
     memcpy(plantUniformBuffers.dynamicBuffer.mapped, uboDataDynamic.model, plantUniformBuffers.dynamicBuffer.descBufferInfo.range);
@@ -270,10 +338,23 @@ void DynamicsUBO::updateDynamicUniformBuffer() {
 
 
 void DynamicsUBO::bindResources() {
+    auto device = mainDevice.logicalDevice;
+    auto phyDevice = mainDevice.physicalDevice;
     geometryBufferManager.bindDevice = mainDevice.logicalDevice;
     geometryBufferManager.bindQueue = mainDevice.graphicsQueue;
     geometryBufferManager.bindCommandPool = graphicsCommandPool;
     geometryBufferManager.bindPhysicalDevice = mainDevice.physicalDevice;
+
+    plantUniformBuffers.viewBuffer.requiredObjs.device = device;
+    plantUniformBuffers.viewBuffer.requiredObjs.physicalDevice = phyDevice;
+    plantUniformBuffers.dynamicBuffer.requiredObjs.device = device;
+    plantUniformBuffers.dynamicBuffer.requiredObjs.physicalDevice = phyDevice;
+
+    standardUniformBuffer.requiredObjs.device = device;
+    standardUniformBuffer.requiredObjs.physicalDevice = phyDevice;
+    standardUniformBuffer.requiredObjs.device = device;
+    standardUniformBuffer.requiredObjs.physicalDevice = phyDevice;
+
 }
 
 void DynamicsUBO::recordCommandBuffer() {
@@ -298,6 +379,7 @@ void DynamicsUBO::recordCommandBuffer() {
 
 
     VkDeviceSize offsets[1] = { 0 };
+
     vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit, 0, 1, &plantGeo.verticesBuffer, offsets);
     vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit,plantGeo.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -308,9 +390,16 @@ void DynamicsUBO::recordCommandBuffer() {
         uint32_t dynamicOffset = j * static_cast<uint32_t>(dynamicAlignment);
         // Bind the descriptor set for rendering a mesh using the dynamic offset
         vkCmdBindDescriptorSets(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, plantPipelineLayout, 0, 2, plantDescriptorSets, 1, &dynamicOffset);
-
         vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, plantGeo.indices.size(), 1, 0, 0, 0);
     }
+
+    // render ground
+    vkCmdBindPipeline(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,standardPipeline.pipeline);
+    vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit, 0, 1, &groundGeo.verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit,groundGeo.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, standardPipeline.pipelineLayout, 0, 2, standardPipeline.sets, 0, nullptr);
+    vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, groundGeo.indices.size(), 1, 0, 0, 0);
+
 
     vkCmdEndRenderPass(activedFrameCommandBuferToSubmit);
     if (vkEndCommandBuffer(activedFrameCommandBuferToSubmit) != VK_SUCCESS) {

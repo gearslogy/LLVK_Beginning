@@ -30,14 +30,16 @@ struct DynamicsUBO : public VulkanRenderer{
         UBOBuffer viewBuffer{};
         UBOBuffer dynamicBuffer{};
     } plantUniformBuffers;
-
+    float scales[OBJECT_INSTANCES];
+    glm::vec3 positions[OBJECT_INSTANCES];
+    float yRotations[OBJECT_INSTANCES];
 
     struct {
-        glm::mat4 proj;
-        glm::mat4 view;
         glm::mat4 model;
-    }groundUBO;
-    UBOBuffer groundUniformBuffer{};
+        glm::mat4 view;
+        glm::mat4 proj;
+    }uboStandardData;
+    UBOBuffer standardUniformBuffer{};
 
 
     size_t dynamicAlignment{ 0 };
@@ -52,14 +54,22 @@ struct DynamicsUBO : public VulkanRenderer{
 
     VkSampler sampler{};
 
-    std::array<UBOTexture,5> groundTextures;
 
+    struct {
+        VkDescriptorSetLayout uboSetLayout{ VK_NULL_HANDLE };     // set = 0
+        VkDescriptorSetLayout textureSetLayout{ VK_NULL_HANDLE }; // set = 1
+        VkPipelineLayout pipelineLayout{ VK_NULL_HANDLE };
+        VkDescriptorSet sets[2]; // set = 0 for ubo, set=1 for texture
+        VkPipeline pipeline;
+    }standardPipeline; // gound pipeline we call this standard pipeline
+    std::array<UBOTexture,5> groundTextures;
 
 
     void cleanupObjects() override;
     void loadTexture();
     void loadModel();
-    void setupDescriptors();
+    void setupDescriptors(
+        );
     void preparePipelines();
     void prepareUniformBuffers();
     void updateUniformBuffers();
@@ -78,7 +88,7 @@ struct DynamicsUBO : public VulkanRenderer{
     }
     void render() override {
         updateUniformBuffers();
-        //updateDynamicUniformBuffer();
+        updateDynamicUniformBuffer();
         recordCommandBuffer();
     }
 

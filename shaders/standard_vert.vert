@@ -5,9 +5,11 @@ layout(location=2) in vec3 N;
 layout(location=3) in vec2 inTexCoord;
 
 
-layout(location = 0) out vec3 fragColor; //The location keyword is required in vulkan, but not in opengl
-layout(location = 1) out vec3 fragN;
-layout(location = 2) out vec2 fragTexCoord;
+layout(location = 0) out vec3 fragPosition; // World space position
+layout(location = 1) out vec3 fragColor;
+layout(location = 2) out vec3 fragN;        // Transformed normal
+layout(location = 3) out vec2 fragTexCoord;
+
 
 
 
@@ -18,8 +20,12 @@ layout(set=0, binding = 0) uniform UniformBufferObject {
 }ubo;
 
 void main(){
-    gl_Position =  ubo.proj * ubo.view * ubo.model  *vec4(P,1.0);
+    vec4 worldPos = ubo.model * vec4(P,1.0);
+    gl_Position =  ubo.proj * ubo.view * worldPos;
+
+    fragPosition = P;
     fragTexCoord = inTexCoord;
-    fragN = N;
+    fragN = mat3(transpose(inverse(ubo.model))) * N;
     fragColor = Cd;
+
 }
