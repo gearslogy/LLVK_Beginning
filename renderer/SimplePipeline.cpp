@@ -22,8 +22,8 @@ void SimplePipeline::init() {
     // 1
     VkPipelineShaderStageCreateInfo shaderStates[] = {vertShaderStageCreateInfo, fragShaderStageCreateInfo};
     // 2. vertex input
-    std::array bindings = {Vertex::bindings()};
-    auto attribs = Vertex::attribs();
+    std::array bindings = {Basic::Vertex::bindings()};
+    auto attribs = Basic::Vertex::attribs();
     VkPipelineVertexInputStateCreateInfo vertexInput_ST_CIO = FnPipeline::vertexInputStateCreateInfo(bindings, attribs);
     // 3. assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly_ST_CIO = FnPipeline::inputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,0, VK_FALSE);

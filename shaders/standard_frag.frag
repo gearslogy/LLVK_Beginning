@@ -1,10 +1,13 @@
 #version 460 core
 #include "common.glsl"
 
-layout(location = 0) in vec3 fragPosition;
+layout(location = 0) in vec3 fragPosition; // World space position
 layout(location = 1) in vec3 fragColor;
-layout(location = 2) in vec3 fragN;
-layout(location = 3) in vec2 fragTexCoord;
+layout(location = 2) in vec3 fragN;              // Transformed normal
+layout(location = 3) in vec3 fragTangent;
+layout(location = 4) in vec3 fragBitangent;
+layout(location = 5) in vec2 fragTexCoord;
+
 
 // opengl can do without the "location" keyword
 layout (location = 0) out vec4 outColor;
@@ -18,23 +21,25 @@ layout(set=1, binding = 4) uniform sampler2D RoughnessTexSampler;
 
 
 
-
 void main(){
-    vec2 uv = fragTexCoord * 5;
-    vec3 tangentNormal = texture(NormalTexSampler, uv).xyz * 2.0 - 1.0;
-    vec3 N = getNormalFromMap(fragN,tangentNormal, fragPosition, uv);
+    vec2 uv = fragTexCoord * 10;
+    mat3 TBN = mat3(fragTangent, fragBitangent, fragN);
+    vec3 tangentNormal = pow(texture(NormalTexSampler, uv).xyz,vec3(1/2.2))    * 2.0 - 1.0 ;
+    vec3 N = normalize(TBN * tangentNormal);
+    //vec3 N = fragN;
     float metallic = 0;
     float ao = texture(AOTexSampler, uv).r;
     vec3 albedo  =  texture(AlbedoTexSampler, uv).rgb;
-    float roughness = texture(RoughnessTexSampler, uv).r;
+    float roughness = pow(texture(RoughnessTexSampler, uv).r,1/2.2);
     vec3 V = normalize(cameraPosition - fragPosition);
     vec3 L = normalize(lightPosition - fragPosition);
     vec3 H = normalize(V + L);
 
+
     // Light attenuation
     float distance = length(lightPosition - fragPosition);
     float attenuation = clamp(1.0 - (distance * distance) / (lightRadius * lightRadius), 0.0, 1.0);
-    vec3 radiance = lightColor  * attenuation;
+    vec3 radiance = lightColor * attenuation  ;
 
     // Pre-calculated values
     float NDF = DistributionGGX(N, H, roughness);
@@ -61,6 +66,7 @@ void main(){
 
     // Calculate radiance (light intensity)
     float NdotL = max(dot(N, L), 0.0);
+    float ndotl_temp = max(dot(fragN, L), 0.0);
     radiance *= NdotL;
 
     // Combine diffuse and specular contribution
@@ -68,9 +74,11 @@ void main(){
 
     // Apply ambient occlusion
     color *= ao;
+
     // Apply gamma correction
     color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0 / 2.2));
+    color = pow(color, vec3(1.0/2.2)); // Assuming gamma correction with gamma = 2.2
+
 
     outColor = vec4(color,1.0f);
 }

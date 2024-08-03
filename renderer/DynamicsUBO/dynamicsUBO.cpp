@@ -6,6 +6,7 @@
 #include <random>
 #include "LLVK_Math.hpp"
 #include "CommandManager.h"
+#include "GeoVertexDescriptions.h"
 LLVK_NAMESPACE_BEGIN
 void DynamicsUBO::cleanupObjects() {
 
@@ -84,10 +85,10 @@ void DynamicsUBO::loadTexture() {
     loadGroundTextures();
 }
 void DynamicsUBO::loadModel() {
-    plantGeo.readFile("content/plants/gardenplants/var0.obj");
-    createVertexAndIndexBuffer(geometryBufferManager, plantGeo);
-    groundGeo.readFile("content/ground/ground2.obj");
-    createVertexAndIndexBuffer(geometryBufferManager, groundGeo);
+    plantGeo.load("content/plants/gardenplants/var0.gltf");
+    createVertexAndIndexBuffer<GLTFVertex>(geometryBufferManager,  plantGeo.parts[0]);
+    groundGeo.load("content/ground/ground.gltf");
+    createVertexAndIndexBuffer<GLTFVertex>(geometryBufferManager,  groundGeo.parts[0]);
 }
 
 void DynamicsUBO::setupDescriptors() {
@@ -177,8 +178,8 @@ void DynamicsUBO::preparePipelines() {
     // 1
     VkPipelineShaderStageCreateInfo shaderStates[] = {vertShaderStageCreateInfo, fragShaderStageCreateInfo};
     // 2. vertex input
-    std::array bindings = {Vertex::bindings()};
-    auto attribs = Vertex::attribs();
+    std::array bindings = {GLTFVertex::bindings()};
+    auto attribs = GLTFVertex::attribs();
     VkPipelineVertexInputStateCreateInfo vertexInput_ST_CIO = FnPipeline::vertexInputStateCreateInfo(bindings, attribs);
     // 3. assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly_ST_CIO = FnPipeline::inputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,0, VK_FALSE);
@@ -250,6 +251,7 @@ void DynamicsUBO::preparePipelines() {
     // 11. PIPELINE
     pipeline_CIO.stageCount = 2;
     pipeline_CIO.pStages = standardShaderStates;
+    pipeline_CIO.pRasterizationState = &standardRasterization_ST_CIO;
     pipeline_CIO.layout = standardPipeline.pipelineLayout;
     result = vkCreateGraphicsPipelines(device, simplePipelineCache.pipelineCache,
         1, &pipeline_CIO, nullptr, &standardPipeline.pipeline);
@@ -319,10 +321,11 @@ void DynamicsUBO::updateDynamicUniformBuffer() {
     // Dynamic ubo with per-object model matrices indexed by offsets in the command buffer
     for (const auto &idx : std::views::iota(0, OBJECT_INSTANCES)) {
         auto axis = glm::vec3{0,1,0};
-        auto rot = glm::rotate(glm::mat4{1.0f},yRotations[idx],axis);
-        uboDataDynamic.model[idx] = glm::scale(glm::mat4{1.0f}, glm::vec3{scales[idx]});     // S
-        uboDataDynamic.model[idx]*= rot;                                                       // R
-        uboDataDynamic.model[idx] = glm::translate(uboDataDynamic.model[idx], positions[idx]); // T
+        auto R = glm::rotate(glm::mat4{1.0f},yRotations[idx],axis);
+        auto S = glm::scale(glm::mat4{1.0f}, glm::vec3{scales[idx]});
+        auto T = glm::translate(glm::mat4{1.0f}, positions[idx]);
+        uboDataDynamic.model[idx] =     T * R * S;
+
     }
 
     memcpy(plantUniformBuffers.dynamicBuffer.mapped, uboDataDynamic.model, plantUniformBuffers.dynamicBuffer.descBufferInfo.range);
@@ -380,8 +383,9 @@ void DynamicsUBO::recordCommandBuffer() {
 
     VkDeviceSize offsets[1] = { 0 };
 
-    vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit, 0, 1, &plantGeo.verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit,plantGeo.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit, 0, 1, &plantGeo.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit,plantGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+
 
     // Render multiple objects using different model matrices by dynamically offsetting into one uniform buffer
     for (uint32_t j = 0; j < OBJECT_INSTANCES; j++)
@@ -390,15 +394,15 @@ void DynamicsUBO::recordCommandBuffer() {
         uint32_t dynamicOffset = j * static_cast<uint32_t>(dynamicAlignment);
         // Bind the descriptor set for rendering a mesh using the dynamic offset
         vkCmdBindDescriptorSets(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, plantPipelineLayout, 0, 2, plantDescriptorSets, 1, &dynamicOffset);
-        vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, plantGeo.indices.size(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, plantGeo.parts[0].indices.size(), 1, 0, 0, 0);
     }
 
     // render ground
     vkCmdBindPipeline(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,standardPipeline.pipeline);
-    vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit, 0, 1, &groundGeo.verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit,groundGeo.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit, 0, 1, &groundGeo.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit,groundGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdBindDescriptorSets(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, standardPipeline.pipelineLayout, 0, 2, standardPipeline.sets, 0, nullptr);
-    vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, groundGeo.indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, groundGeo.parts[0].indices.size(), 1, 0, 0, 0);
 
 
     vkCmdEndRenderPass(activedFrameCommandBuferToSubmit);

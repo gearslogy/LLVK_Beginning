@@ -5,6 +5,8 @@
 #include "GeoVertexDescriptions.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "libs/tiny_obj_loader.h"
+LLVK_NAMESPACE_BEGIN
+namespace Basic {
 VkVertexInputBindingDescription Vertex::bindings() {
     VkVertexInputBindingDescription desc{};
     desc.binding = vertex_buffer_binding_id;
@@ -80,7 +82,7 @@ std::array<VkVertexInputAttributeDescription, 8> Vertex::instancedAttribs() {
 
     return desc;
 }
-
+}
 
 
 
@@ -96,11 +98,11 @@ void ObjLoader::readFile(const char *geoPath) {
     bool hasNormal = !attrib.normals.empty();
     bool hasST = !attrib.texcoords.empty();
 
-    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+    std::unordered_map<Basic::Vertex, uint32_t> uniqueVertices{};
 
     for (auto &shape: shapes) {
         for (auto idx: shape.mesh.indices) {
-            Vertex vertex{};
+            Basic::Vertex vertex{};
             vertex.P = {
                 attrib.vertices[3 * idx.vertex_index + 0],
                 attrib.vertices[3 * idx.vertex_index + 1],
@@ -132,4 +134,4 @@ void ObjLoader::readFile(const char *geoPath) {
 
 }
 
-
+LLVK_NAMESPACE_END

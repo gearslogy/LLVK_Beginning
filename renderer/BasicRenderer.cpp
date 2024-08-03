@@ -35,7 +35,7 @@ void BasicRenderer::loadModel() {
     //simpleObjLoader.readFile("content/pig.obj");
     //simpleObjLoader.readFile("content/viking_room.obj");
     simpleObjLoader.readFile("content/veqhch1/veqhch1_LOD0.obj");
-    createVertexAndIndexBuffer(geometryBufferManager, simpleObjLoader);
+    createVertexAndIndexBuffer<Basic::Vertex>(geometryBufferManager, simpleObjLoader);
 }
 
 void BasicRenderer::loadTexture() {
@@ -101,12 +101,20 @@ void BasicRenderer::recordCommandBuffer() {
         sizeof(PushFragmentStageData),
         &PushConstant::fragmentPushConstants[currentFrame]);
 
-    renderIndicesGeometryCommand(simpleObjLoader, activedFrameCommandBuferToSubmit, [this]() {
-        vkCmdBindDescriptorSets(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                simplePipeline.pipelineLayout, 0, 2,
-                &(simpleDescriptorManager.descriptorSets)[currentFrame * 2],
-                0, nullptr);
-    });
+    // only one buffer hold all data
+    VkDeviceSize offset =0;
+    vkCmdBindVertexBuffers(activedFrameCommandBuferToSubmit,
+                           0,
+                           1,
+                           &simpleObjLoader.verticesBuffer,&offset);
+    vkCmdBindDescriptorSets(activedFrameCommandBuferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                   simplePipeline.pipelineLayout, 0, 2,
+                   &(simpleDescriptorManager.descriptorSets)[currentFrame * 2],
+                   0, nullptr);
+    vkCmdBindIndexBuffer(activedFrameCommandBuferToSubmit, simpleObjLoader.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(activedFrameCommandBuferToSubmit, simpleObjLoader.indices.size(), 1, 0, 0, 0);
+
+
     vkCmdEndRenderPass(activedFrameCommandBuferToSubmit);
     if (vkEndCommandBuffer(activedFrameCommandBuferToSubmit) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");

@@ -2,10 +2,16 @@
 #include "common.glsl"
 // opengl can do without the "location" keyword
 
-layout(location = 0) in vec3 fragPosition;
+layout(location = 0) in vec3 fragPosition; // World space position
 layout(location = 1) in vec3 fragColor;
-layout(location = 2) in vec3 fragN;
-layout(location = 3) in vec2 fragTexCoord;
+layout(location = 2) in vec3 fragN;              // Transformed normal
+layout(location = 3) in vec3 fragTangent;        // Transformed normal
+layout(location = 4) in vec3 fragBitangent;       // Transformed normal
+layout(location = 5) in vec2 fragTexCoord;
+
+
+
+
 
 // opengl can do without the "location" keyword
 layout (location = 0) out vec4 outColor;
@@ -20,13 +26,13 @@ layout(set=1, binding = 5) uniform sampler2D TranslucencyTexSampler;
 
 
 void main(){
-    vec3 tangentNormal = texture(NormalTexSampler, fragTexCoord).xyz * 2.0 - 1.0;
+    vec3 tangentNormal = pow(texture(NormalTexSampler, fragTexCoord).xyz,vec3(1/2.2))    * 2.0 - 1.0 ;
     vec3 N = getNormalFromMap(fragN,tangentNormal, fragPosition, fragTexCoord);
     float alpha = texture(OpacticyTexSampler, fragTexCoord).r;
     float metallic = 0;
-    vec3 trans = texture(TranslucencyTexSampler, fragTexCoord).rgb;
+    vec3 trans = pow(texture(TranslucencyTexSampler, fragTexCoord).rgb, vec3(1/2.2) );
     vec3 albedo  =  texture(AlbedoTexSampler, fragTexCoord).rgb;
-    float roughness = texture(RoughnessTexSampler, fragTexCoord).r;
+    float roughness = pow(texture(RoughnessTexSampler, fragTexCoord).r, 1/2.2);
     float ao = 1;
     if(alpha<0.1) discard;
 
@@ -38,7 +44,7 @@ void main(){
     // Light attenuation
     float distance = length(lightPosition - fragPosition);
     float attenuation = clamp(1.0 - (distance * distance) / (lightRadius * lightRadius), 0.0, 1.0);
-    vec3 radiance = lightColor  ;
+    vec3 radiance = lightColor * attenuation ;
 
     // Pre-calculated values
     float NDF = DistributionGGX(N, H, roughness);
@@ -65,11 +71,13 @@ void main(){
 
     // Calculate radiance (light intensity)
     float NdotL = max(dot(N, L), 0.0);
-    float ndotl_temp = max(dot(fragN, L), 0.0);
     radiance *= NdotL;
 
+    // 透光贡献
+
+
     // Combine diffuse and specular contribution
-    vec3 color = (kD * diffuse + specular) * radiance;
+    vec3 color = (kD * diffuse + specular) * radiance ;
 
     // Apply ambient occlusion
     color *= ao;

@@ -1,11 +1,12 @@
 ﻿#pragma once
 #include "VulkanRenderer.h"
 
-#define OBJECT_INSTANCES 200
+#define OBJECT_INSTANCES 300
 
-#include "GeoVertexDescriptions.h"
+
 #include "BufferManager.h"
 #include "LLVK_Descriptor.hpp"
+#include "LLVK_GeomtryLoader.h"
 
 // Vertex layout for this example
 // Wrapper functions for aligned memory allocation
@@ -92,8 +93,8 @@ struct DynamicsUBO : public VulkanRenderer{
         recordCommandBuffer();
     }
 
-    ObjLoader plantGeo{};
-    ObjLoader groundGeo{};
+    GLTFLoader plantGeo{};
+    GLTFLoader groundGeo{};
     BufferManager geometryBufferManager{};
 
 private:

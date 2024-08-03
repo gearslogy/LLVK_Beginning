@@ -55,6 +55,29 @@ struct BufferManager {
     std::vector<BufferAndMemory> createdIndexedBuffers;
 };
 
+
+
+template<typename vertex_t>
+inline void createVertexAndIndexBuffer(auto &&bufferManager, auto &geometry) {
+    static_assert(requires { geometry.vertices; });
+    static_assert(requires { geometry.indices; });
+    static_assert(requires { bufferManager.createdBuffers; });
+    static_assert(requires { bufferManager.createdIndexedBuffers; });
+
+    bufferManager.createVertexBufferWithStagingBuffer(sizeof(vertex_t) * geometry.vertices.size(),
+                                                      geometry.vertices.data());
+    bufferManager.createIndexBuffer(sizeof(uint32_t) * geometry.indices.size(),
+                                    geometry.indices.data());
+
+    // assgin right buffer-ptr
+    auto &&verticesBuffers = bufferManager.createdBuffers; // return struct BufferAndMemory
+    auto &&indicesBuffers = bufferManager.createdIndexedBuffers;
+    geometry.verticesBuffer = verticesBuffers[verticesBuffers.size() - 1].buffer;
+    geometry.indicesBuffer = indicesBuffers[indicesBuffers.size() - 1].buffer;
+}
+
+
+
 LLVK_NAMESPACE_END
 
 #endif //BUFFERMANAGER_H

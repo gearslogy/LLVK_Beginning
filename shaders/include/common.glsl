@@ -79,7 +79,7 @@ float LinearizeDepth(float depth)
 
 
 // sample UBO scene
-const vec3 lightColor = vec3(1,1,1)*10;
+const vec3 lightColor = vec3(1,1,1)*4;
 const vec3 cameraPosition= {0,80,200} ;
-const vec3 lightPosition = {100,150,0};
-const float lightRadius = 350;
+const vec3 lightPosition = {0,150,0};
+const float lightRadius = 300;
