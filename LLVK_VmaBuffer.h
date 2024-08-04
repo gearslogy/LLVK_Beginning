@@ -57,12 +57,9 @@ namespace FnVmaBuffer {
         vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &copyRegion);
         FnCommand::endSingleTimeCommand(device, commandPool, graphicsQueue, cmd);
     }
-
-
-
 };
 
-struct VmaBufferManagerRequiredObjects {
+struct VmaBufferRequiredObjects {
     VkDevice device;
     VkPhysicalDevice physicalDevice;
     VkCommandPool commandPool;
@@ -70,24 +67,29 @@ struct VmaBufferManagerRequiredObjects {
     VmaAllocator allocator;
 };
 
-struct VmaBuffer {
+struct VmaBufferAndAllocation {
     VkBuffer buffer{};
     VmaAllocation allocation{};
-
-    // when it's a ubo
-    VkDeviceSize deviceSize{}; // when created
-    void *mapped;
-    VkDescriptorBufferInfo descBufferInfo{};
-
-
+    VkDeviceSize memorySize{};
 };
-struct VmaBufferManager {
-    VmaBufferManagerRequiredObjects requiredObjects;
+
+struct VmaUBOBuffer {
+    VmaBufferAndAllocation bufferAndAllocation{};
+    VkDescriptorBufferInfo descBufferInfo{};
+    VmaBufferRequiredObjects requiredObjects{};
+    void *mapped{};
+    void createAndMapping(VkDeviceSize bufferSize);
+    void cleanup();
+};
+
+
+struct VmaSimpleGeometryBufferManager {
+    VmaBufferRequiredObjects requiredObjects;
 
     // bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT    for vertex
     // bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT     for index
     template<VkBufferUsageFlagBits bufferUsage>
-    void createVertexBufferWithStagingBuffer(size_t bufferSize, const void *verticesBufferData) {
+    void createBufferWithStagingBuffer(size_t bufferSize, const void *verticesBufferData) {
         VkBuffer stagingBuffer{};
         VmaAllocation stagingAllocation{};
 
@@ -107,26 +109,37 @@ struct VmaBufferManager {
 
         // vertex buffer
 
-        // 创建 vertex buffer
-        VkBuffer vertexBuffer;
-        VmaAllocation vertexAllocation;
+        // create vertex buffer  or  index buffer
+        VkBuffer dstBuffer;
+        VmaAllocation dstAllocation;
         result = FnVmaBuffer::createBuffer<false>(requiredObjects.device,
             requiredObjects.allocator, bufferSize,
             bufferUsage,
-            vertexBuffer, vertexAllocation);
+            dstBuffer, dstAllocation);
         if (result != VK_SUCCESS) throw std::runtime_error{"ERROR create vma vertex buffer"};
 
 
         FnVmaBuffer::copyBuffer(requiredObjects.device,
             requiredObjects.commandPool,
             requiredObjects.queue,
-            stagingBuffer, vertexBuffer,
+            stagingBuffer, dstBuffer,
             bufferSize);
-        // 清理 staging buffer
+        // clean staging buffer
         FnVmaBuffer::destroyBuffer(requiredObjects.device, requiredObjects.allocator, stagingBuffer, stagingAllocation);
+
+        if constexpr (bufferUsage == VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) {
+            createIndexedBuffers.emplace_back(dstBuffer, dstAllocation);
+        }
+        else if constexpr (bufferUsage == VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT){
+            createVertexBuffers.emplace_back(dstBuffer, dstAllocation);
+        }
+        else {
+            static_assert(not ALWAYS_TRUE, "only support index or vertex");
+        }
     }
 
-
+    std::vector<VmaBufferAndAllocation> createVertexBuffers;
+    std::vector<VmaBufferAndAllocation> createIndexedBuffers;
 
 };
 LLVK_NAMESPACE_END
