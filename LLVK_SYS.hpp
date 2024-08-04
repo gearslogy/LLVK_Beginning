@@ -26,9 +26,26 @@ namespace Concept {
     concept has_cleanFn = requires(T var){
         var.cleanup();
     };
-
-
-
 }
+
+
+template<typename T>
+class Singleton
+{
+public:
+    Singleton(Singleton const &) = delete;
+    Singleton & operator = (Singleton const &)= delete;
+    static T& instance(){
+        static thread_local T t;
+        return t;
+    }
+
+protected:
+    Singleton()= default;
+
+};
+
+
+
 
 LLVK_NAMESPACE_END

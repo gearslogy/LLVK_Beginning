@@ -55,7 +55,7 @@ struct GLTFLoader {
         VkBuffer indicesBuffer;
     };
     template<typename T>
-       auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
+    auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
         const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
         const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
         const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];

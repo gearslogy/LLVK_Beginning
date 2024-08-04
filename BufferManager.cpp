@@ -17,7 +17,8 @@ void FnBuffer::createBuffer(
     VkDeviceSize size,
     VkBufferUsageFlags usage,
     VkMemoryPropertyFlags memProperties,
-    VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
+    VkBuffer &buffer, VkDeviceMemory &bufferMemory)
+{
     VkBufferCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.size = size;

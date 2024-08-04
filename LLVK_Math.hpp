@@ -14,8 +14,8 @@
 #include <numbers>
 #include <limits>
 #include <cstdlib>
-
-namespace LLVK{
+#include "LLVK_SYS.hpp"
+LLVK_NAMESPACE_BEGIN
     constexpr double pi = std::numbers::pi;
     constexpr double infinity = std::numeric_limits<double>::infinity();
 
@@ -28,22 +28,6 @@ namespace LLVK{
         if (x > max) return max;
         return x;
     }
-
-    template<typename T>
-    class Singleton
-    {
-    public:
-        Singleton(Singleton const &) = delete;
-        Singleton & operator = (Singleton const &)= delete;
-        static T& instance(){
-            static thread_local T t;
-            return t;
-        }
-
-    protected:
-        Singleton()= default;
-
-    };
 
 
     class RandEngine: public Singleton<RandEngine>{
@@ -104,6 +88,5 @@ namespace LLVK{
                 static_cast<int>(255.999 * pixel_color.z()) };
     }
 
-
-}
+LLVK_NAMESPACE_END
 

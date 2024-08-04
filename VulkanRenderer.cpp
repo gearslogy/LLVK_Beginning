@@ -2,7 +2,7 @@
 //
 // Created by liuyangping on 2024/3/27.
 //
-
+#define VMA_IMPLEMENTATION
 #include "VulkanRenderer.h"
 
 #include <stdexcept>
@@ -15,7 +15,7 @@
 #include <format>
 #include <filesystem>
 #include "CommandManager.h"
-#include "GeoVertexDescriptions.h"
+
 
 
 /* DRAW TRANGLE
@@ -131,6 +131,7 @@ int VulkanRenderer::initVulkan() {
         createDebugCallback();
         createSurface();
         createPhyiscalAndLogicDevice();
+        createVmaAllocator();
         createSwapChain();
         createRenderpass();
         createPipelineCache();
@@ -160,7 +161,7 @@ void VulkanRenderer::cleanup() {
     }
     simplePipelineCache.cleanup();
     vkDestroyCommandPool(mainDevice.logicalDevice, graphicsCommandPool, nullptr);
-
+    vmaDestroyAllocator(vmaAllocator);
     simplePass.cleanup();
     vkDestroySurfaceKHR(instance,surfaceKhr, nullptr);
     mainDevice.cleanup();
@@ -246,6 +247,17 @@ void VulkanRenderer::createPhyiscalAndLogicDevice() {
     mainDevice.bindInstance = instance;
     mainDevice.init();
 }
+void VulkanRenderer::createVmaAllocator() {
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocatorInfo.physicalDevice = mainDevice.physicalDevice;
+    allocatorInfo.device = mainDevice.logicalDevice;
+    allocatorInfo.instance = instance;
+    allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+    vmaCreateAllocator(&allocatorInfo, &vmaAllocator);
+}
+
+
 
 void VulkanRenderer::createDebugCallback() {
     if(not enableValidation) return;

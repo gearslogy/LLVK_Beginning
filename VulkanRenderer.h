@@ -2,6 +2,8 @@
 #ifndef CP_01_VULKANRENDERER_H
 #define CP_01_VULKANRENDERER_H
 
+#include "libs/VulkanMemoryAllocator-3.0.1/include/vk_mem_alloc.h"
+
 #define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -14,6 +16,7 @@
 #include "Device.h"
 #include "PipelineCache.h"
 #include "LLVK_Image.h"
+
 LLVK_NAMESPACE_BEGIN
 
 
@@ -54,10 +57,12 @@ protected:
     PipelineCache simplePipelineCache{};
     VkFramebuffer activeSwapChainFramebuffer{}; // swapchain frame buffer. we have three images in our swapchain
     VkCommandBuffer activedFrameCommandBuferToSubmit{}; // we have two command buffer.active for the render rerord-command
+    VmaAllocator vmaAllocator{};
     // create functions
     void createInstance();
     void createDebugCallback();
     void createPhyiscalAndLogicDevice();
+    void createVmaAllocator();
     void createSurface();
     void createSwapChain();
     void createRenderpass();

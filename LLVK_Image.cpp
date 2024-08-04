@@ -6,7 +6,7 @@
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
-#include "libs/VulkanMemoryAllocator-3.0.1/include/vk_mem_alloc.h"
+#include <vma/vk_mem_alloc.h>
 #include "Utils.h"
 #include "BufferManager.h"
 #include "CommandManager.h"

@@ -126,7 +126,7 @@ namespace FnDescriptor {
 
 }
 
-struct UBORequiredObject {
+struct UBORequiredObjects {
     VkDevice device{};
     VkPhysicalDevice physicalDevice{};
     VkCommandPool commandPool{};
@@ -141,7 +141,7 @@ struct UBOBuffer {
     VkDeviceSize memorySize{};
     VkDescriptorBufferInfo descBufferInfo{};
 
-    UBORequiredObject requiredObjs{};
+    UBORequiredObjects requiredObjs{};
 
     void create(VkDeviceSize bufferSize, VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
         FnBuffer::createBuffer(requiredObjs.physicalDevice, requiredObjs.device, bufferSize,
@@ -171,7 +171,7 @@ struct UBOTexture {
     VkImageView imageView{};
     VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
 
-    UBORequiredObject requiredObjs{};
+    UBORequiredObjects requiredObjs{};
     void create(const std::string &file, VkSampler sampler) {
         imageAndMemory = FnImage::createTexture(requiredObjs.physicalDevice,requiredObjs.device, requiredObjs.commandPool, requiredObjs.queue,file);
         imageView = FnImage::createImageView( requiredObjs.device, imageAndMemory.image,
