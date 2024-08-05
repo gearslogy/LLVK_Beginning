@@ -77,7 +77,7 @@ void Swapchain::init() {
     for(const auto &img : images) {
         SwapChainImage scImg{};
         scImg.image = img;
-        scImg.imageView = FnImage::createImageView(bindLogicDevice,img, swapChainFormat, VK_IMAGE_ASPECT_COLOR_BIT,1 );
+        FnImage::createImageView(bindLogicDevice,img, swapChainFormat, VK_IMAGE_ASPECT_COLOR_BIT,1, scImg.imageView );
         swapChainImages.emplace_back(scImg);
     }
 }

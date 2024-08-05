@@ -12,10 +12,10 @@
 #include "CommandManager.h"
 
 LLVK_NAMESPACE_BEGIN
-VkImageView FnImage::createImageView(VkDevice device,
+void FnImage::createImageView(VkDevice device,
                                      VkImage image,
                                      VkFormat format,
-                                     VkImageAspectFlags aspectFlags, uint32_t mipLvels) {
+                                     VkImageAspectFlags aspectFlags, uint32_t mipLvels,VkImageView &view) {
     std::cout << "[[createImageView()]]create miplevels:" << mipLvels << std::endl;
     VkImageViewCreateInfo viewCreateInfo{};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -33,11 +33,10 @@ VkImageView FnImage::createImageView(VkDevice device,
     viewCreateInfo.subresourceRange.baseArrayLayer = 0;
     viewCreateInfo.subresourceRange.layerCount = 1; // number of array levels to view
 
-    VkImageView view{};
     if (auto ret = vkCreateImageView(device, &viewCreateInfo, nullptr, &view); ret != VK_SUCCESS) {
         throw std::runtime_error{"ERROR create the image view"};
     }
-    return view;
+
 }
 
 

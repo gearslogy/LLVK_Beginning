@@ -18,11 +18,11 @@ struct ImageAndMemory {
 
 // ImageFunction
 struct FnImage {
-    static VkImageView createImageView(VkDevice device,
+    static void createImageView(VkDevice device,
                                        VkImage image,
                                        VkFormat format,
                                        VkImageAspectFlags aspectFlags,
-                                       uint32_t mipLvels);
+                                       uint32_t mipLvels, VkImageView &view);
 
     // need manully destory:vkDestoryImage() vkDestoryMemory()
     static ImageAndMemory createImageAndMemory(
