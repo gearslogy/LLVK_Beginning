@@ -8,37 +8,38 @@
 #include "LLVK_SYS.hpp"
 #include "vma/vk_mem_alloc.h"
 #include "CommandManager.h"
-LLVK_NAMESPACE_BEGIN
-namespace FnVmaBuffer {
 
-    template<bool need_mapping>
+LLVK_NAMESPACE_BEGIN
+
+namespace FnVmaBuffer {
     inline VkResult createBuffer(
     VkDevice device,
     VmaAllocator allocator,
     VkDeviceSize size,
     VkBufferUsageFlags usage,
+    bool canMapping,
     VkBuffer& buffer,
     VmaAllocation& allocation)
     {
-        // 创建缓冲区信息结构体
+        // buffer struct same as vulkan api
         VkBufferCreateInfo bufferInfo = {};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = size;
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        // VMA 分配信息结构体
+        // vma struct CIO
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-        if constexpr (need_mapping){
-            allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+        if (canMapping){
+            allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
         }
-        // 创建缓冲区和分配内存
+        // create buffer and allocate memory
         VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr);
         return result;
     }
     // 销毁缓冲区
-    inline void destroyBuffer(VkDevice device,
+    inline void destroyBuffer(
         VmaAllocator allocator,
         VkBuffer buffer,
         VmaAllocation allocation)
@@ -88,15 +89,15 @@ struct VmaSimpleGeometryBufferManager {
 
     // bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT    for vertex
     // bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT     for index
-    template<VkBufferUsageFlagBits bufferUsage>
+    template<VkBufferUsageFlags bufferUsage>
     void createBufferWithStagingBuffer(size_t bufferSize, const void *verticesBufferData) {
         VkBuffer stagingBuffer{};
         VmaAllocation stagingAllocation{};
 
-        VkResult result = FnVmaBuffer::createBuffer<true>(requiredObjects.device,
+        VkResult result = FnVmaBuffer::createBuffer(requiredObjects.device,
             requiredObjects.allocator,
             bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,true,
             stagingBuffer, stagingAllocation);
         if (result != VK_SUCCESS) throw std::runtime_error{"ERROR create stagging vma buffer"};
 
@@ -112,9 +113,9 @@ struct VmaSimpleGeometryBufferManager {
         // create vertex buffer  or  index buffer
         VkBuffer dstBuffer;
         VmaAllocation dstAllocation;
-        result = FnVmaBuffer::createBuffer<false>(requiredObjects.device,
+        result = FnVmaBuffer::createBuffer(requiredObjects.device,
             requiredObjects.allocator, bufferSize,
-            bufferUsage,
+            bufferUsage,true,
             dstBuffer, dstAllocation);
         if (result != VK_SUCCESS) throw std::runtime_error{"ERROR create vma vertex buffer"};
 
@@ -125,12 +126,14 @@ struct VmaSimpleGeometryBufferManager {
             stagingBuffer, dstBuffer,
             bufferSize);
         // clean staging buffer
-        FnVmaBuffer::destroyBuffer(requiredObjects.device, requiredObjects.allocator, stagingBuffer, stagingAllocation);
+        FnVmaBuffer::destroyBuffer(requiredObjects.allocator, stagingBuffer, stagingAllocation);
 
-        if constexpr (bufferUsage == VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT ) {
+        if constexpr (bufferUsage == (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT) ) {
+            std::cout << "---------------------------create index buffer\n";
             createIndexedBuffers.emplace_back(dstBuffer, dstAllocation);
         }
-        else if constexpr (bufferUsage == VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT){
+        else if constexpr (bufferUsage == (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT )){
+            std::cout << "---------------------------create vertex buffer\n";
             createVertexBuffers.emplace_back(dstBuffer, dstAllocation);
         }
         else {
@@ -138,10 +141,42 @@ struct VmaSimpleGeometryBufferManager {
         }
     }
 
+    void cleanup();
+
     std::vector<VmaBufferAndAllocation> createVertexBuffers;
     std::vector<VmaBufferAndAllocation> createIndexedBuffers;
 
 };
+
+
+
+struct FnVmaImage {
+    static void createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
+                                             uint32_t width, uint32_t height,
+                                             uint32_t mipLevels,
+                                             VkFormat format,
+                                             VkImageTiling tiling,
+                                             VkImageUsageFlags usageFlags,
+                                             bool canMapping,
+                                             VkImage &image, VmaAllocation &imageAllocation);
+    static void createTexture(const VmaBufferRequiredObjects &reqObj,
+        const std::string &filePath,
+        VkImage &image, VmaAllocation &allocation,uint32_t &createdMipLevels
+        );
+};
+
+struct VmaUBOTexture {
+    VkImage image{};
+    VmaAllocation imageAllocation{};
+    VkImageView view{};
+    VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
+
+    VmaBufferRequiredObjects requiredObjects{};
+    void create(const std::string &file, VkSampler sampler);
+    void cleanup();
+};
+
+
 LLVK_NAMESPACE_END
 
 

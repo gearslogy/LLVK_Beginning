@@ -6,6 +6,7 @@
 
 #include "Utils.h"
 #include "LLVK_Image.h"
+#include "BufferManager.h"
 
 LLVK_NAMESPACE_BEGIN
 inline void* alignedAlloc(size_t size, size_t alignment)
@@ -174,8 +175,8 @@ struct UBOTexture {
     UBORequiredObjects requiredObjs{};
     void create(const std::string &file, VkSampler sampler) {
         imageAndMemory = FnImage::createTexture(requiredObjs.physicalDevice,requiredObjs.device, requiredObjs.commandPool, requiredObjs.queue,file);
-        imageView = FnImage::createImageView( requiredObjs.device, imageAndMemory.image,
-            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, imageAndMemory.mipLevels);
+        FnImage::createImageView( requiredObjs.device, imageAndMemory.image,
+            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, imageAndMemory.mipLevels, imageView);
         descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descImageInfo.imageView = imageView;
         descImageInfo.sampler = sampler;

@@ -3,10 +3,10 @@
 #include "VulkanRenderer.h"
 #include "renderer/BasicRenderer.h"
 #include "renderer/DynamicsUBO/dynamicsUBO.h"
-
+#include "renderer/vma/VmaRenderer.h"
 int main() {
     //BasicRenderer app;
-    LLVK::DynamicsUBO app;
+    LLVK::VmaRenderer app;
 
     try {
         app.run();

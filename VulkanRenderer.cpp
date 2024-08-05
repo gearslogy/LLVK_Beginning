@@ -333,9 +333,9 @@ void VulkanRenderer::createDepthResources() {
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
-    depthImageView = FnImage::createImageView(mainDevice.logicalDevice,
+    FnImage::createImageView(mainDevice.logicalDevice,
         depthImageAndMemory.image,
-        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1);
+        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1, depthImageView);
 }
 
 void VulkanRenderer::createRenderpass(){
