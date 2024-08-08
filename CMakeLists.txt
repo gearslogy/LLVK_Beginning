@@ -57,7 +57,7 @@ foreach(shader_source IN LISTS shader_sources)
     add_custom_target(${shader_name}_spv DEPENDS ${output_path})
     add_dependencies(${PROJECT_NAME} ${shader_name}_spv)
 endforeach()
-MESSAGE("-------->",${Vulkan_LIBRARIES}) # vulkan-1.lib
+MESSAGE("-------->", ${Vulkan_LIBRARIES}) # vulkan-1.lib
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS} ${GLFW_PATH_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH_LIB})
