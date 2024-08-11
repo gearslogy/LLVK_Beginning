@@ -7,17 +7,13 @@ set(GLFW_PATH_INCLUDE ${GLFW_PATH}/include)
 set(GLFW_PATH_LIB ${GLFW_PATH}/lib-vc2019)
 
 
-
-FIND_PACKAGE(Vulkan)
-
+find_package(Vulkan)
 file(GLOB SOURCES *.h *.cpp
         renderer/*
         renderer/*/*
 )
 
-add_executable(${PROJECT_NAME} main.cpp ${SOURCES}
-        LLVK_Descriptor.hpp
-        LLVK_SYS.hpp)
+add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_ENABLE_EXPERIMENTAL)
 # GLM_ENABLE_EXPERIMENTAL for hash: #include <glm/gtx/hash.hpp>
 MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )
@@ -59,11 +55,15 @@ foreach(shader_source IN LISTS shader_sources)
 endforeach()
 MESSAGE("-------->", ${Vulkan_LIBRARIES}) # vulkan-1.lib
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS} ${GLFW_PATH_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH_LIB})
-target_link_libraries (${PROJECT_NAME} ${Vulkan_LIBRARIES} glfw3)
+target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS}
+        ${GLFW_PATH_INCLUDE}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/libs/KTX-Software/include) # ktx include
+target_link_directories(${PROJECT_NAME} PUBLIC
+        ${GLFW_PATH_LIB}
+        ${CMAKE_CURRENT_LIST_DIR}/libs/KTX-Software/lib) # ktx lib dir
+target_link_libraries (${PROJECT_NAME} ${Vulkan_LIBRARIES} glfw3 ktx)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/bin)
 set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
 target_compile_definitions(${PROJECT_NAME} PRIVATE MAGIC_ENUM_RANGE_MIN=-200 MAGIC_ENUM_RANGE_MAX=500 )
-

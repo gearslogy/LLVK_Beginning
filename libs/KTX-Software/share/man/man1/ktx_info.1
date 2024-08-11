@@ -1,0 +1,47 @@
+.TH "ktx_info" 1 "Wed Mar 20 2024 15:46:14" "Version 4.3.2" "KTX Tools Reference" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+ktx_info \- ktx info 
+.PP
+Print information about a KTX2 file\&.
+.SH "SYNOPSIS"
+.PP
+ktx info [option\&.\&.\&.] \fIinput-file\fP 
+.SH "DESCRIPTION"
+.PP
+\fBktx\fP \fBinfo\fP prints information about the KTX2 file specified as the \fIinput-file\fP argument\&. If the \fIinput-file\fP is '-' the file will be read from the stdin\&. The command implicitly calls \fBvalidate\fP and prints any found errors and warnings to stdout\&. If the specified input file is invalid the information is displayed based on best effort and may be incomplete\&.
+.PP
+The JSON output formats conform to the https://schema.khronos.org/ktx/info_v0.json schema even if the input file is invalid and certain information cannot be parsed or displayed\&. Additionally, for JSON outputs the KTX file identifier is printed using '\\u001A' instead of '\\x1A' as an unescaped '\\x1A' sequence inside a JSON string breaks nearly every JSON tool\&. Note that this does not change the value of the string only its representation\&.
+.PP
+\fBNote\fP
+.RS 4
+\fBktx\fP \fBinfo\fP prints using UTF-8 encoding\&. If your console is not set for UTF-8 you will see incorrect characters in output of the file identifier on each side of the 'KTX nn'\&.
+.RE
+.PP
+The following options are available:
+.PP
+options_format
+.PP
+options_generic
+.SH "EXIT STATUS"
+.PP
+exitstatus
+.SH "HISTORY"
+.PP
+\fBVersion 4\&.0\fP
+.RS 4
+
+.IP "\(bu" 2
+Initial version
+.PP
+.RE
+.PP
+.SH "AUTHOR"
+.PP
+.IP "\(bu" 2
+Mátyás Császár [Vader], RasterGrid www\&.rastergrid\&.com
+.IP "\(bu" 2
+Daniel Rákos, RasterGrid www\&.rastergrid\&.com 
+.PP
+
