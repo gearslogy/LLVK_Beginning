@@ -4,9 +4,10 @@
 #include "renderer/BasicRenderer.h"
 #include "renderer/DynamicsUBO/dynamicsUBO.h"
 #include "renderer/vma/VmaRenderer.h"
+#include "renderer/ktx_texture/ktx_texture.h"
 int main() {
     //BasicRenderer app;
-    LLVK::VmaRenderer app;
+    LLVK::ktx_texture app;
 
     try {
         app.run();
