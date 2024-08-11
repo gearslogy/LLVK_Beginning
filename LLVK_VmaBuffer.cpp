@@ -1,12 +1,15 @@
-//
+﻿//
 // Created by liuya on 8/4/2024.
 //
 
 #include "LLVK_vmaBuffer.h"
 #include "libs/stb_image.h"
 #include "LLVK_Image.h"
+#include <ktx.h>
+#include <magic_enum.hpp>
+
 LLVK_NAMESPACE_BEGIN
-void VmaUBOBuffer::createAndMapping(VkDeviceSize bufferSize) {
+    void VmaUBOBuffer::createAndMapping(VkDeviceSize bufferSize) {
     auto result = FnVmaBuffer::createBuffer(requiredObjects.device,
         requiredObjects.allocator,
         bufferSize,
@@ -38,27 +41,20 @@ void VmaSimpleGeometryBufferManager::cleanup() {
 //  image
 void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
                                              uint32_t width, uint32_t height,
-                                             uint32_t mipLevels,
+                                             uint32_t mipLevels, uint32_t layerCount,
                                              VkFormat format,
                                              VkImageTiling tiling,
                                              VkImageUsageFlags usageFlags,
                                              bool canMapping,
                                              VkImage &image, VmaAllocation &imageAllocation) {
     const auto & [device,physicalDevice,commandPool, queue, allocator] = reqObj;
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent.width = width;
-    imageInfo.extent.height = height;
-    imageInfo.extent.depth = 1;
+
+    VkImageCreateInfo imageInfo = FnImage::imageCreateInfo(width,height);
     imageInfo.mipLevels = mipLevels;
-    imageInfo.arrayLayers = 1;
+    imageInfo.arrayLayers = layerCount;
     imageInfo.format = format;
     imageInfo.tiling = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usageFlags;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     VmaAllocationCreateInfo allocCreateInfo = {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -67,6 +63,17 @@ void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj
         throw std::runtime_error{"can not create image and allocation"};
     }
 }
+void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj, const VkImageCreateInfo &createInfo,  bool canMapping, VkImage &image, VmaAllocation &allocation) {
+    const auto & [device,physicalDevice,commandPool, queue, allocator] = reqObj;
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    if(canMapping) allocCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    if(vmaCreateImage(allocator, &createInfo, &allocCreateInfo, &image, &allocation, nullptr) !=VK_SUCCESS) {
+        throw std::runtime_error{"can not create image and allocation"};
+    }
+}
+
+
 
 void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
     const std::string &filePath,VkImage &image, VmaAllocation &allocation,
@@ -84,7 +91,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
     // create staging
     VkBuffer stagingBuffer{};
     VmaAllocation stagingBufferAllocation{};
-    FnVmaBuffer::createBuffer(device, allocator,imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    FnVmaBuffer::createBuffer(device, allocator, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         true,stagingBuffer, stagingBufferAllocation);
     // mapping stagging
     void* data;
@@ -97,7 +104,8 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
 
     constexpr VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
     createImageAndAllocation(reqObj, texWidth, texHeight,
-        mipLevels,format,VK_IMAGE_TILING_OPTIMAL,+
+        mipLevels,1,
+        format,VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         false,
         image, allocation );
@@ -105,7 +113,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
     // 3. copy buffer to image
     FnImage::transitionImageLayout(device, commandPool, queue,
                           image, format,
-                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels,1);
 
     FnImage::copyBufferToImage(device, commandPool, queue, stagingBuffer,
                       image, texHeight, texHeight);
@@ -126,7 +134,7 @@ void VmaUBOTexture::create(const std::string &file, VkSampler sampler) {
     FnImage::createImageView( requiredObjects.device, image,
             VK_FORMAT_R8G8B8A8_SRGB,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            createMipLevels,view);
+            createMipLevels,1,view);
     descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     descImageInfo.imageView = view;
     descImageInfo.sampler = sampler;
@@ -136,6 +144,246 @@ void VmaUBOTexture::cleanup() {
     vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
     vkDestroyImageView(requiredObjects.device, view, nullptr);
 }
+
+void VmaUBOKTXTexture::cleanup() {
+    vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
+    vkDestroyImageView(requiredObjects.device, view, nullptr);
+}
+
+void VmaUBOKTXTexture::create(const std::string &file, VkSampler sampler) {
+    const auto &[device,physicalDevice,commandPool, queue, allocator] = requiredObjects;
+    ktxTexture* ktx;
+
+
+    KTX_error_code result = ktxTexture_CreateFromNamedFile(file.c_str(),
+                                            KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+                                            &ktx);
+
+    if(result!= KTX_SUCCESS)
+        throw std::runtime_error{"error loading ktx"};
+
+    uint32_t numLevels = ktx->numLevels;
+    uint32_t baseWidth = ktx->baseWidth;
+    uint32_t baseHeight = ktx->baseHeight;
+    uint32_t numLayers = ktx->numLayers;
+    bool isArray = ktx->isArray;
+
+    ktxTexture2* ktx2 = reinterpret_cast<ktxTexture2*>(ktx); // if ktx->classId == ktxTexture2_c
+    uint32_t component = ktxTexture2_GetNumComponents(ktx2);
+    std::cout << "component:" << component << std::endl;
+    VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+    std::cout << ktx2->dataSize <<std::endl;
+
+    //std::cout << magic_enum::enum_name(ktx2->supercompressionScheme)<< std::endl;
+        //std::cout << magic_enum::enum_name(ktxTexture2_GetColorModel_e(ktx2)) << std::endl; // KHR_DF_MODEL_UASTC
+
+
+    ktx_size_t tempOffset;
+    result = ktxTexture_GetImageOffset(ktx, 0, 0, 0, &tempOffset);
+    std::cout << "temp offset:" << tempOffset << std::endl;
+
+
+
+    // 0 Get Staging buffer size
+    VkDeviceSize imageSize = ktxTexture_GetDataSize(ktx); // all buffer size
+    std::cout << "widht:" << ktx->baseWidth << " height:" << ktx->baseHeight << std::endl;
+    std::cout << "numLevels:" << numLevels << " numLayers:" << numLayers << "   total bytes:" << imageSize << std::endl;
+    // 创建Staging Buffer
+    VkBuffer stagingBuffer;
+    VmaAllocation stagingAllocation;
+    FnVmaBuffer::createBuffer(device,allocator, imageSize,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true,
+                 stagingBuffer,
+                 stagingAllocation);
+
+    // 复制所有数据到 Staging Buffer，包括每一层level，每一层layer
+    void* data;
+    vmaMapMemory(allocator, stagingAllocation, &data);
+    memcpy(data, ktxTexture_GetData(ktx), imageSize);
+    vmaUnmapMemory(allocator, stagingAllocation);
+
+
+
+    std::vector<VkBufferImageCopy> bufferCopyRegions;
+    for(auto layer : UT_Fn::xrange(0, numLayers)) {
+        for(auto mipLevel: UT_Fn::xrange(0,numLevels)) {
+
+            // Retrieve a pointer to the image for a specific mip level, array layer & face or depth slice.
+            int faceSlice = 0;
+            ktx_size_t offset;
+            result = ktxTexture_GetImageOffset(ktx, static_cast<ktx_uint32_t>(mipLevel), static_cast<ktx_uint32_t>(layer), faceSlice, &offset);
+            if(result!= KTX_SUCCESS)
+                throw std::runtime_error{"error ktxTexture_GetImageOffset ktx"};
+
+            VkBufferImageCopy bufferCopyRegion = {};
+            bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            bufferCopyRegion.imageSubresource.mipLevel = mipLevel;
+            bufferCopyRegion.imageSubresource.baseArrayLayer = layer;
+            bufferCopyRegion.imageSubresource.layerCount = 1;
+            bufferCopyRegion.imageExtent.width = std::max(1u, baseWidth >> mipLevel);
+            bufferCopyRegion.imageExtent.height = std::max(1u, baseHeight >> mipLevel);
+            bufferCopyRegion.imageExtent.depth = 1;
+            bufferCopyRegion.bufferOffset = offset;
+            bufferCopyRegions.push_back(bufferCopyRegion);
+        }
+    }
+
+
+    //2. create DST image & allocation
+    auto imageCreateInfo = FnImage::imageCreateInfo(baseWidth, baseHeight);
+    imageCreateInfo.format = format;
+    imageCreateInfo.mipLevels = 1;
+    imageCreateInfo.arrayLayers = 1;
+    FnVmaImage::createImageAndAllocation(requiredObjects,imageCreateInfo,false, image, imageAllocation);
+    // DST imageview
+    auto viewCIO = FnImage::imageViewCreateInfo(image, format);
+    viewCIO.format = format;
+    viewCIO.subresourceRange.levelCount = 1;
+    viewCIO.subresourceRange.layerCount = 1;
+    FnImage::createImageView(device, viewCIO,view);
+
+    FnImage::transitionImageLayout(device, commandPool, queue,image,
+                          format,
+                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,1);
+
+    //3. do staging -> dst image
+
+    auto copyCmd = FnCommand::beginSingleTimeCommand(device, commandPool);
+    // Copy mip levels from staging buffer
+    VkBufferImageCopy bufferCopyRegion = {};
+    bufferCopyRegion.bufferRowLength = 0;  // 设置为图像的宽度
+    bufferCopyRegion.bufferImageHeight = 0;  // 设置为图像的高度
+    bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    bufferCopyRegion.imageSubresource.mipLevel = 0;
+    bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
+    bufferCopyRegion.imageSubresource.layerCount = 1;
+    bufferCopyRegion.imageExtent.width = 2048;
+    bufferCopyRegion.imageExtent.height = 2048;
+    bufferCopyRegion.imageExtent.depth = 1;
+    bufferCopyRegion.bufferOffset = 0;
+    vkCmdCopyBufferToImage(
+        copyCmd,
+        stagingBuffer,
+        image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &bufferCopyRegion);
+    FnCommand::endSingleTimeCommand(device, commandPool, queue, copyCmd);
+
+    /*
+    auto copyCmd = FnCommand::beginSingleTimeCommand(device, commandPool);
+    // Copy mip levels from staging buffer
+    vkCmdCopyBufferToImage(
+        copyCmd,
+        stagingBuffer,
+        image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        bufferCopyRegions.size(),
+        bufferCopyRegions.data());
+    FnCommand::endSingleTimeCommand(device, commandPool, queue, copyCmd);*/
+
+    //5. image layout from DST->ShaderRead
+    FnImage::transitionImageLayout(device, commandPool, queue,image,
+                           format,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1,1);
+
+
+    FnVmaBuffer::destroyBuffer(allocator, stagingBuffer, stagingAllocation);
+    ktxTexture_Destroy(ktx);
+
+
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descImageInfo.imageView = view;
+    descImageInfo.sampler = sampler;
+}
+
+void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
+    const auto &[device,physicalDevice,commandPool, queue, allocator] = requiredObjects;
+
+
+    ktxTexture* kTexture;
+    ktxTexture2* kTexture2{nullptr};
+    KTX_error_code result;
+    ktxVulkanDeviceInfo vdi;
+
+
+    // Set up Vulkan physical device (gpu), logical device (device), queue
+    // and command pool. Save the handles to these in a struct called vkctx.
+    // ktx VulkanDeviceInfo is used to pass these with the expectation that
+    // apps are likely to upload a large number of textures.
+    ktxVulkanDeviceInfo_Construct(&vdi, physicalDevice, device,
+                                  queue, commandPool, nullptr);
+
+    result = ktxTexture_CreateFromNamedFile(file.c_str(),
+                                               KTX_TEXTURE_CREATE_NO_FLAGS,
+                                               &kTexture);
+    if(kTexture->classId == ktxTexture2_c)
+        kTexture2 = reinterpret_cast<ktxTexture2*>(kTexture); // if ktx->classId == ktxTexture2_c
+
+    if(kTexture2 and ktxTexture2_NeedsTranscoding(kTexture2)) {
+        ktx_texture_transcode_fmt_e tf;
+
+        // Using VkGetPhysicalDeviceFeatures or GL_COMPRESSED_TEXTURE_FORMATS or
+        // extension queries, determine what compressed texture formats are
+        // supported and pick a format. For example
+        VkPhysicalDeviceFeatures deviceFeatures;
+        vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+
+        khr_df_model_e colorModel = ktxTexture2_GetColorModel_e(kTexture2);
+        std::cout << "[[VmaUBOKTX2Texture::create]] find need transcode:" <<magic_enum::enum_name(colorModel) << std::endl;
+        if (colorModel == KHR_DF_MODEL_UASTC and deviceFeatures.textureCompressionASTC_LDR) {
+            tf = KTX_TTF_ASTC_4x4_RGBA;
+        }
+        else if (colorModel == KHR_DF_MODEL_ETC1S && deviceFeatures.textureCompressionETC2) {
+            tf = KTX_TTF_ETC;
+        } else if (deviceFeatures.textureCompressionASTC_LDR) {
+            tf = KTX_TTF_ASTC_4x4_RGBA;
+        } else if (deviceFeatures.textureCompressionETC2)
+            tf = KTX_TTF_ETC2_RGBA;
+        else if (deviceFeatures.textureCompressionBC)
+            tf = KTX_TTF_BC3_RGBA;
+        else {
+            auto er = std::format("current texture encode mode:{}, gpu-device support textureCompressionASTC_LDR:{}",  magic_enum::enum_name(colorModel) ,
+                deviceFeatures.textureCompressionASTC_LDR);
+            throw std::runtime_error{er};
+        }
+        std::cout << "[[VmaUBOKTX2Texture::create::file tanscoding:]]" << magic_enum::enum_name(tf)  << std::endl;
+        result = ktxTexture2_TranscodeBasis(kTexture2, tf, 0);
+        assert(result == KTX_SUCCESS);
+    }
+
+    assert(KTX_SUCCESS == result) ;
+    result = ktxTexture_VkUploadEx(kTexture, &vdi, &ktx_vk_texture,
+                                      VK_IMAGE_TILING_OPTIMAL,
+                                      VK_IMAGE_USAGE_SAMPLED_BIT,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    assert(KTX_SUCCESS == result) ;
+    image = ktx_vk_texture.image;
+
+    VkImageViewCreateInfo viewCreateInfo = FnImage::imageViewCreateInfo(image, ktx_vk_texture.imageFormat);
+    viewCreateInfo.format = ktx_vk_texture.imageFormat;
+    viewCreateInfo.viewType =ktx_vk_texture.viewType;
+    viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewCreateInfo.subresourceRange.layerCount = ktx_vk_texture.layerCount;
+    viewCreateInfo.subresourceRange.levelCount = ktx_vk_texture.levelCount;
+    FnImage::createImageView(device,viewCreateInfo, view);
+
+    ktxTexture_Destroy(kTexture);
+    ktxVulkanDeviceInfo_Destruct(&vdi);
+
+    descImageInfo.sampler = sampler;
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descImageInfo.imageView = view;
+}
+
+
+void VmaUBOKTX2Texture::cleanup() {
+    // When done using the image in Vulkan...
+    ktxVulkanTexture_Destruct(&ktx_vk_texture, requiredObjects.device, nullptr);
+    vkDestroyImageView(requiredObjects.device, view, nullptr);
+}
+
+
 
 
 

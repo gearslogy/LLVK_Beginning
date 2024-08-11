@@ -176,7 +176,7 @@ struct UBOTexture {
     void create(const std::string &file, VkSampler sampler) {
         imageAndMemory = FnImage::createTexture(requiredObjs.physicalDevice,requiredObjs.device, requiredObjs.commandPool, requiredObjs.queue,file);
         FnImage::createImageView( requiredObjs.device, imageAndMemory.image,
-            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, imageAndMemory.mipLevels, imageView);
+            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, imageAndMemory.mipLevels,1, imageView);
         descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descImageInfo.imageView = imageView;
         descImageInfo.sampler = sampler;

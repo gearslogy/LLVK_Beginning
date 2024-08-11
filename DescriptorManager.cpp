@@ -74,7 +74,7 @@ void DescriptorManager::createTexture(const char *tex) {
           tex
       );
     FnImage::createImageView(bindDevice, imageAndMemory.image,
-        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, imageAndMemory.mipLevels, imageView);
+        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, imageAndMemory.mipLevels,1, imageView);
 
     imageSampler = FnImage::createImageSampler(bindPhysicalDevice, bindDevice);
 }

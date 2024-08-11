@@ -1,0 +1,156 @@
+.TH "toktx" 1 "Wed Mar 20 2024 15:46:14" "Version 4.3.2" "KTX Tools Reference" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+toktx \- Create a KTX file from JPEG, PNG or netpbm format files\&.
+.SH "SYNOPSIS"
+.PP
+toktx [options] \fIoutfile\fP [\fIinfile\fP\&.{jpg,png,pam,pgm,ppm} \&.\&.\&.]
+.SH "DESCRIPTION"
+.PP
+Create a Khronos format texture file (KTX) from a set of JPEG (\&.jpg), PNG (\&.png) or Netpbm format (\&.pam, \&.pgm, \&.ppm) images\&. It writes the destination ktx file to \fIoutfile\fP, creating parent directories and appending '\&.ktx{,2}' if necessary\&. If \fIoutfile\fP is '-' the output will be written to stdout\&.
+.PP
+\fBtoktx\fP reads each named \fIinfile\fP\&. which must be in \&.jpg, \&.png, \&.pam, \&.ppm or \&.pgm format\&. \fIinfiles\fP prefixed with '@' are read as text files listing actual file names to process with one file path per line\&. Paths must be absolute or relative to the current directory when \fBtoktx\fP is run\&. If '@@' is used instead, paths must be absolute or relative to the location of the list file\&. File paths must be encoded in UTF-8\&.
+.PP
+The target texture type (number of components in the output texture) is chosen via \fB--target_type\fP\&. Swizzling of the components of the input file is specified with \fB--input_swizzle\fP and swizzzle metadata can be specified with \fB--swizzle\fP\&. Defaults, shown in the following table, are based on the components of the input file and whether the target texture format is uncompressed or block-compressed including the universal formats\&. Input components are arbitrarily labeled r, g, b & a\&.
+.PP
+Uncompressed Formats   Block-compressed formats    Input components   1 (greyscale)   2 (greyscale alpha)   3   4   1   2   3   4    Target type   R   RG   RGB   RGBA   RGB   RGBA   RGB   RGBA    Input swizzle   -   -   -   -   rrr1   rrrg   -   -    Swizzle   rrr1   rrrg   -   -   -   -   -   -   
+.PP
+As can be seen from the table one- and two-component inputs are treated as luminance{,-alpha} in accordance with the JPEG and PNG specifications\&. For consistency Netpbm inputs are handled the same way\&. Use of R & RG types for uncompressed formats saves space but note that the sRGB versions of these formats are not widely supported so a warning will be issued prompting you to convert the input to linear\&.
+.PP
+The primaries, transfer function (OETF) and the texture's sRGB-ness is set based on the input file unless \fB--assign_oetf\fP linear or \fB--assign_oetf\fP srgb is specified\&. For \&.jpg files \fBtoktx\fP always sets BT709/sRGB primaries and the sRGB OETF in the output file and creates sRGB format textures\&. Netpbm files always use BT\&.709/sRGB primaries and the BT\&.709 OETF\&. \fBtoktx\fP tranforms these images to the sRGB OETF, sets BT709/sRGB primaries and the sRGB OETF in the output file and creates sRGB format textures\&.
+.PP
+For \&.png files the OETF is set as follows:
+.PP
+.IP "\fBNo color-info chunks or sRGB chunk present: \fP" 1c
+primaries are set to BT\&.709 and OETF to sRGB\&. 
+.IP "\fBsRGB chunk present: \fP" 1c
+primaries are set to BT\&.709 and OETF to sRGB\&. gAMA and cHRM chunks are ignored\&. 
+.IP "\fBiCCP chunk present: \fP" 1c
+General ICC profiles are not yet supported by toktx or the KTX2 format\&. In future these images may be transformed to linear or sRGB OETF as appropriate for the profile\&. sRGB chunk must not be present\&.  
+.IP "\fBgAMA and/or cHRM chunks present without sRGB or iCCP: \fP" 1c
+If gAMA is < 60000 the image is transformed to and the OETF is set to sRGB\&. otherwise the image is transformed to and the OETF is set to linear\&. The color primaries in cHRM are matched to one of the standard sets listed in the Khronos Data Format Specification (the KHR_DF_PRIMARIES values from khr_df\&.h) and the primaries field of the output file's DFD is set to the matched value\&. If no match is found the primaries field is set to UNSPECIFIED\&. 
+.PP
+.PP
+The following options are always available: 
+.IP "\fB--2d \fP" 1c
+If the image height is 1, by default a KTX file for a 1D texture is created\&. With this option one for a 2D texture is created instead\&. 
+.IP "\fB--automipmap \fP" 1c
+Causes the KTX file to be marked to request generation of a mipmap pyramid when the file is loaded\&. This option is mutually exclusive with \fB--genmipmap\fP, \fB--levels\fP and \fB--mipmap\fP\&. 
+.IP "\fB--cubemap \fP" 1c
+KTX file is for a cubemap\&. At least 6 \fIinfiles\fP must be provided, more if \fB--mipmap\fP or \fB--layers\fP is also specified\&. Provide the images in the order +X, -X, +Y, -Y, +Z, -Z where the arrangement is a left-handed coordinate system with +Y up\&. So if you're facing +Z, -X will be on your left and +X on your right\&. If \fB--layers\fP > 1 is specified, provide the faces for layer 0 first then for layer 1, etc\&. Images must have an upper left origin so --lower_left_maps_to_s0t0 is ignored with this option\&. 
+.IP "\fB--depth <number> \fP" 1c
+KTX file is for a 3D texture with a depth of \fInumber\fP where \fInumber\fP > 0\&. Provide the file(s) for z=0 first then those for z=1, etc\&. It is an error to specify this together with \fB--layers\fP or \fB--cubemap\fP\&. 
+.IP "\fB--genmipmap \fP" 1c
+Causes mipmaps to be generated for each input file\&. This option is mutually exclusive with \fB--automipmap\fP and \fB--mipmap\fP\&. When set, the following mipmap-generation related options become valid, otherwise they are ignored\&. 
+.IP "\fB--filter <name> \fP" 1c
+Specifies the filter to use when generating the mipmaps\&. \fIname\fP is a string\&. The default is \fIlanczos4\fP\&. The following names are recognized: \fIbox\fP, \fItent\fP, \fIbell\fP, \fIb-spline\fP, \fImitchell\fP, \fIlanczos3\fP, \fIlanczos4\fP, \fIlanczos6\fP, \fIlanczos12\fP, \fIblackman\fP, \fIkaiser\fP, \fIgaussian\fP, \fIcatmullrom\fP, \fIquadratic_interp\fP, \fIquadratic_approx\fP and \fIquadratic_mix\fP\&. 
+.IP "\fB--fscale <floatVal> \fP" 1c
+The filter scale to use\&. The default is 1\&.0\&. 
+.IP "\fB--wmode <mode> \fP" 1c
+Specify how to sample pixels near the image boundaries\&. Values are \fIwrap\fP, \fIreflect\fP and \fIclamp\fP\&. The default is \fIclamp\fP\&. 
+.PP
+.IP "\fB--layers <number> \fP" 1c
+KTX file is for an array texture with \fInumber\fP of layers where \fInumber\fP > 0\&. Provide the file(s) for layer 0 first then those for layer 1, etc\&. It is an error to specify this together with \fB--depth\fP\&. 
+.IP "\fB--levels <number> \fP" 1c
+KTX file is for a mipmap pyramid with \fInumber\fP of levels rather than a full pyramid\&. \fInumber\fP must be > 1 and <= the maximum number of levels determined from the size of the base level image\&. Provide the base level image first, if using \fB--mipmap\fP\&. This option is mutually exclusive with \fB--automipmap\fP\&. 
+.IP "\fB--mipmap \fP" 1c
+KTX file is for a mipmap pyramid with one \fBinfile\fP being explicitly provided for each level\&. Provide the images in the order of layer then face or depth slice then level with the base-level image first then in order down to the 1x1 image or the level specified by \fB--levels\fP\&. 
+.PP
+\fBNote\fP
+.RS 4
+This ordering differs from that in the created texture as it is felt to be more user-friendly\&.
+.RE
+.PP
+This option is mutually exclusive with \fB--automipmap\fP and \fB--genmipmap\fP\&. 
+.IP "\fB--nometadata \fP" 1c
+Do not write KTXorientation metadata into the output file\&. Metadata is written by default\&. Use of this option is not recommended\&. 
+.IP "\fB--nowarn \fP" 1c
+Silence warnings which are issued when certain transformations are performed on input images\&. 
+.IP "\fB--upper_left_maps_to_s0t0 \fP" 1c
+Map the logical upper left corner of the image to s0,t0\&. Although opposite to the OpenGL convention, this is the DEFAULT BEHAVIOUR\&. netpbm and PNG files have an upper left origin so this option does not flip the input images\&. When this option is in effect, toktx writes a KTXorientation value of S=r,T=d into the output file to inform loaders of the logical orientation\&. If an OpenGL {,ES} loader ignores the orientation value, the image will appear upside down\&. 
+.IP "\fB--lower_left_maps_to_s0t0 \fP" 1c
+Map the logical lower left corner of the image to s0,t0\&. This causes the input netpbm and PNG images to be flipped vertically to a lower-left origin\&. When this option is in effect, toktx writes a KTXorientation value of S=r,T=u into the output file to inform loaders of the logical orientation\&. If a Vulkan loader ignores the orientation value, the image will appear upside down\&. This option is ignored with \fB--cubemap\fP\&.  
+.IP "\fB--assign_oetf <linear|srgb> \fP" 1c
+Force the created texture to have the specified transfer function\&. If this is specified, implicit or explicit color space information from the input file(s) will be ignored and no color transformation will be performed\&. USE WITH CAUTION preferably only when you know the file format information is wrong\&. 
+.IP "\fB--assign_primaries <bt709|none|srgb> \fP" 1c
+Force the created texture to have the specified primaries\&. If this is specified, implicit or explicit color space information from the input file(s) will be ignored and no color transformation will be performed\&. USE WITH CAUTION preferably only when you know the file format information is wrong\&. 
+.IP "\fB--convert_oetf <linear|srgb> \fP" 1c
+Convert the input images to the specified transfer function, if the current transfer function is different\&. If both this and \fB--assign_oetf\fP are specified, conversion will be performed from the assigned transfer function to the transfer function specified by this option, if different\&. 
+.IP "\fB--convert_primaries <primaries> \fP" 1c
+Convert the image images to the specified color primaries, if different from the color primaries of the input file(s) or the one specified by --assign-primaries\&. If both this and --assign-primaries are specified, conversion will be performed from the assigned primaries to the primaries specified by this option, if different\&. This option is not allowed to be specified when --assign-primaries is set to 'none'\&. Case insensitive\&. Possible options are: bt709 | srgb | bt601-ebu | bt601-smpte | bt2020 | ciexyz | aces | acescc | ntsc1953 | pal525 | displayp3 | adobergb 
+.IP "\fB--linear \fP" 1c
+Deprecated\&. Use \fB--assign_oetf\fP linear\&. 
+.IP "\fB--srgb \fP" 1c
+Deprecated\&. Use \fB--assign_oetf\fP srgb\&. 
+.IP "\fB--resize <width>x<height> \fP" 1c
+Resize images to \fIwidth\fP X \fIheight\fP\&. This should not be used with \fB--mipmap\fP as it would resize all the images to the same size\&. Resampler options can be set via \fB--filter\fP and \fB--fscale\fP\&.  
+.IP "\fB--scale <value> \fP" 1c
+Scale images by \fIvalue\fP as they are read\&. Resampler options can be set via \fB--filter\fP and \fB--fscale\fP\&. \&. 
+.IP "\fB--swizzle <swizzle> \fP" 1c
+Add swizzle metadata to the file being created\&. \fIswizzle\fP has the same syntax as the parameter for \fB--input_swizzle\fP\&. Not recommended for use with block-cmpressed textures, including Basis Universal formats, because something like \fRrabb\fP may yield drastically different error metrics if done after compression\&. 
+.IP "\fB--target_type <type> \fP" 1c
+Specify the number of components in the created texture\&. \fItype\fP is one of the following strings: \fRR\fP, \fRRG\fP, \fRRGB\fP or \fRRGBA\fP\&. Excess input components will be dropped\&. Output components with no mapping from the input will be set to 0 or, if the alpha component, 1\&.0\&. 
+.IP "\fB--t2 \fP" 1c
+Output in KTX2 format\&. Default is KTX\&. 
+.PP
+.PP
+options
+.PP
+Options can also be set in the environment variable TOKTX_OPTIONS\&. TOKTX_OPTIONS is parsed first\&. If conflicting options appear in TOKTX_OPTIONS or the command line, the last one seen wins\&. However if both \fB--automipmap\fP and \fB--mipmap\fP are seen, it is always flagged as an error\&. You can, for example, set TOKTX_OPTIONS=--lower_left_maps_to_s0t0 to change the default mapping of the logical image origin to match the GL convention\&.
+.SH "EXIT STATUS"
+.PP
+\fBtoktx\fP exits 0 on success, 1 on command line errors and 2 on functional errors\&.
+.SH "HISTORY"
+.PP
+\fBVersion 4\&.0 (using new version numbering system)\fP
+.RS 4
+
+.IP "\(bu" 2
+Add KTX version 2 support including Basis Universal encoding\&.
+.IP "\(bu" 2
+Add \&.png and \&.jpg readers\&.
+.IP "\(bu" 2
+Transform NetPBM input files to sRGB OETF\&.
+.IP "\(bu" 2
+Add mipmap generation\&.
+.IP "\(bu" 2
+Remove legacy items\&.
+.PP
+.RE
+.PP
+\fBVersion 1\&.3\fP
+.RS 4
+
+.IP "\(bu" 2
+Switch to ktxTexture API\&.
+.IP "\(bu" 2
+Add --levels option\&.
+.IP "\(bu" 2
+Add --2d option\&.
+.PP
+.RE
+.PP
+\fBVersion 1\&.2\fP
+.RS 4
+
+.IP "\(bu" 2
+Remove --sized; always create sized format\&.
+.IP "\(bu" 2
+Write metadata by default\&.
+.IP "\(bu" 2
+Bug fixes\&.
+.PP
+.RE
+.PP
+\fBVersion 1\&.1\fP
+.RS 4
+
+.IP "\(bu" 2
+Moved --alpha and --luminance to legacy\&.
+.PP
+.RE
+.PP
+.SH "AUTHOR"
+.PP
+Mark Callow, Edgewise Consulting www\&.edgewise-consulting\&.com 

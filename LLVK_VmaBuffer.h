@@ -2,13 +2,13 @@
 // Created by liuya on 8/4/2024.
 //
 
-
+#pragma once
 
 #include <vulkan/vulkan.h>
 #include "LLVK_SYS.hpp"
 #include "vma/vk_mem_alloc.h"
 #include "CommandManager.h"
-
+#include <ktxvulkan.h>
 LLVK_NAMESPACE_BEGIN
 
 namespace FnVmaBuffer {
@@ -149,32 +149,53 @@ struct VmaSimpleGeometryBufferManager {
 };
 
 
-
+// --- Image Op ---
 struct FnVmaImage {
     static void createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
                                              uint32_t width, uint32_t height,
-                                             uint32_t mipLevels,
+                                             uint32_t mipLevels, uint32_t layerCount,
                                              VkFormat format,
                                              VkImageTiling tiling,
                                              VkImageUsageFlags usageFlags,
                                              bool canMapping,
                                              VkImage &image, VmaAllocation &imageAllocation);
+    static void createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
+        const VkImageCreateInfo &createInfo, bool canMapping, VkImage &image, VmaAllocation &allocation );
+
     static void createTexture(const VmaBufferRequiredObjects &reqObj,
         const std::string &filePath,
         VkImage &image, VmaAllocation &allocation,uint32_t &createdMipLevels
         );
 };
 
-struct VmaUBOTexture {
+struct IVmaUBOTexture {
     VkImage image{};
     VmaAllocation imageAllocation{};
     VkImageView view{};
     VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
-
+};
+// read tga/jpg/ ... etc use
+struct VmaUBOTexture : IVmaUBOTexture {
     VmaBufferRequiredObjects requiredObjects{};
     void create(const std::string &file, VkSampler sampler);
     void cleanup();
 };
+
+// custom resolve the ktx2 image. !todo
+struct VmaUBOKTXTexture: IVmaUBOTexture {
+    VmaBufferRequiredObjects requiredObjects{};
+    void create(const std::string &file, VkSampler sampler);
+    void cleanup();
+};
+
+struct VmaUBOKTX2Texture: IVmaUBOTexture {
+    VmaBufferRequiredObjects requiredObjects{};
+    void create(const std::string &file, VkSampler sampler);
+    void cleanup();
+private:
+    ktxVulkanTexture ktx_vk_texture{};
+};
+
 
 
 LLVK_NAMESPACE_END

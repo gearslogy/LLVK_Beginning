@@ -299,43 +299,27 @@ void VulkanRenderer::createSwapChain() {
     simpleSwapchain.bindWindow = window;
     simpleSwapchain.init();
 }
-/*
-void VulkanRenderer::createDescriptorSetLayout() {
-    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.createDescriptorSetLayout();
-}
-*/
+
 void VulkanRenderer::createPipelineCache() {
     simplePipelineCache.bindDevice = mainDevice.logicalDevice;
     simplePipelineCache.init();
     simplePipelineCache.loadCache();// actully it's trying load cache
 }
-/*
-void VulkanRenderer::createPipeline(){
-    simplePipeline.bindDevice = mainDevice.logicalDevice;
-    simplePipeline.bindExtent = simpleSwapchain.swapChainExtent;
-    simplePipeline.bindRenderPass = simplePass.pass;
-    simplePipeline.bindDescriptorSetLayouts[0] = simpleDescriptorManager.ubo_descriptorSetLayout;
-    simplePipeline.bindDescriptorSetLayouts[1] = simpleDescriptorManager.texture_descriptorSetLayout;
-    simplePipeline.bindPipelineCache = &simplePipelineCache;
-    simplePipeline.init();
-    // after create all pipeline, THEN WRITE PIPELINE CACHE
-    simplePipelineCache.writeCache();
-}*/
+
 void VulkanRenderer::createDepthResources() {
     auto depthFormat = FnImage::findDepthFormat(mainDevice.physicalDevice);
-    depthImageAndMemory = FnImage::createImageAndMemory(mainDevice.physicalDevice,mainDevice.logicalDevice,
+    FnImage::createImageAndMemory(mainDevice.physicalDevice,mainDevice.logicalDevice,
         simpleSwapchain.swapChainExtent.width,
         simpleSwapchain.swapChainExtent.height,
-        1,
+        1,1,
         depthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImageAndMemory.image, depthImageAndMemory.memory
     );
     FnImage::createImageView(mainDevice.logicalDevice,
         depthImageAndMemory.image,
-        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1, depthImageView);
+        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1,1, depthImageView);
 }
 
 void VulkanRenderer::createRenderpass(){
@@ -356,54 +340,6 @@ void VulkanRenderer::createCommandPool() {
     graphicsCommandPool = FnCommand::createCommandPool(mainDevice.logicalDevice, queueFamilyIndices.graphicsFamily);
 }
 
-
-
-/*
-void VulkanRenderer::createVertexBuffer() {
-    simpleVertexBuffer.bindDevice = mainDevice.logicalDevice;
-    simpleVertexBuffer.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleVertexBuffer.bindQueue = mainDevice.graphicsQueue;
-    simpleVertexBuffer.bindCommandPool = simpleCommandManager.graphicsCommandPool;
-
-    //simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleObjLoader.vertices.size(),
-        //simpleObjLoader.vertices.data());
-    //simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleObjLoader.indices.size(),
-        //simpleObjLoader.indices.data());
-
-
-    //render quad
-
-   //simpleVertexBuffer.createVertexBufferWithStagingBuffer(sizeof(Vertex) * simpleQuad.vertices.size(),
-//       simpleQuad.vertices.data());
-//   simpleVertexBuffer.createIndexBuffer(sizeof(uint32_t)* simpleQuad.indices.size(),
-//       simpleQuad.indices.data());
-
-    //createVertexAndIndexBuffer(simpleVertexBuffer, simpleQuad);
-    createVertexAndIndexBuffer(simpleVertexBuffer, simpleObjLoader);
-}
-
-void VulkanRenderer::createUniformBuffers() {
-    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    simpleDescriptorManager.createUniformBuffers();
-}
-
-void VulkanRenderer::createDescriptorPool() {
-    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    simpleDescriptorManager.createDescriptorPool();
-}
-
-void VulkanRenderer::createDescriptorSets() {
-    simpleDescriptorManager.bindDevice = mainDevice.logicalDevice;
-    simpleDescriptorManager.bindPhysicalDevice = mainDevice.physicalDevice;
-    simpleDescriptorManager.bindSwapChainExtent = &simpleSwapchain.swapChainExtent;
-    simpleDescriptorManager.createDescriptorSets();
-}
-*/
-
 void VulkanRenderer::createCommandBuffers() {
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     std::cout << __FUNCTION__ << " create swapChainCommandBuffers MAX_FRAMES_IN_FLIGHT size:" << commandBuffers.size() << std::endl;
@@ -420,8 +356,6 @@ void VulkanRenderer::createCommandBuffers() {
         throw std::runtime_error("Failed to allocate Command Buffers!");
     }
 }
-
-
 
 
 void VulkanRenderer::createSyncObjects() {

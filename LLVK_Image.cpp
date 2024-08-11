@@ -12,11 +12,29 @@
 #include "CommandManager.h"
 
 LLVK_NAMESPACE_BEGIN
+VkImageViewCreateInfo FnImage::imageViewCreateInfo(VkImage image, VkFormat format) {
+    VkImageViewCreateInfo viewCreateInfo{};
+    viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewCreateInfo.image = image;
+    viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewCreateInfo.format = format;
+    viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;     // (COLOR_BIT) VK_IMAGE_ASPECT_COLOR_BIT VK_IMAGE_ASPECT_DEPTH_BIT ...
+    viewCreateInfo.subresourceRange.baseMipLevel = 0; // only look the level 0
+    viewCreateInfo.subresourceRange.levelCount = 1; // number of mipmap levels to view
+    viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    viewCreateInfo.subresourceRange.layerCount = 1; // number of array levels to view
+    return viewCreateInfo;
+}
+
+
 void FnImage::createImageView(VkDevice device,
-                                     VkImage image,
-                                     VkFormat format,
-                                     VkImageAspectFlags aspectFlags, uint32_t mipLvels,VkImageView &view) {
-    std::cout << "[[createImageView()]]create miplevels:" << mipLvels << std::endl;
+                              VkImage image,
+                              VkFormat format,
+                              VkImageAspectFlags aspectFlags, uint32_t mipLvels, uint32_t layerCount, VkImageView &view) {
     VkImageViewCreateInfo viewCreateInfo{};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewCreateInfo.image = image;
@@ -31,56 +49,93 @@ void FnImage::createImageView(VkDevice device,
     viewCreateInfo.subresourceRange.baseMipLevel = 0; // only look the level 0
     viewCreateInfo.subresourceRange.levelCount = mipLvels; // number of mipmap levels to view
     viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    viewCreateInfo.subresourceRange.layerCount = 1; // number of array levels to view
+    viewCreateInfo.subresourceRange.layerCount = layerCount; // number of array levels to view
 
     if (auto ret = vkCreateImageView(device, &viewCreateInfo, nullptr, &view); ret != VK_SUCCESS) {
         throw std::runtime_error{"ERROR create the image view"};
     }
+}
 
+void FnImage::createImageView(VkDevice device, const VkImageViewCreateInfo &createInfo, VkImageView &view) {
+    if (auto ret = vkCreateImageView(device, &createInfo, nullptr, &view); ret != VK_SUCCESS) {
+        throw std::runtime_error{"ERROR create the image view"};
+    }
 }
 
 
-ImageAndMemory FnImage::createImageAndMemory(VkPhysicalDevice physicalDevice,
-                                             VkDevice device,
-                                             uint32_t width, uint32_t height,
-                                             uint32_t mipLevels,
-                                             VkFormat format,
-                                             VkImageTiling tiling,
-                                             VkImageUsageFlags usageFlags,
-                                             VkMemoryPropertyFlags propertyFlags) {
-    ImageAndMemory imageAndMemory{};
-
+VkImageCreateInfo FnImage::imageCreateInfo(uint32_t width, uint32_t height) {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.extent.width = width;
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = mipLevels;
+    imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
+    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage =  VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    return imageInfo;
+}
+
+
+VkMemoryAllocateInfo FnImage::imageAllocateInfo(VkPhysicalDevice physicalDevice,VkDevice device,  const VkImage &image,VkMemoryPropertyFlags propertyFlags) {
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(device, image, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, propertyFlags);
+    return allocInfo;
+
+}
+
+void FnImage::createImageAndMemory(VkPhysicalDevice physicalDevice,
+                                             VkDevice device,
+                                             uint32_t width, uint32_t height,
+                                             uint32_t mipLevels,
+                                             uint32_t layerCount,
+                                             VkFormat format,
+                                             VkImageTiling tiling,
+                                             VkImageUsageFlags usageFlags,
+                                             VkMemoryPropertyFlags propertyFlags, VkImage &image, VkDeviceMemory &memory) {
+
+
+    VkImageCreateInfo imageInfo= imageCreateInfo(width, height);
+    imageInfo.mipLevels = mipLevels;
+    imageInfo.arrayLayers = layerCount;
     imageInfo.format = format;
     imageInfo.tiling = tiling;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usageFlags;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (vkCreateImage(device, &imageInfo, nullptr, &imageAndMemory.image) != VK_SUCCESS) {
+    if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
+    VkMemoryAllocateInfo allocInfo = imageAllocateInfo(physicalDevice, device, image, propertyFlags);
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+        throw std::runtime_error("failed to allocate image memory!");
+    vkBindImageMemory(device, image, memory, 0);
 
-    VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(device, imageAndMemory.image, &memRequirements);
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, propertyFlags);
+}
 
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &imageAndMemory.memory) != VK_SUCCESS) {
+void FnImage::createImageAndMemory(VkPhysicalDevice physicalDevice, VkDevice device,
+    const VkImageCreateInfo &cio,VkMemoryPropertyFlags propertyFlags,
+    VkImage &image, VkDeviceMemory &memory) {
+    if (vkCreateImage(device, &cio, nullptr, &image) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create image!");
+    }
+    VkMemoryAllocateInfo allocInfo = imageAllocateInfo(physicalDevice, device,image, propertyFlags);
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
     }
-    vkBindImageMemory(device, imageAndMemory.image, imageAndMemory.memory, 0);
-    return imageAndMemory;
 }
+
+
 
 ImageAndMemory FnImage::createTexture(VkPhysicalDevice physicalDevice, VkDevice device,
                                       const VkCommandPool &poolToCopyStagingToImage,
@@ -118,15 +173,15 @@ ImageAndMemory FnImage::createTexture(VkPhysicalDevice physicalDevice, VkDevice 
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);*/
     // Change this to add VK_IMAGE_USAGE_TRANSFER_SRC_BIT. mipmap can be generated as a target or source.....
-    ret = createImageAndMemory(physicalDevice, device, texWidth, texHeight, mipLevels,
+    createImageAndMemory(physicalDevice, device, texWidth, texHeight, mipLevels, 1,
                                    format, VK_IMAGE_TILING_OPTIMAL,
                                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ret.image, ret.memory);
 
     // 3. copy buffer to image
     transitionImageLayout(device, poolToCopyStagingToImage, queueToSubmitCopyStagingToImageCommand,
                           ret.image, format,
-                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, 1);
 
         copyBufferToImage(device, poolToCopyStagingToImage, queueToSubmitCopyStagingToImageCommand, stagingBuffer,
                           ret.image, texHeight, texHeight);
@@ -151,7 +206,7 @@ void FnImage::transitionImageLayout(VkDevice device,
                                     VkCommandPool pool, VkQueue queue,
                                     VkImage image, VkFormat format,
                                     VkImageLayout oldLayout, VkImageLayout newLayout,
-                                    uint32_t mipLevels) {
+                                    uint32_t mipLevels, uint32_t layerCount) {
     // copy staging -> image
     auto commandBuffer = FnCommand::beginSingleTimeCommand(device, pool);
     VkImageMemoryBarrier barrier{};
@@ -165,7 +220,7 @@ void FnImage::transitionImageLayout(VkDevice device,
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = mipLevels;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = layerCount;
 
 
     VkPipelineStageFlags sourceStage;
@@ -210,13 +265,13 @@ void FnImage::copyBufferToImage(VkDevice device, const VkCommandPool &pool,
                                 const VkQueue &queue, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     auto commandBuffer = FnCommand::beginSingleTimeCommand(device, pool);
     VkBufferImageCopy region{};
-    region.bufferOffset = 0;
+    region.bufferOffset = 0; // this buffer offset. we only copy the stagging buffer. so it's zero.
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.mipLevel = 0;// 只能复制特定的mip层
     region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
+    region.imageSubresource.layerCount = 1; // staging buffer  只有1层layercount?
     region.imageOffset = {0, 0, 0};
     region.imageExtent = {
         width,
@@ -306,7 +361,9 @@ void FnImage::generateMipmaps(
     // image format supports linear blitting?
     VkFormatProperties formatProperties;
     vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
-
+    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+        throw std::runtime_error("Texture image format does not support linear blitting!");
+    }
 
     auto commandBuffer = FnCommand::beginSingleTimeCommand(device, pool);
     VkImageMemoryBarrier barrier{};
@@ -392,6 +449,13 @@ void FnImage::generateMipmaps(
 
     FnCommand::endSingleTimeCommand(device, pool, queue, commandBuffer);
 }
+
+
+
+
+
+
+
 
 LLVK_NAMESPACE_END
 

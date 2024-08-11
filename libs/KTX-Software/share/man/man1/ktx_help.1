@@ -1,0 +1,57 @@
+.TH "ktx_help" 1 "Wed Mar 20 2024 15:46:14" "Version 4.3.2" "KTX Tools Reference" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+ktx_help \- ktx help 
+.PP
+Display help information about the ktx tool\&.
+.SH "SYNOPSIS"
+.PP
+ktx help [option\&.\&.\&.] \fI\fP[command]
+.SH "DESCRIPTION"
+.PP
+\fBktx\fP \fBhelp\fP displays the man page of a specific ktx command specified as the \fIcommand\fP argument\&. On windows systems the man pages are opened with the system default browser in html format\&. On systems derived from Unix the man pages are opened with the man command\&.
+.PP
+To support custom install locations the tool first tries to use the man files relative to the executable and falls back to the system man pages\&.
+.PP
+The following options are available: 
+.IP "\fBcommand \fP" 1c
+Specifies which command's man page will be displayed\&. If the command option is missing the main ktx tool man page will be displayed\&. Possible options are: 
+.br
+ \fBcreate\fP 
+.br
+ \fBextract\fP 
+.br
+ \fBencode\fP 
+.br
+ \fBtranscode\fP 
+.br
+ \fBinfo\fP 
+.br
+ \fBvalidate\fP 
+.br
+ \fBhelp\fP  
+.PP
+.PP
+options_generic
+.SH "EXIT STATUS"
+.PP
+exitstatus
+.SH "HISTORY"
+.PP
+\fBVersion 4\&.0\fP
+.RS 4
+
+.IP "\(bu" 2
+Initial version
+.PP
+.RE
+.PP
+.SH "AUTHOR"
+.PP
+.IP "\(bu" 2
+Mátyás Császár [Vader], RasterGrid www\&.rastergrid\&.com
+.IP "\(bu" 2
+Daniel Rákos, RasterGrid www\&.rastergrid\&.com 
+.PP
+

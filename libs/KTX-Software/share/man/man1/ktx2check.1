@@ -1,0 +1,38 @@
+.TH "ktx2check" 1 "Wed Mar 20 2024 15:46:14" "Version 4.3.2" "KTX Tools Reference" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+ktx2check \- Check the validity of a KTX 2 file\&.
+.SH "SYNOPSIS"
+.PP
+ktx2check [options] [\fIinfile\fP \&.\&.\&.]
+.SH "DESCRIPTION"
+.PP
+\fBktx2check\fP validates Khronos texture format version 2 files (KTX2)\&. It reads each named \fIinfile\fP and validates it writing to stdout messages about any issues found\&. When \fBinfile\fP is not specified, it validates a single file from stdin\&.
+.PP
+The following options are available: 
+.IP "\fB-q, --quiet \fP" 1c
+Validate silently\&. Indicate valid or invalid via exit code\&. 
+.IP "\fB-m <num>, --max-issues <num> \fP" 1c
+Set the maximum number of issues to be reported per file provided -q is not set\&. 
+.IP "\fB-w, --warn-as-error \fP" 1c
+Treat warnings as errors\&. Changes exit code from success to error\&. 
+.PP
+.PP
+options
+.SH "EXIT STATUS"
+.PP
+\fBktx2check\fP exits 0 on success, 1 on command line errors and 2 on validation errors\&.
+.SH "HISTORY"
+.PP
+\fBVersion 4\&.0\fP
+.RS 4
+
+.IP "\(bu" 2
+Initial version\&.
+.PP
+.RE
+.PP
+.SH "AUTHOR"
+.PP
+Mark Callow, Edgewise Consulting www\&.edgewise-consulting\&.com 

@@ -1,0 +1,43 @@
+.TH "ktx_transcode" 1 "Wed Mar 20 2024 15:46:14" "Version 4.3.2" "KTX Tools Reference" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+ktx_transcode \- ktx transcode 
+.PP
+Transcode a KTX2 file\&.
+.SH "SYNOPSIS"
+.PP
+ktx transcode [option\&.\&.\&.] \fIinput-file\fP \fIoutput-file\fP 
+.SH "DESCRIPTION"
+.PP
+\fBktx\fP \fBtranscode\fP can transcode the KTX file specified as the \fIinput-file\fP argument, optionally supercompress the result, and save it as the \fIoutput-file\fP\&. If the \fIinput-file\fP is '-' the file will be read from the stdin\&. If the \fIoutput-path\fP is '-' the output file will be written to the stdout\&. The input file must be transcodable (it must be either BasisLZ supercompressed or has UASTC color model in the DFD)\&. If the input file is invalid the first encountered validation error is displayed to the stderr and the command exits with the relevant non-zero status code\&.
+.PP
+The following options are available: 
+.IP "\fB--target <target> \fP" 1c
+Target transcode format\&. If the target option is not set the r8, rg8, rgb8 or rgba8 target will be selected based on the number of channels in the input texture\&. Block compressed transcode targets can only be saved in raw format\&. Case-insensitive\&. Possible options are: etc-rgb | etc-rgba | eac-r11 | eac-rg11 | bc1 | bc3 | bc4 | bc5 | bc7 | astc | r8 | rg8 | rgb8 | rgba8\&. etc-rgb is ETC1; etc-rgba, eac-r11 and eac-rg11 are ETC2\&.  
+.PP
+.PP
+options_compress
+.PP
+options_generic
+.SH "EXIT STATUS"
+.PP
+exitstatus
+.SH "HISTORY"
+.PP
+\fBVersion 4\&.0\fP
+.RS 4
+
+.IP "\(bu" 2
+Initial version
+.PP
+.RE
+.PP
+.SH "AUTHOR"
+.PP
+.IP "\(bu" 2
+Mátyás Császár [Vader], RasterGrid www\&.rastergrid\&.com
+.IP "\(bu" 2
+Daniel Rákos, RasterGrid www\&.rastergrid\&.com 
+.PP
+
