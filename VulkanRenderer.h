@@ -2,8 +2,7 @@
 #ifndef CP_01_VULKANRENDERER_H
 #define CP_01_VULKANRENDERER_H
 
-#include "libs/VulkanMemoryAllocator-3.0.1/include/vk_mem_alloc.h"
-
+#include <vma/vk_mem_alloc.h>
 #define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>

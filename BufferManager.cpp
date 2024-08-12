@@ -5,7 +5,6 @@
 #include "BufferManager.h"
 #include <stdexcept>
 #include "Utils.h"
-#include "libs/VulkanMemoryAllocator-3.0.1/include/vk_mem_alloc.h"
 #include "CommandManager.h"
 
 
