@@ -21,6 +21,9 @@ namespace UT_Fn {
     constexpr auto xrange(const Concept::is_range auto &container) {
         return xrange(0, container);
     }
+    constexpr auto xrange(auto start, auto end) {
+        return std::views::iota(static_cast<int>(start), static_cast<int>(end) );
+    }
     constexpr auto enumerate(Concept::is_range auto && container) {
         return std::views::zip(xrange(container), container);
     }
