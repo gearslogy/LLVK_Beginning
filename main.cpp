@@ -9,7 +9,8 @@
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
-    LLVK::ktx_tex2darray app;
+    LLVK::DynamicsUBO app;
+    //LLVK::ktx_tex2darray app;
     try {
         app.run();
     }

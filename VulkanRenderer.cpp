@@ -11,7 +11,7 @@
 #include <cassert>
 #include <set>
 #include "VulkanValidation.h"
-#include "magic_enum.hpp"
+#include "libs/magic_enum.hpp"
 #include <format>
 #include <filesystem>
 #include "CommandManager.h"
@@ -94,6 +94,72 @@ static std::vector<uint16_t> indices = {
 
 
 LLVK_NAMESPACE_BEGIN
+// control camera rotation
+void VulkanRendererWindowEvent::mouse_callback(GLFWwindow *window, double xposIn, double yposIn) {
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+    auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+    if (not vr->eventData.isPressingRightMouseButton) return;
+
+    if (vr->eventData.firstMouse) {
+        vr->eventData.lastX = xpos;
+        vr->eventData.lastY = ypos;
+        vr->eventData.firstMouse = false;
+    }
+    float xoffset = xpos - vr->eventData.lastX;
+    float yoffset = vr->eventData.lastY - ypos;
+    vr->eventData.lastX = xpos;
+    vr->eventData.lastY = ypos;
+    vr->mainCamera.processMouseMovement(xoffset, yoffset); // camera yaw and pitch
+
+}
+// if glfw is pressing mouse right button
+void VulkanRendererWindowEvent::mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
+            auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+            vr->eventData.isPressingRightMouseButton = true;
+
+            // ---key !
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            vr->eventData.lastX = static_cast<float>(xpos);
+            vr->eventData.lastY = static_cast<float>(ypos);
+            // ---or cause camera jitter when mouse clicked
+
+
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        } else if (action == GLFW_RELEASE) {
+            auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+            vr->eventData.isPressingRightMouseButton = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    }
+}
+
+void VulkanRendererWindowEvent::scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+    auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+    vr->mainCamera.processMouseScroll(static_cast<float>(yoffset));
+}
+
+void VulkanRendererWindowEvent::process_input(GLFWwindow *window) {
+    auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+    auto &cam = vr->mainCamera;
+    const auto &dt = vr->dt;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cam.processKeyboard(Camera::Camera_Movement::FORWARD, dt);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cam.processKeyboard(Camera::Camera_Movement::BACKWARD, dt);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cam.processKeyboard(Camera::Camera_Movement::LEFT, dt);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cam.processKeyboard(Camera::Camera_Movement::RIGHT, dt);
+}
+
 
 VulkanRenderer::VulkanRenderer()=default;
 VulkanRenderer::~VulkanRenderer(){};
@@ -111,9 +177,17 @@ void VulkanRenderer::initWindow() {
         std::cout << "glfw windows size changed:" << width << " " << height << std::endl;
         app->framebufferResized = true;
     });
+    glfwSetCursorPosCallback(window,VulkanRendererWindowEvent::mouse_callback);
+    glfwSetMouseButtonCallback(window, VulkanRendererWindowEvent::mouse_button_callback);
+    glfwSetScrollCallback(window, VulkanRendererWindowEvent::scroll_callback);
+
 }
 void VulkanRenderer::mainLoop() {
     while (!glfwWindowShouldClose(window)){
+        float currentFrame = static_cast<float>(glfwGetTime());
+        dt = currentFrame - lastFrameTime;
+        lastFrameTime = currentFrame;
+        VulkanRendererWindowEvent::process_input(window);
         glfwPollEvents();
         draw();
     }

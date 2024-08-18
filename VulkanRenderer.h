@@ -15,11 +15,22 @@
 #include "Device.h"
 #include "PipelineCache.h"
 #include "LLVK_Image.h"
+#include "LLVK_Camera.h"
 
 LLVK_NAMESPACE_BEGIN
 
 
+struct VulkanRendererWindowEvent {
+    static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn );// Callback function for mouse movement
+    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void process_input(GLFWwindow* window);
+};
+
+
+
 class VulkanRenderer {
+    friend class VulkanRendererWindowEvent;
 public :
     VulkanRenderer();
     virtual ~VulkanRenderer() ;
@@ -57,6 +68,11 @@ protected:
     VkFramebuffer activeSwapChainFramebuffer{}; // swapchain frame buffer. we have three images in our swapchain
     VkCommandBuffer activedFrameCommandBuferToSubmit{}; // we have two command buffer.active for the render rerord-command
     VmaAllocator vmaAllocator{};
+    Camera mainCamera{};
+    float dt = 0.0f;
+    float lastFrameTime = 0.0f;
+
+
     // create functions
     void createInstance();
     void createDebugCallback();
@@ -84,7 +100,13 @@ protected:
     virtual void cleanupObjects(){};
     virtual void prepare() {}
     virtual void render() = 0;
-
+public:
+    struct {
+        bool isPressingRightMouseButton{false};
+        bool isPressingLeftMouseButton{false};
+        bool firstMouse{true};
+        float lastX = 400, lastY = 300; // prevframe mouse position
+    }eventData;
 
 };
 LLVK_NAMESPACE_END

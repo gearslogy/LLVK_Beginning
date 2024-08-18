@@ -6,7 +6,7 @@
 #include "libs/stb_image.h"
 #include "LLVK_Image.h"
 #include <ktx.h>
-#include <magic_enum.hpp>
+#include "libs/magic_enum.hpp"
 
 LLVK_NAMESPACE_BEGIN
     void VmaUBOBuffer::createAndMapping(VkDeviceSize bufferSize) {

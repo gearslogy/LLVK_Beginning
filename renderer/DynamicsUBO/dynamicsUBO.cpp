@@ -306,9 +306,10 @@ void DynamicsUBO::prepareUniformBuffers() {
 void DynamicsUBO::updateUniformBuffers() {
     // Fixed ubo with projection and view matrices
     auto [width, height] = simpleSwapchain.swapChainExtent;
-    uboVS.projection =  glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 2000.0f);
+    mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
+    uboVS.projection = mainCamera.projection();
     uboVS.projection[1][1] *= -1;
-    uboVS.view =  glm::lookAt(glm::vec3(0, 80.0f, 200), glm::vec3(0.0f, 0, 40.0f), glm::vec3(0.0f, 1.0f, 0.0f));// OGL
+    uboVS.view = mainCamera.view();
     memcpy(plantUniformBuffers.viewBuffer.mapped, &uboVS, sizeof(uboVS));
 
     uboStandardData.model = 1.0f;
