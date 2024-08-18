@@ -82,7 +82,6 @@ protected:
 
     // interface
     virtual void cleanupObjects(){};
-    virtual void recordCommandBuffer(){};
     virtual void prepare() {}
     virtual void render() = 0;
 

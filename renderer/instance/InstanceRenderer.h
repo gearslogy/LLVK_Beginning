@@ -1,24 +1,24 @@
 //
-// Created by lp on 2024/7/9.
+// Created by liuya on 8/16/2024.
 //
 
-#pragma once
+#ifndef INSTANCE_H
+#define INSTANCE_H
+
 
 #include "VulkanRenderer.h"
-#include "GeoVertexDescriptions.h"
-#include "DescriptorManager.h"
-#include "BufferManager.h"
-#include "SimplePipeline.h"
 LLVK_NAMESPACE_BEGIN
-struct BasicRenderer : public VulkanRenderer{
-    BasicRenderer(): VulkanRenderer(){}
+struct InstanceRenderer : public VulkanRenderer {
+
+    InstanceRenderer(): VulkanRenderer(){}
 
     void cleanupObjects() override;
     void loadTexture();
     void loadModel();
     void setupDescriptors();
     void preparePipelines();
-    void updateUniformBuffer();
+    void prepareUniformBuffers();
+    void updateUniformBuffers();
     void bindResources();
 
     void recordCommandBuffer();
@@ -27,18 +27,17 @@ struct BasicRenderer : public VulkanRenderer{
         bindResources();
         loadTexture();
         loadModel();
+        prepareUniformBuffers();
         setupDescriptors();
         preparePipelines();
     }
     void render() override {
-        updateUniformBuffer();
+        updateUniformBuffers();
         recordCommandBuffer();
     }
 
-    ObjLoader simpleObjLoader{};
-    BufferManager geometryBufferManager{};
-    DescriptorManager simpleDescriptorManager{};
-    SimplePipeline simplePipeline{};
 };
-
 LLVK_NAMESPACE_END
+
+
+#endif //INSTANCE_H

@@ -23,7 +23,7 @@ struct ktx_texture : public VulkanRenderer {
     void updateUniformBuffer();
     void bindResources();
 
-    void recordCommandBuffer() override;
+    void recordCommandBuffer();
 
     void prepare() override {
         bindResources();

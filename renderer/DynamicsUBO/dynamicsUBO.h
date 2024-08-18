@@ -77,7 +77,7 @@ struct DynamicsUBO : public VulkanRenderer{
     void updateDynamicUniformBuffer();
     void bindResources();
 
-    void recordCommandBuffer() override;
+    void recordCommandBuffer();
 
     void prepare() override {
         bindResources();
