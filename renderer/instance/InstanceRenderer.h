@@ -7,6 +7,9 @@
 
 
 #include "VulkanRenderer.h"
+#include "LLVK_GeomtryLoader.h"
+#include "LLVK_VmaBuffer.h"
+
 LLVK_NAMESPACE_BEGIN
 struct InstanceRenderer : public VulkanRenderer {
 
@@ -35,6 +38,12 @@ struct InstanceRenderer : public VulkanRenderer {
         updateUniformBuffers();
         recordCommandBuffer();
     }
+    struct  {
+        GLTFLoader plantGeo; // only use part0
+        GLTFLoader groundGeo;// only use part0
+        VmaSimpleGeometryBufferManager bufferManager;
+    }Geos;
+
 
 };
 LLVK_NAMESPACE_END

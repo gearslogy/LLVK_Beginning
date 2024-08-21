@@ -113,6 +113,7 @@ struct VmaSimpleGeometryBufferManager {
         // create vertex buffer  or  index buffer
         VkBuffer dstBuffer;
         VmaAllocation dstAllocation;
+        VkDeviceSize memSize = bufferSize;
         result = FnVmaBuffer::createBuffer(requiredObjects.device,
             requiredObjects.allocator, bufferSize,
             bufferUsage,true,
@@ -130,16 +131,19 @@ struct VmaSimpleGeometryBufferManager {
 
         if constexpr (bufferUsage == (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT) ) {
             std::cout << "---------------------------create index buffer\n";
-            createIndexedBuffers.emplace_back(dstBuffer, dstAllocation);
+            createIndexedBuffers.emplace_back(dstBuffer, dstAllocation , bufferSize);
         }
         else if constexpr (bufferUsage == (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT )){
             std::cout << "---------------------------create vertex buffer\n";
-            createVertexBuffers.emplace_back(dstBuffer, dstAllocation);
+            createVertexBuffers.emplace_back(dstBuffer, dstAllocation, bufferSize);
         }
         else {
             static_assert(not ALWAYS_TRUE, "only support index or vertex");
         }
     }
+
+
+
 
     void cleanup();
 
