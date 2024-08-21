@@ -30,7 +30,7 @@ struct Camera {
 
     float mAspect{16.0f/9.0f};
     float mNear{0.1};
-    float mFar{100.0};
+    float mFar{1500.0};
 private:
     // euler Angles
     float mYaw{-90};

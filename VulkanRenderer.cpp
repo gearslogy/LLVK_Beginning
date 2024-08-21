@@ -393,7 +393,7 @@ void VulkanRenderer::createDepthResources() {
     );
     FnImage::createImageView(mainDevice.logicalDevice,
         depthImageAndMemory.image,
-        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1,1, depthImageView);
+        depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,1,1, depthImageView);
 }
 
 void VulkanRenderer::createRenderpass(){
@@ -479,24 +479,24 @@ void VulkanRenderer::draw() {
 
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
 
-    activedFrameCommandBuferToSubmit = commandBuffers[currentFrame];
-    vkResetCommandBuffer(activedFrameCommandBuferToSubmit,/*VkCommandBufferResetFlagBits*/ 0);
-    activeSwapChainFramebuffer = simpleFramebuffer.swapChainFramebuffers[imageIndex];
+    activatedFrameCommandBufferToSubmit = commandBuffers[currentFrame];
+    vkResetCommandBuffer(activatedFrameCommandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
+    activatedSwapChainFramebuffer = simpleFramebuffer.swapChainFramebuffers[imageIndex];
+    activatedImageAvailableSemaphore = imageAvailableSemaphores[currentFrame];
+    activatedRenderFinishedSemaphore = renderFinishedSemaphores[currentFrame];
+    render(); // call the pure virtual function(record command buffer)                         //1: command buffer new content
 
-    render(); // call the pure virtual function
 
-
-    VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount  = 1;
-    submitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFrame]; // 如果交换链图片已经准备好信号
+    submitInfo.pWaitSemaphores = &activatedImageAvailableSemaphore; // 如果交换链图片已经准备好信号
     constexpr VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &activedFrameCommandBuferToSubmit;
+    submitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
     // 渲染完成信号，发射renderFinishedSemaphores
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
+    submitInfo.pSignalSemaphores = &activatedRenderFinishedSemaphore;
     if (vkQueueSubmit(mainDevice.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
@@ -505,7 +505,7 @@ void VulkanRenderer::draw() {
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &renderFinishedSemaphores[currentFrame]; // render完成
+    presentInfo.pWaitSemaphores = &activatedRenderFinishedSemaphore; // render完成
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &simpleSwapchain.swapchain;
     presentInfo.pImageIndices = &imageIndex;

@@ -65,14 +65,21 @@ protected:
     ImageAndMemory depthImageAndMemory;
     VkImageView depthImageView;
     PipelineCache simplePipelineCache{};
-    VkFramebuffer activeSwapChainFramebuffer{}; // swapchain frame buffer. we have three images in our swapchain
-    VkCommandBuffer activedFrameCommandBuferToSubmit{}; // we have two command buffer.active for the render rerord-command
+
+    // When rendering, you can only pick one from these asynchronous resources
+    VkFramebuffer activatedSwapChainFramebuffer{};          // swapchain frame buffer. we have three images in our swapchain
+    VkCommandBuffer activatedFrameCommandBufferToSubmit{};  // [two command buffer,MAX_FLIGHT=2]  only one frame activated
+    VkSemaphore activatedImageAvailableSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
+    VkSemaphore activatedRenderFinishedSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
     VmaAllocator vmaAllocator{};
     Camera mainCamera{};
     float dt = 0.0f;
     float lastFrameTime = 0.0f;
 
 
+
+
+    VkSubmitInfo submitInfo{};
     // create functions
     void createInstance();
     void createDebugCallback();
