@@ -55,7 +55,6 @@ void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj
     imageInfo.format = format;
     imageInfo.tiling = tiling;
     imageInfo.usage = usageFlags;
-
     VmaAllocationCreateInfo allocCreateInfo = {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     if(canMapping) allocCreateInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
@@ -129,12 +128,14 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
 }
 
 void VmaUBOTexture::create(const std::string &file, VkSampler sampler) {
+    constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
     uint32_t createMipLevels{};
     FnVmaImage::createTexture(requiredObjects, file, image, imageAllocation,createMipLevels);
     FnImage::createImageView( requiredObjects.device, image,
-            VK_FORMAT_R8G8B8A8_SRGB,
+            imageFormat,
             VK_IMAGE_ASPECT_COLOR_BIT,
             createMipLevels,1,view);
+    format = imageFormat;
     descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     descImageInfo.imageView = view;
     descImageInfo.sampler = sampler;
@@ -347,7 +348,7 @@ void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
                 deviceFeatures.textureCompressionASTC_LDR);
             throw std::runtime_error{er};
         }
-        std::cout << "[[VmaUBOKTX2Texture::create::file tanscoding:]]" << magic_enum::enum_name(tf)  << std::endl;
+        std::cout << "[[VmaUBOKTX2Texture::create::file tanscoding]]" << magic_enum::enum_name(tf)  << std::endl;
         result = ktxTexture2_TranscodeBasis(kTexture2, tf, 0);
         assert(result == KTX_SUCCESS);
     }
@@ -361,6 +362,7 @@ void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
     image = ktx_vk_texture.image;
 
     VkImageViewCreateInfo viewCreateInfo = FnImage::imageViewCreateInfo(image, ktx_vk_texture.imageFormat);
+    std::cout <<"[[VmaUBOKTX2Texture::create]]"  <<magic_enum::enum_name(ktx_vk_texture.imageFormat) << std::endl; // VK_FORMAT_BC3_UNORM_BLOCK
     viewCreateInfo.format = ktx_vk_texture.imageFormat;
     viewCreateInfo.viewType =ktx_vk_texture.viewType;
     viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

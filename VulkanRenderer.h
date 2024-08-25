@@ -11,7 +11,7 @@
 #include "RenderPass.h"
 #include "VulkanValidation.h"
 #include "Swapchain.h"
-#include "Frambuffer.h"
+#include "MainFramebuffer.h"
 #include "Device.h"
 #include "PipelineCache.h"
 #include "LLVK_Image.h"
@@ -55,7 +55,7 @@ protected:
     //Pipeline simplePipeline;
     RenderPass simplePass;
     Swapchain simpleSwapchain;
-    Frambuffer simpleFramebuffer;
+    MainFramebuffer simpleFramebuffer;
     VkCommandPool graphicsCommandPool;
     std::vector<VkCommandBuffer> commandBuffers;// Resize command buffer count to have one for each framebuffer
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -107,6 +107,7 @@ protected:
     virtual void cleanupObjects(){};
     virtual void prepare() {}
     virtual void render() = 0;
+    virtual void swapChainResize() {}
 public:
     struct {
         bool isPressingRightMouseButton{false};

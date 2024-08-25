@@ -23,11 +23,11 @@ void InstanceRenderer::loadModel() {
     auto getGLTFVerticesSize = [](const GLTFLoader &geom, int32_t partIdx, VkBufferUsageFlags usage) {
         if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) {
             // Create for plant
-            size_t vertexBufferSize = sizeof(GLTFVertex) * geom.parts[0].vertices.size();
+            size_t vertexBufferSize = sizeof(GLTFVertex) * geom.parts[partIdx].vertices.size();
             return vertexBufferSize;
         }
         if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) {
-            size_t indexBufferSize = sizeof(uint32_t) * geom.parts[0].indices.size();
+            size_t indexBufferSize = sizeof(uint32_t) * geom.parts[partIdx].indices.size();
             return indexBufferSize;
         }
         assert(false);

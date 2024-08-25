@@ -265,6 +265,7 @@ void VulkanRenderer::recreateSwapChain() {
     createSwapChain();
     createDepthResources();
     createFramebuffers();
+    swapChainResize();
 }
 
 

@@ -130,11 +130,9 @@ struct VmaSimpleGeometryBufferManager {
         FnVmaBuffer::destroyBuffer(requiredObjects.allocator, stagingBuffer, stagingAllocation);
 
         if constexpr (bufferUsage == (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT) ) {
-            std::cout << "---------------------------create index buffer\n";
             createIndexedBuffers.emplace_back(dstBuffer, dstAllocation , bufferSize);
         }
         else if constexpr (bufferUsage == (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT )){
-            std::cout << "---------------------------create vertex buffer\n";
             createVertexBuffers.emplace_back(dstBuffer, dstAllocation, bufferSize);
         }
         else {
@@ -176,6 +174,7 @@ struct IVmaUBOTexture {
     VkImage image{};
     VmaAllocation imageAllocation{};
     VkImageView view{};
+    VkFormat format{};
     VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
 };
 // read tga/jpg/ ... etc use

@@ -8,8 +8,8 @@
 #include "renderer/ktx_texarray/ktx_tex2darray.h"
 int main() {
     //BasicRenderer app;
-    //LLVK::ktx_texture app;
-    LLVK::DynamicsUBO app;
+    LLVK::ktx_texture app;
+    //LLVK::DynamicsUBO app;
     //LLVK::ktx_tex2darray app;
     try {
         app.run();
