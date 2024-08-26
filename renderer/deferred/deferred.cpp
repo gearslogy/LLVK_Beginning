@@ -314,7 +314,7 @@ void defer::createCompositionDescriptorSets() {
      texImageInfos[3].imageView = mrtFrameBuf.roughness.view;
      texImageInfos[4].imageView = mrtFrameBuf.displace.view;
      for(const auto idx: UT_Fn::xrange(texImageInfos)) {
-          skullWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texImageInfos[idx]));
+          skullWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, idx, &texImageInfos[idx]));
      }
      vkUpdateDescriptorSets(device, static_cast<uint32_t>(skullWriteSets.size()), skullWriteSets.data(), 0, nullptr);
 }
