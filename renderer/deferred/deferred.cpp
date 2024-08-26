@@ -10,28 +10,31 @@
 #include  "LLVK_UT_VmaBuffer.hpp"
 #include "LLVK_Descriptor.hpp"
 #include <vector>
+#include "Pipeline.hpp"
 LLVK_NAMESPACE_BEGIN
 defer::defer() {
-     mainCamera.mPosition = {0,10,0};
+     mainCamera.mPosition = {154.865,205.119,198.508};
+     auto [width, height] = simpleSwapchain.swapChainExtent;
+     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
 }
 
 
 void defer::cleanupObjects() {
+     auto device = mainDevice.logicalDevice;
      uniformBuffers.composition.cleanup();
      uniformBuffers.mrt.cleanup();
-     vkDestroyRenderPass(mainDevice.logicalDevice, mrtFrameBuf.renderPass, nullptr);
-     vkDestroyFramebuffer(mainDevice.logicalDevice, mrtFrameBuf.frameBuffer, nullptr);
-     vkDestroySampler(mainDevice.logicalDevice,colorSampler, nullptr);
-     vkDestroyDescriptorPool(mainDevice.logicalDevice, descPool, nullptr);
-     UT_Fn::cleanup_descriptor_set_layout(mainDevice.logicalDevice, geoDescriptorSets.setLayout0, geoDescriptorSets.setLayout1);
-     UT_Fn::cleanup_descriptor_set_layout(mainDevice.logicalDevice, compositionDescriptorSets.setLayout0, compositionDescriptorSets.setLayout1);
-     UT_Fn::cleanup_pipeline_layout(mainDevice.logicalDevice,pipelines.compositionLayout, pipelines.mrtLayout);
-     for(auto &tex: UBOTextures.ground_textures) {
+     vkDestroyRenderPass(device, mrtFrameBuf.renderPass, nullptr);
+     vkDestroyFramebuffer(device, mrtFrameBuf.frameBuffer, nullptr);
+     vkDestroySampler(device,colorSampler, nullptr);
+     vkDestroyDescriptorPool(device, descPool, nullptr);
+     UT_Fn::cleanup_descriptor_set_layout(device, geoDescriptorSets.setLayout0, geoDescriptorSets.setLayout1);
+     UT_Fn::cleanup_descriptor_set_layout(device, compositionDescriptorSets.setLayout0, compositionDescriptorSets.setLayout1);
+     UT_Fn::cleanup_pipeline_layout(device,pipelines.compositionLayout, pipelines.mrtLayout);
+     UT_Fn::cleanup_pipeline(device,pipelines.mrt, pipelines.composition);
+     for(auto &tex: UBOTextures.ground_textures)
           tex.cleanup();
-     }
-     for(auto &tex: UBOTextures.skull_textures) {
+     for(auto &tex: UBOTextures.skull_textures)
           tex.cleanup();
-     }
      cleanupMrtFramebuffer();
      simpleGeoBufferManager.cleanup();
 }
@@ -54,7 +57,7 @@ void defer::loadTextures() {
           setRequiredObjects(t);
 
      namespace fs = std::filesystem;
-     fs::path root = "content/deferred";
+     const fs::path root = "content/deferred";
      std::vector<std::string> names = {
           "albedo.jpg", "normal.jpg", "roughness.jpg", "displacement.jpg"
      };
@@ -323,7 +326,97 @@ void defer::createCompositionDescriptorSets() {
 
 
 void defer::preparePipelines() {
+     auto device = mainDevice.logicalDevice;
+     const auto mrtVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/mrt_vert.spv",  device);
+     const auto mrtFragMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/mrt_frag.spv",  device);
+     const auto deferredVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/deferred_vert.spv",  device);
+     const auto deferredFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/deferred_frag.spv",  device);
 
+     VkPipelineShaderStageCreateInfo mrtVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, mrtVertMoudule);
+     VkPipelineShaderStageCreateInfo mrtFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, mrtFragMoudule);
+     VkPipelineShaderStageCreateInfo deferredVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, deferredVertMoudule);
+     VkPipelineShaderStageCreateInfo deferredFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, deferredFragModule);
+     VkPipelineShaderStageCreateInfo mrtShaderStates[] = {mrtVertShaderStageCreateInfo, mrtFragShaderStageCreateInfo};
+     VkPipelineShaderStageCreateInfo deferredShaderStates[] = {deferredVertShaderStageCreateInfo, deferredFragShaderStageCreateInfo};
+     // 2. vertex input
+     std::array bindings = {GLTFVertex::bindings()};
+     auto attribs = GLTFVertex::attribs();
+     VkPipelineVertexInputStateCreateInfo vertexInput_ST_CIO = FnPipeline::vertexInputStateCreateInfo(bindings, attribs);
+
+     // 3. assembly
+     VkPipelineInputAssemblyStateCreateInfo inputAssembly_ST_CIO = FnPipeline::inputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,0, VK_FALSE);
+     // 4 viewport and scissor
+     VkPipelineViewportStateCreateInfo viewport_ST_CIO = FnPipeline::viewPortStateCreateInfo();
+     // 5. dynamic state
+     auto dynamicsStates = FnPipeline::simpleDynamicsStates();
+     VkPipelineDynamicStateCreateInfo dynamics_ST_CIO= FnPipeline::dynamicStateCreateInfo(dynamicsStates);
+     // 6. rasterization
+     VkPipelineRasterizationStateCreateInfo rasterization_ST_CIO = FnPipeline::rasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+     // 7. multisampling
+     VkPipelineMultisampleStateCreateInfo multisample_ST_CIO=FnPipeline::multisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);
+     // 8. blending
+
+     std::array<VkPipelineColorBlendAttachmentState, 5> mrtBlendAttachmentStates = {
+          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // position;
+          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // normal;
+          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // albedo
+          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // roughness
+          FnPipeline::simpleOpaqueColorBlendAttacmentState()  // displace
+     };
+     VkPipelineColorBlendStateCreateInfo blend_mrt_ST_CIO = FnPipeline::colorBlendStateCreateInfo(mrtBlendAttachmentStates);
+
+     std::array deferredColorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttacmentState()};
+     VkPipelineColorBlendStateCreateInfo blend_deferred_ST_CIO = FnPipeline::colorBlendStateCreateInfo(deferredColorBlendAttamentState);
+
+     // 9. pipeline layout
+     // 9-1 mrt pipeline layout
+     const std::array mrtLayouts{geoDescriptorSets.setLayout0, geoDescriptorSets.setLayout1};
+     VkPipelineLayoutCreateInfo mrtLayout_CIO = FnPipeline::layoutCreateInfo(mrtLayouts);
+     UT_Fn::invoke_and_check("ERROR create mrt pipeline layout",vkCreatePipelineLayout,device,&mrtLayout_CIO,nullptr, &pipelines.mrtLayout );
+
+     // 9-2 deferred pipeline layout
+     const std::array deferredLayouts{compositionDescriptorSets.setLayout0, compositionDescriptorSets.setLayout1};
+     VkPipelineLayoutCreateInfo deferredLayout_CIO = FnPipeline::layoutCreateInfo(deferredLayouts);
+     UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device,&deferredLayout_CIO,nullptr, &pipelines.composition );
+
+     // 10
+     VkPipelineDepthStencilStateCreateInfo ds_ST_CIO = FnPipeline::depthStencilStateCreateInfoEnabled();
+
+     // 11. PIPELINE
+     VkGraphicsPipelineCreateInfo pipeline_CIO = FnPipeline::pipelineCreateInfo();
+     pipeline_CIO.stageCount = 2;
+
+     pipeline_CIO.pVertexInputState = &vertexInput_ST_CIO;
+     pipeline_CIO.pInputAssemblyState = &inputAssembly_ST_CIO;
+     pipeline_CIO.pViewportState = &viewport_ST_CIO;
+     pipeline_CIO.pDynamicState = &dynamics_ST_CIO;
+     pipeline_CIO.pMultisampleState = &multisample_ST_CIO;
+     pipeline_CIO.pDepthStencilState = &ds_ST_CIO;
+     pipeline_CIO.subpass = 0; // ONLY USE ONE PASS
+
+     // 11-1 create mrt pipeline
+     pipeline_CIO.pStages = mrtShaderStates;
+     pipeline_CIO.pColorBlendState = &blend_mrt_ST_CIO;
+     pipeline_CIO.layout = pipelines.mrtLayout;
+     pipeline_CIO.renderPass = mrtFrameBuf.renderPass;
+     rasterization_ST_CIO.cullMode = VK_CULL_MODE_BACK_BIT;
+     pipeline_CIO.pRasterizationState = &rasterization_ST_CIO;
+     UT_Fn::invoke_and_check( "error create mrt pipeline" ,vkCreateGraphicsPipelines, device, simplePipelineCache.pipelineCache,
+          1, &pipeline_CIO, nullptr, &pipelines.mrt);
+     // 11-2 create deferred pipeline
+     pipeline_CIO.pStages = deferredShaderStates;
+     pipeline_CIO.pColorBlendState = &blend_deferred_ST_CIO;
+     pipeline_CIO.layout = pipelines.compositionLayout;
+     auto emptyVertexInput_ST_CIO =  FnPipeline::vertexInputStateCreateInfo();
+     pipeline_CIO.pVertexInputState = &emptyVertexInput_ST_CIO;
+     rasterization_ST_CIO.cullMode = VK_CULL_MODE_FRONT_BIT;
+     pipeline_CIO.pRasterizationState = &rasterization_ST_CIO;
+     pipeline_CIO.renderPass = simplePass.pass; // use our main render pass
+     UT_Fn::invoke_and_check( "error create deferred pipeline" ,vkCreateGraphicsPipelines, device, simplePipelineCache.pipelineCache,
+         1, &pipeline_CIO, nullptr, &pipelines.composition);
+
+     UT_Fn::cleanup_shader_module(device, mrtVertMoudule, mrtFragMoudule);
+     UT_Fn::cleanup_shader_module(device, deferredVertMoudule, deferredFragModule);
 }
 
 
@@ -331,9 +424,37 @@ void defer::prepareUniformBuffers() {
      setRequiredObjects(uniformBuffers.mrt, uniformBuffers.composition);
      uniformBuffers.mrt.createAndMapping(sizeof(mrtData));
      uniformBuffers.composition.createAndMapping(sizeof(compositionData));
+     // Setup instanced model positions
+     mrtData.instancePos[0] = glm::vec4(30.0f,11,0,0);
+     mrtData.instancePos[1] = glm::vec4(128.0f, 8.0, 13, 0.0f);
+     mrtData.instancePos[2] = glm::vec4(23, 8, -52.0f, 0.0f);
+     mrtData.instanceRot[0] = glm::vec4(0,-42,0,0);
+     mrtData.instanceRot[1] = glm::vec4(0,35,0,0);
+     mrtData.instanceRot[2] = glm::vec4(0,-93,0,0);
+     mrtData.instanceScale[0] = 2;
+     mrtData.instanceScale[1] = 2;
+     mrtData.instanceScale[2] = 2;
+
+     updateUniformBuffers();
 }
 void defer::updateUniformBuffers() {
+     auto [width, height] = simpleSwapchain.swapChainExtent;
+     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
 
+     mrtData.projection = mainCamera.projection();
+     mrtData.projection[1][1] *= -1;
+     mrtData.view = mainCamera.view();
+     memcpy(uniformBuffers.mrt.mapped, &mrtData, sizeof(mrtData));
+
+     // Current view position
+     compositionData.viewPos = glm::vec4(mainCamera.mPosition, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+     compositionData.lights[0] = {
+          {482.972,231.21,124.495 ,0 },{1,1,1},300
+     };
+     compositionData.lights[1] = {
+          {-204.601,98.3806,0 ,0 },{0.533,0.647415,1},300
+     };
+     memcpy(uniformBuffers.composition.mapped, &compositionData, sizeof(compositionData));
 }
 
 

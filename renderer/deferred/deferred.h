@@ -22,7 +22,7 @@ struct defer :  VulkanRenderer{
         // instance
         glm::vec4 instancePos[3];
         glm::vec4 instanceRot[3];
-        glm::vec4 instanceScale[3];
+        float instanceScale[3];
     }mrtData{};// vert ubo
 
     struct Light {
@@ -31,7 +31,7 @@ struct defer :  VulkanRenderer{
         float radius;
     };
     struct {
-        Light lights[5];
+        Light lights[2];
         glm::vec4 viewPos;
     }compositionData{}; // frag ubo
 
@@ -82,6 +82,7 @@ struct defer :  VulkanRenderer{
         VkDescriptorSetLayout setLayout1; // set=1 for texture
         VkDescriptorSet composition[2]; // set=0 UBO, set=1 texture
     }compositionDescriptorSets;
+
 
 
     struct FrameBuffer {

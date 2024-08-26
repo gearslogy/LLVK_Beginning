@@ -36,6 +36,13 @@ struct FnPipeline {
         ret.pVertexAttributeDescriptions = attribs.data();
         return ret;
     }
+    // empty vertex attribute input
+    static VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo(){
+        VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo {};
+        pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        return pipelineVertexInputStateCreateInfo;
+    }
+
     // viewport and scissor
     static VkPipelineViewportStateCreateInfo viewPortStateCreateInfo(uint32_t viewPortCount=1, uint32_t scissorCount=1);
     //dynamics state
