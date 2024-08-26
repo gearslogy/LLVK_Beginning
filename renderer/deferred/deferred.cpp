@@ -301,20 +301,21 @@ void defer::createCompositionDescriptorSets() {
 
 
      std::vector<VkWriteDescriptorSet> skullWriteSets;
-     skullWriteSets.emplace_back(  FnDescriptor::writeDescriptorSet(geoDescriptorSets.skull[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo)); // set = 0, binding =0 ubo
+     skullWriteSets.emplace_back(  FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo)); // set = 0, binding =0 ubo
      // tex write set
      std::array <VkDescriptorImageInfo, composition_tex_count> texImageInfos{};
      for(auto &t : texImageInfos) {
           t.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
           t.sampler = colorSampler;
      }
-
      texImageInfos[0].imageView = mrtFrameBuf.position.view;
      texImageInfos[1].imageView = mrtFrameBuf.normal.view;
      texImageInfos[2].imageView = mrtFrameBuf.albedo.view;
      texImageInfos[3].imageView = mrtFrameBuf.roughness.view;
      texImageInfos[4].imageView = mrtFrameBuf.displace.view;
-
+     for(const auto idx: UT_Fn::xrange(texImageInfos)) {
+          skullWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texImageInfos[idx]));
+     }
      vkUpdateDescriptorSets(device, static_cast<uint32_t>(skullWriteSets.size()), skullWriteSets.data(), 0, nullptr);
 }
 
