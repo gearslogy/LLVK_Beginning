@@ -43,16 +43,15 @@ namespace UT_Fn {
         (vkDestroyPipeline(device,pipeline,nullptr),...);
     }
 
+
+    void invoke_and_check(const char *msg, auto func, auto && ... args) {
+        if (func( std::forward<decltype(args)>(args)...  ) != VK_SUCCESS)
+            throw std::runtime_error{msg};
+    }
+
 }
 
-/*
-namespace ranges {
-    template <typename Rng, template <typename...> class Cont = std::vector>
-    auto to(Rng&& rng) {
-        using value_type = std::ranges::range_value_t<Rng>;
-        return Cont<value_type>(std::ranges::begin(rng), std::ranges::end(rng));
-    }
-}*/
+
 
 struct QueueFamilyIndices{
     int graphicsFamily{-1};

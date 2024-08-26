@@ -52,14 +52,14 @@ struct defer :  VulkanRenderer{
     GLTFLoader skull_gltf{};
     VmaSimpleGeometryBufferManager simpleGeoBufferManager{};
 
+    static constexpr auto input_tex_count = 4;
     struct {
         //layout(set=1, binding = 0) uniform sampler2D AlbedoTexSampler;
         //layout(set=1, binding = 1) uniform sampler2D NormalTexSampler;
         //layout(set=1, binding = 2) uniform sampler2D RoughnessTexSampler;
         //layout(set=1, binding = 3) uniform sampler2D DisplaceTexSampler;
-        constexpr auto tex_count = 4;
-        std::array<VmaUBOTexture,tex_count> ground_textures{};
-        std::array<VmaUBOTexture,tex_count> skull_textures{};
+        std::array<VmaUBOTexture,input_tex_count> ground_textures{};
+        std::array<VmaUBOTexture,input_tex_count> skull_textures{};
     }UBOTextures;
 
 
@@ -71,13 +71,13 @@ struct defer :  VulkanRenderer{
         VkDescriptorSet skull[2];
     } geoDescriptorSets{};
 
+    static constexpr auto composition_tex_count = 5;
     struct {
         //layout(set=1, binding = 0) uniform sampler2D position;
         //layout(set=1, binding = 1) uniform sampler2D normal;
         //layout(set=1, binding = 2) uniform sampler2D albedo;
         //layout(set=1, binding = 3) uniform sampler2D roughness;
         //layout(set=1, binding = 4) uniform sampler2D displace;
-        constexpr auto tex_count = 5;
         VkDescriptorSetLayout setLayout0; // set=0 for ubo: fragment shader bit
         VkDescriptorSetLayout setLayout1; // set=1 for texture
         VkDescriptorSet composition[2]; // set=0 UBO, set=1 texture
@@ -133,6 +133,8 @@ private:
         const VkImageUsageFlagBits &usage,
         IVmaUBOTexture & attachment);
 
+    void createGeoDescriptorSets();
+    void createCompositionDescriptorSets();
 
 
 };

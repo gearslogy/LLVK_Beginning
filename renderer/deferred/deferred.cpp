@@ -9,6 +9,7 @@
 
 #include  "LLVK_UT_VmaBuffer.hpp"
 #include "LLVK_Descriptor.hpp"
+#include <vector>
 LLVK_NAMESPACE_BEGIN
 defer::defer() {
      mainCamera.mPosition = {0,10,0};
@@ -231,55 +232,95 @@ void defer::prepareDescriptorSets() {
      // set=0 for ubo, set=1 for texture
      VkDescriptorPoolCreateInfo createInfo = FnDescriptor::poolCreateInfo(poolSizes, 3 * 2); //
      createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; // allow use free single/multi set: vkFreeDescriptorSets()
-     if(vkCreateDescriptorPool(device, &createInfo, nullptr, &descPool)!=VK_SUCCESS)
-          throw std::runtime_error{"ERROR create descriptor pool"};
+     auto result = vkCreateDescriptorPool(device, &createInfo, nullptr, &descPool);
+     assert(result == VK_SUCCESS);
 
-     constexpr auto combinedImageLayoutBinding = [](const int &binding){return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,binding, VK_SHADER_STAGE_FRAGMENT_BIT);};
-     // for ground and skull geometry
-     {
-          //create set0 bindings
-          std::cout << "create geometry desc sets\n";
-          auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);
-          const std::array set0_bindings = {set0_ubo_binding0}; // only binding = 0
-          const VkDescriptorSetLayoutCreateInfo ubo_createInfo = FnDescriptor::setLayoutCreateInfo(set0_bindings);
-          if(vkCreateDescriptorSetLayout(device, &ubo_createInfo, nullptr, &geoDescriptorSets.setLayout0)!=VK_SUCCESS)
-               throw std::runtime_error{"Error create plant ubo set layout"};
-          // create set1 bindings.
-          auto set1_tex_bindings = std::views::iota(0,UBOTextures.tex_count) | std::views::transform(combinedImageLayoutBinding);
-          const auto set1_bindings=  std::ranges::to<std::vector<VkDescriptorSetLayoutBinding>>(set1_tex_bindings);
-          const VkDescriptorSetLayoutCreateInfo tex_createInfo = FnDescriptor::setLayoutCreateInfo(set1_bindings);
-          if(vkCreateDescriptorSetLayout(device, &tex_createInfo, nullptr, &geoDescriptorSets.setLayout1) != VK_SUCCESS) {
-               throw std::runtime_error{"Error create plant tex set layout"};
-          }
-
-          const std::array mrtLayouts{geoDescriptorSets.setLayout0, geoDescriptorSets.setLayout1};
-          const auto mrtSetAllocateInfo = FnDescriptor::setAllocateInfo(descPool, mrtLayouts);
-          if(vkAllocateDescriptorSets(device, &mrtSetAllocateInfo,geoDescriptorSets.ground) != VK_SUCCESS)
-               throw std::runtime_error{"can not create ground descriptor set"};
-          if(vkAllocateDescriptorSets(device, &mrtSetAllocateInfo,geoDescriptorSets.skull) != VK_SUCCESS)
-               throw std::runtime_error{"can not create skull descriptor set"};
-     }
-     // composition desc sets
-     {
-          std::cout << "create composition desc sets\n";
-          auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_FRAGMENT_BIT);
-          const std::array set0_bindings = {set0_ubo_binding0}; // only binding = 0
-          const VkDescriptorSetLayoutCreateInfo ubo_createInfo = FnDescriptor::setLayoutCreateInfo(set0_bindings);
-          if(vkCreateDescriptorSetLayout(device, &ubo_createInfo, nullptr, &compositionDescriptorSets.setLayout0)!=VK_SUCCESS)
-               throw std::runtime_error{"Error create plant ubo set layout"};
-
-          // create set1 bindings.
-          auto set1_tex_bindings = std::views::iota(0,compositionDescriptorSets.tex_count) | std::views::transform(combinedImageLayoutBinding);
-          const auto set1_bindings=  std::ranges::to<std::vector<VkDescriptorSetLayoutBinding>>(set1_tex_bindings);
-          const VkDescriptorSetLayoutCreateInfo tex_createInfo = FnDescriptor::setLayoutCreateInfo(set1_bindings);
-          if(vkCreateDescriptorSetLayout(device, &tex_createInfo, nullptr, &compositionDescriptorSets.setLayout1)!=VK_SUCCESS)
-               throw std::runtime_error{"Error create plant tex set layout"};
-     }
 
 
 
 
 }
+void defer::createGeoDescriptorSets() {
+     constexpr auto combinedImageLayoutBinding = [](const int &binding){return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,binding, VK_SHADER_STAGE_FRAGMENT_BIT);};
+     const auto device = mainDevice.logicalDevice;
+     std::cout << "create geometry desc sets\n";
+     auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);
+     const std::array set0_bindings = {set0_ubo_binding0}; // only binding = 0
+     const VkDescriptorSetLayoutCreateInfo ubo_createInfo = FnDescriptor::setLayoutCreateInfo(set0_bindings);
+     if(vkCreateDescriptorSetLayout(device, &ubo_createInfo, nullptr, &geoDescriptorSets.setLayout0)!=VK_SUCCESS)
+          throw std::runtime_error{"Error create plant ubo set layout"};
+     // create set1 bindings.
+     auto set1_tex_bindings = std::views::iota(0,input_tex_count) | std::views::transform(combinedImageLayoutBinding);
+     const auto set1_bindings=  std::ranges::to<std::vector<VkDescriptorSetLayoutBinding>>(set1_tex_bindings);
+     const VkDescriptorSetLayoutCreateInfo tex_createInfo = FnDescriptor::setLayoutCreateInfo(set1_bindings);
+     auto result = vkCreateDescriptorSetLayout(device, &tex_createInfo, nullptr, &geoDescriptorSets.setLayout1);
+     assert(result == VK_SUCCESS);
+
+
+     const std::array mrtLayouts{geoDescriptorSets.setLayout0, geoDescriptorSets.setLayout1};
+     const auto mrtSetAllocateInfo = FnDescriptor::setAllocateInfo(descPool, mrtLayouts);
+     if(vkAllocateDescriptorSets(device, &mrtSetAllocateInfo,geoDescriptorSets.ground) != VK_SUCCESS)
+          throw std::runtime_error{"can not create ground descriptor set"};
+     if(vkAllocateDescriptorSets(device, &mrtSetAllocateInfo,geoDescriptorSets.skull) != VK_SUCCESS)
+          throw std::runtime_error{"can not create skull descriptor set"};
+
+     // write sets
+     std::vector<VkWriteDescriptorSet> groundWriteSets;
+     groundWriteSets.emplace_back(  FnDescriptor::writeDescriptorSet(geoDescriptorSets.ground[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo));
+
+     for(auto &&[k, tex]: UT_Fn::enumerate(UBOTextures.ground_textures)) {
+          auto writeSet = FnDescriptor::writeDescriptorSet(geoDescriptorSets.ground[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k , &uniformBuffers.mrt.descBufferInfo);
+          groundWriteSets.emplace_back(writeSet);
+     }
+     vkUpdateDescriptorSets(device, static_cast<uint32_t>(groundWriteSets.size()), groundWriteSets.data(), 0, nullptr);
+
+
+}
+
+void defer::createCompositionDescriptorSets() {
+     const auto device = mainDevice.logicalDevice;
+     // composition desc sets
+     constexpr auto combinedImageLayoutBinding = [](const int &binding){return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,binding, VK_SHADER_STAGE_FRAGMENT_BIT);};
+     std::cout << "create composition desc sets\n";
+     auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_FRAGMENT_BIT);
+     const std::array set0_bindings = {set0_ubo_binding0}; // only binding = 0
+     const VkDescriptorSetLayoutCreateInfo ubo_createInfo = FnDescriptor::setLayoutCreateInfo(set0_bindings);
+     // auto result = vkCreateDescriptorSetLayout(device, &tex_createInfo, nullptr, &geoDescriptorSets.setLayout1);
+     UT_Fn::invoke_and_check("composition set=0 layout failed", vkCreateDescriptorSetLayout, device, &ubo_createInfo, nullptr, &compositionDescriptorSets.setLayout0 );
+
+     // create set1 bindings. create set layout
+     auto set1_tex_bindings = std::views::iota(0,composition_tex_count) | std::views::transform(combinedImageLayoutBinding);
+     const auto set1_bindings=  std::ranges::to<std::vector<VkDescriptorSetLayoutBinding>>(set1_tex_bindings);
+     const VkDescriptorSetLayoutCreateInfo tex_createInfo = FnDescriptor::setLayoutCreateInfo(set1_bindings);
+     UT_Fn::invoke_and_check("composition set=1 failed", vkCreateDescriptorSetLayout,device, &tex_createInfo,nullptr, &compositionDescriptorSets.setLayout1);
+
+     // create sets
+     const std::array layouts{compositionDescriptorSets.setLayout0, compositionDescriptorSets.setLayout1};
+     const auto allocInfo = FnDescriptor::setAllocateInfo(descPool, layouts);
+     UT_Fn::invoke_and_check("Error create comp sets",vkAllocateDescriptorSets,device, &allocInfo,compositionDescriptorSets.composition );
+
+
+     std::vector<VkWriteDescriptorSet> skullWriteSets;
+     skullWriteSets.emplace_back(  FnDescriptor::writeDescriptorSet(geoDescriptorSets.skull[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo)); // set = 0, binding =0 ubo
+     // tex write set
+     std::array <VkDescriptorImageInfo, composition_tex_count> texImageInfos{};
+     for(auto &t : texImageInfos) {
+          t.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+          t.sampler = colorSampler;
+     }
+
+     texImageInfos[0].imageView = mrtFrameBuf.position.view;
+     texImageInfos[1].imageView = mrtFrameBuf.normal.view;
+     texImageInfos[2].imageView = mrtFrameBuf.albedo.view;
+     texImageInfos[3].imageView = mrtFrameBuf.roughness.view;
+     texImageInfos[4].imageView = mrtFrameBuf.displace.view;
+
+     vkUpdateDescriptorSets(device, static_cast<uint32_t>(skullWriteSets.size()), skullWriteSets.data(), 0, nullptr);
+}
+
+
+
+
 void defer::preparePipelines() {
 
 }

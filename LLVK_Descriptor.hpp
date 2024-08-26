@@ -167,7 +167,7 @@ struct UBOBuffer {
     }
 };
 
-struct UBOTexture {
+struct UBOTexture { // this interface should be dropped. because vma texture is future
     ImageAndMemory imageAndMemory{};
     VkImageView imageView{};
     VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
