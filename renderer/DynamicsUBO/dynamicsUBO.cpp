@@ -376,8 +376,8 @@ void DynamicsUBO::recordCommandBuffer() {
     vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,plantPipeline);
 
-    auto viewport = FnCommand::viewport(activatedFrameCommandBufferToSubmit, simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    auto scissor = FnCommand::scissor(activatedFrameCommandBufferToSubmit, simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
     vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
 

@@ -117,9 +117,12 @@ struct defer :  VulkanRenderer{
         preparePipelines();      // 5
         loadModels();            // 6
         loadTextures();          // 7
+        createMrtCommandBuffers();
     }
     void render() override;
-
+    void createMrtCommandBuffers();
+    VkCommandBuffer mrtCommandBuffers[MAX_FRAMES_IN_FLIGHT]{};
+    VkSemaphore mrtSemaphores[MAX_FRAMES_IN_FLIGHT]{};
 
 private:
     inline void setRequiredObjects  (auto && ... ubo) {

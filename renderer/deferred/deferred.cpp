@@ -23,6 +23,10 @@ void defer::cleanupObjects() {
      auto device = mainDevice.logicalDevice;
      uniformBuffers.composition.cleanup();
      uniformBuffers.mrt.cleanup();
+
+     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+          vkDestroySemaphore(device, mrtSemaphores[i], nullptr);
+     }
      vkDestroyRenderPass(device, mrtFrameBuf.renderPass, nullptr);
      vkDestroyFramebuffer(device, mrtFrameBuf.frameBuffer, nullptr);
      vkDestroySampler(device,colorSampler, nullptr);
@@ -447,7 +451,7 @@ void defer::updateUniformBuffers() {
      memcpy(uniformBuffers.mrt.mapped, &mrtData, sizeof(mrtData));
 
      // Current view position
-     compositionData.viewPos = glm::vec4(mainCamera.mPosition, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+     compositionData.viewPos = glm::vec4(mainCamera.mPosition, 0.0f);
      compositionData.lights[0] = {
           {482.972,231.21,124.495 ,0 },{1,1,1},300
      };
@@ -459,8 +463,46 @@ void defer::updateUniformBuffers() {
 
 
 void defer::render() {
+     updateUniformBuffers();
+     // Wait for swap chain presentation to finish
+     submitInfo.pWaitSemaphores = &activatedImageAvailableSemaphore;
+     // Signal ready with offscreen semaphore
+     const auto &mrtSemaphore = mrtSemaphores[currentFrame];
+     submitInfo.pSignalSemaphores = &mrtSemaphore;
+
+     // Submit work
+     submitInfo.commandBufferCount = 1;
+     submitInfo.pCommandBuffers = &mrtCommandBuffers[currentFrame];
+     UT_Fn::invoke_and_check("error submit mrt queue", vkQueueSubmit,
+          mainDevice.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+
+     // Wait for offscreen semaphore
+     submitInfo.pWaitSemaphores = &mrtSemaphore;
+     // Signal ready with render complete semaphore
+     submitInfo.pSignalSemaphores = &activatedRenderFinishedSemaphore;
+     // Submit work
+     submitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
+     UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
 
 }
+
+void defer::createMrtCommandBuffers() {
+     VkCommandBufferAllocateInfo cbAllocInfo = {};
+     cbAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+     cbAllocInfo.commandPool = graphicsCommandPool ;
+     cbAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;	// VK_COMMAND_BUFFER_LEVEL_PRIMARY	: Buffer you submit directly to queue. Cant be called by other buffers.
+     cbAllocInfo.commandBufferCount = 2;
+     UT_Fn::invoke_and_check("create mrt commandBuffers error", vkAllocateCommandBuffers,
+          mainDevice.logicalDevice, &cbAllocInfo, mrtCommandBuffers);
+     VkSemaphoreCreateInfo semaphore_CIO{};
+     semaphore_CIO.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+     for(auto & mrtSemaphore : mrtSemaphores) {
+          UT_Fn::invoke_and_check("create mrt semaphores error",vkCreateSemaphore, mainDevice.logicalDevice, &semaphore_CIO, nullptr, &mrtSemaphore);
+     }
+}
+
 
 void defer::swapChainResize() {
      cleanupMrtFramebuffer();
@@ -479,10 +521,70 @@ void defer::cleanupMrtFramebuffer() {
 }
 void defer::recordMrtCommandBuffer() {
 
+     // Clear values for all attachments written in the fragment shader
+     std::vector<VkClearValue> clearValues{};
+     clearValues.resize(6);
+     // position, normal, albedo, roughness, displace;
+     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+     clearValues[1].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+     clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+     clearValues[3].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+     clearValues[4].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+     clearValues[5].depthStencil = { 1.0f, 0 };
+
+     auto mrtCommandBuffer = mrtCommandBuffers[currentFrame];
+     vkResetCommandBuffer(mrtCommandBuffer,/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
+
+     const VkFramebuffer &framebuffer = mrtFrameBuf.frameBuffer;
+     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
+          mrtFrameBuf.renderPass,
+         &simpleSwapchain.swapChainExtent,clearValues);
+
+     auto result = vkBeginCommandBuffer(mrtCommandBuffer, &cmdBufferBeginInfo);
+     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
+     vkCmdBeginRenderPass(mrtCommandBuffer, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+     vkCmdBindPipeline(mrtCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , pipelines.mrt);
+
+     VkDeviceSize offsets[1] = { 0 };
+     auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+     auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+     vkCmdSetViewport(mrtCommandBuffer, 0, 1, &viewport);
+     vkCmdSetScissor(mrtCommandBuffer,0, 1, &scissor);
+     vkCmdBindVertexBuffers(mrtCommandBuffer, 0, 1, &ground_gltf.parts[0].verticesBuffer, offsets);
+     vkCmdBindIndexBuffer(mrtCommandBuffer,ground_gltf.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+     vkCmdBindDescriptorSets(mrtCommandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.mrtLayout, 0, 2, geoDescriptorSets.ground, 0, nullptr);
+     vkCmdDrawIndexed(mrtCommandBuffer, ground_gltf.parts[0].indices.size(), 1, 0, 0, 0);
+
+     vkCmdBindVertexBuffers(mrtCommandBuffer, 0, 1, &skull_gltf.parts[0].verticesBuffer, offsets);
+     vkCmdBindIndexBuffer(mrtCommandBuffer,skull_gltf.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+     vkCmdBindDescriptorSets(mrtCommandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.mrtLayout, 0, 2, geoDescriptorSets.skull, 0, nullptr);
+     vkCmdDrawIndexed(mrtCommandBuffer, skull_gltf.parts[0].indices.size(), 3, 0, 0, 0);
+     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,mrtCommandBuffer );
 }
 
 void defer::recordCompositionCommandBuffer() {
+     std::vector<VkClearValue> clearValues(2);
+     clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
+     clearValues[1].depthStencil = {1.0f, 0};
+     const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
+         simplePass.pass,
+         &simpleSwapchain.swapChainExtent,clearValues);
+     auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
+     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
+     vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+     vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipelines.composition);
+     auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+     auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+     vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
+     vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
 
+     vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.compositionLayout,
+          0, 2, compositionDescriptorSets.composition, 0, nullptr);
+     vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.composition);
+     vkCmdDraw(activatedFrameCommandBufferToSubmit, 3, 1, 0, 0);
+     vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
+     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,activatedFrameCommandBufferToSubmit );
 }
 
 

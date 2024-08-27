@@ -31,7 +31,7 @@ struct FnCommand {
                                                          const VkExtent2D *swapChainExtent,
                                                          const std::vector<VkClearValue> &clearValues);
     //vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
-    static VkViewport viewport(VkCommandBuffer cmdBuffer, auto width, auto height) {
+    static VkViewport viewport( auto width, auto height) {
         VkViewport viewport{};
         viewport.width = static_cast<float>(width);
         viewport.height = static_cast<float>(height);
@@ -42,7 +42,7 @@ struct FnCommand {
         return viewport;
     }
     //vkCmdSetScissor(cmdBuffer,0, 1, &rect2D);
-    static VkRect2D scissor(VkCommandBuffer cmdBuffer,auto width,auto height){
+    static VkRect2D scissor(auto width,auto height){
         VkRect2D rect2D {};
         rect2D.extent.width = static_cast<int32_t>(width);
         rect2D.extent.height = static_cast<int32_t>(height);
