@@ -101,8 +101,8 @@ struct defer :  VulkanRenderer{
     void prepareDescriptorSets();   // 3
     void updateUniformBuffers();
     void preparePipelines();        // 5
-    void loadModels();              // 6
-    void loadTextures();            // 7
+    void loadModels();
+    void loadTextures();
     void recordMrtCommandBuffer();
     void recordCompositionCommandBuffer();
 
@@ -111,14 +111,14 @@ struct defer :  VulkanRenderer{
 
 
     void prepare() override {
+        loadModels();
+        loadTextures();
         prepareAttachments();    // 0
         prepareMrtRenderPass();  // 1
         prepareMrtFramebuffer(); // 2
         prepareUniformBuffers(); // 3
         prepareDescriptorSets(); // 4
         preparePipelines();      // 5
-        loadModels();            // 6
-        loadTextures();          // 7
         createMrtCommandBuffers();
     }
     void render() override;

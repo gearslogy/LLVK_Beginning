@@ -45,8 +45,8 @@ void defer::cleanupObjects() {
      simpleGeoBufferManager.cleanup();
 }
 void defer::loadModels() {
-     ground_gltf.load("content/ground/ground.gltf");
-     skull_gltf.load("content/skull/skull.gltf");
+     ground_gltf.load("content/deferred/ground/ground.gltf");
+     skull_gltf.load("content/deferred/skull/skull.gltf");
      simpleGeoBufferManager.requiredObjects.allocator = vmaAllocator;
      simpleGeoBufferManager.requiredObjects.device = mainDevice.logicalDevice;
      simpleGeoBufferManager.requiredObjects.queue = mainDevice.graphicsQueue;
@@ -68,11 +68,12 @@ void defer::loadTextures() {
           "albedo.jpg", "normal.jpg", "roughness.jpg", "displacement.jpg"
      };
      auto ground_root = root / "ground";
-     auto skull_root = root / "albedo";
+     auto skull_root = root / "skull";
 
      // read ground textures
      for(auto &&[i, tex] : UT_Fn::enumerate(UBOTextures.ground_textures) ){
           auto ground_file = ground_root / names[i];
+          std::cout << ground_file << std::endl;
           tex.create(ground_file.generic_string(), colorSampler );
      }
      // read skull textures
@@ -118,6 +119,9 @@ void defer::createAttachment(const VkFormat &format, const VkImageUsageFlagBits 
      }
      // 5. create image view
      FnImage::createImageView(device, attachment.image, format,aspectMask,1, 1, attachment.view);
+     attachment.descImageInfo.sampler = colorSampler;
+     attachment.descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+     attachment.descImageInfo.imageView = attachment.view;
 }
 
 void defer::prepareAttachments() {
@@ -279,7 +283,8 @@ void defer::createGeoDescriptorSets() {
           std::vector<VkWriteDescriptorSet> writeSets;
           writeSets.emplace_back(  FnDescriptor::writeDescriptorSet(set0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo));
           for(auto &&[k, tex]: UT_Fn::enumerate(textures)) {
-               auto writeSet = FnDescriptor::writeDescriptorSet(set1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k , &uniformBuffers.mrt.descBufferInfo);
+               std::cout << "update set " << k <<  " " << tex.descImageInfo.imageView << std::endl;
+               auto writeSet = FnDescriptor::writeDescriptorSet(set1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k , &tex.descImageInfo );
                writeSets.emplace_back(writeSet);
           }
           vkUpdateDescriptorSets(mainDevice.logicalDevice, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
@@ -314,9 +319,16 @@ void defer::createCompositionDescriptorSets() {
      UT_Fn::invoke_and_check("Error create comp sets",vkAllocateDescriptorSets,device, &allocInfo,compositionDescriptorSets.composition );
 
 
-     std::vector<VkWriteDescriptorSet> skullWriteSets;
-     skullWriteSets.emplace_back(  FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo)); // set = 0, binding =0 ubo
+     std::cout <<"mrtFrameBuf imageview:" <<mrtFrameBuf.position.descImageInfo.imageView << std::endl;
+     std::vector<VkWriteDescriptorSet> writeSets;
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo)); // set = 0, binding =0 ubo
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &mrtFrameBuf.position.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &mrtFrameBuf.normal.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &mrtFrameBuf.albedo.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &mrtFrameBuf.roughness.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &mrtFrameBuf.displace.descImageInfo));
      // tex write set
+     /*
      std::array <VkDescriptorImageInfo, composition_tex_count> texImageInfos{};
      for(auto &t : texImageInfos) {
           t.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -326,11 +338,9 @@ void defer::createCompositionDescriptorSets() {
      texImageInfos[1].imageView = mrtFrameBuf.normal.view;
      texImageInfos[2].imageView = mrtFrameBuf.albedo.view;
      texImageInfos[3].imageView = mrtFrameBuf.roughness.view;
-     texImageInfos[4].imageView = mrtFrameBuf.displace.view;
-     for(const auto idx: UT_Fn::xrange(texImageInfos)) {
-          skullWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, idx, &texImageInfos[idx]));
-     }
-     vkUpdateDescriptorSets(device, static_cast<uint32_t>(skullWriteSets.size()), skullWriteSets.data(), 0, nullptr);
+     texImageInfos[4].imageView = mrtFrameBuf.displace.view;*/
+
+     vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
 }
 
 

@@ -103,6 +103,9 @@ protected:
     void recreateSwapChain();
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
 
+    void
+    void present();
+
     // interface
     virtual void cleanupObjects(){};
     virtual void prepare() {}
