@@ -10,6 +10,8 @@
 #include  "LLVK_UT_VmaBuffer.hpp"
 #include "LLVK_Descriptor.hpp"
 #include <vector>
+#include <libs/magic_enum.hpp>
+
 #include "Pipeline.hpp"
 LLVK_NAMESPACE_BEGIN
 defer::defer() {
@@ -115,18 +117,19 @@ void defer::createAttachment(const VkFormat &format, const VkImageUsageFlagBits 
                aspectMask |=VK_IMAGE_ASPECT_STENCIL_BIT;
      }
      // 5. create image view
-     FnImage::createImageView(device, attachment.image, format,1,1,
-          aspectMask, attachment.view);
+     FnImage::createImageView(device, attachment.image, format,aspectMask,1, 1, attachment.view);
 }
 
-void defer::prepareMrtFramebuffer() {
+void defer::prepareAttachments() {
      createAttachment(VK_FORMAT_R16G16B16A16_SFLOAT,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.position);
      createAttachment(VK_FORMAT_R16G16B16A16_SFLOAT,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.normal);
      createAttachment(VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.albedo);
      createAttachment(VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.roughness);
      createAttachment(VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.displace);
      createAttachment(FnImage::findDepthFormat(mainDevice.physicalDevice),VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,mrtFrameBuf.depth); // depth
+}
 
+void defer::prepareMrtFramebuffer() {
      std::array<VkImageView,6> attachments{};
      attachments[0] = mrtFrameBuf.position.view;
      attachments[1] = mrtFrameBuf.normal.view;
@@ -134,7 +137,6 @@ void defer::prepareMrtFramebuffer() {
      attachments[3] = mrtFrameBuf.roughness.view;
      attachments[4] = mrtFrameBuf.displace.view;
      attachments[5] = mrtFrameBuf.depth.view;
-
      VkFramebufferCreateInfo framebufferCreateInfo{};
      framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
      framebufferCreateInfo.width = simpleSwapchain.swapChainExtent.width;
@@ -148,7 +150,6 @@ void defer::prepareMrtFramebuffer() {
      }
 }
 void defer::prepareMrtRenderPass() {
-
      std::array<VkAttachmentDescription,6> attachmentDescs = {};
      for(auto & attachment : attachmentDescs) {
           attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;   // before rendering
@@ -161,13 +162,14 @@ void defer::prepareMrtRenderPass() {
      }
      attachmentDescs[attachmentDescs.size()-1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;     // set depth
      // format
+
      attachmentDescs[0].format = mrtFrameBuf.position.format;
      attachmentDescs[1].format = mrtFrameBuf.normal.format;
      attachmentDescs[2].format = mrtFrameBuf.albedo.format;
      attachmentDescs[3].format = mrtFrameBuf.roughness.format;
      attachmentDescs[4].format = mrtFrameBuf.displace.format;
      attachmentDescs[5].format = mrtFrameBuf.depth.format;
-
+     std::cout <<"-----------attachmentDescs[0]." <<magic_enum::enum_name(mrtFrameBuf.position.format) << std::endl;
      // color ref & depth ref
      constexpr std::array<VkAttachmentReference, 5> colorReferences = {{
           {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
@@ -198,7 +200,7 @@ void defer::prepareMrtRenderPass() {
      dependency_1.srcSubpass = 0;
      dependency_1.dstSubpass = VK_SUBPASS_EXTERNAL;
 
-     dependency_1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+     dependency_1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
      dependency_1.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
      dependency_1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -242,7 +244,8 @@ void defer::prepareDescriptorSets() {
      auto result = vkCreateDescriptorPool(device, &createInfo, nullptr, &descPool);
      assert(result == VK_SUCCESS);
 
-
+     createGeoDescriptorSets();
+     createCompositionDescriptorSets();
 
 
 
@@ -271,15 +274,19 @@ void defer::createGeoDescriptorSets() {
      if(vkAllocateDescriptorSets(device, &mrtSetAllocateInfo,geoDescriptorSets.skull) != VK_SUCCESS)
           throw std::runtime_error{"can not create skull descriptor set"};
 
-     // write sets
-     std::vector<VkWriteDescriptorSet> groundWriteSets;
-     groundWriteSets.emplace_back(  FnDescriptor::writeDescriptorSet(geoDescriptorSets.ground[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo));
 
-     for(auto &&[k, tex]: UT_Fn::enumerate(UBOTextures.ground_textures)) {
-          auto writeSet = FnDescriptor::writeDescriptorSet(geoDescriptorSets.ground[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k , &uniformBuffers.mrt.descBufferInfo);
-          groundWriteSets.emplace_back(writeSet);
-     }
-     vkUpdateDescriptorSets(device, static_cast<uint32_t>(groundWriteSets.size()), groundWriteSets.data(), 0, nullptr);
+     auto updateWriteSets= [this](const VkDescriptorSet set0, const VkDescriptorSet &set1, const Concept::is_range auto & textures) {
+          std::vector<VkWriteDescriptorSet> writeSets;
+          writeSets.emplace_back(  FnDescriptor::writeDescriptorSet(set0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo));
+          for(auto &&[k, tex]: UT_Fn::enumerate(textures)) {
+               auto writeSet = FnDescriptor::writeDescriptorSet(set1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k , &uniformBuffers.mrt.descBufferInfo);
+               writeSets.emplace_back(writeSet);
+          }
+          vkUpdateDescriptorSets(mainDevice.logicalDevice, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
+     };
+
+     updateWriteSets(geoDescriptorSets.ground[0], geoDescriptorSets.ground[1], UBOTextures.ground_textures);
+     updateWriteSets(geoDescriptorSets.skull[0],  geoDescriptorSets.skull[1],  UBOTextures.skull_textures);
 
 
 }
@@ -381,7 +388,7 @@ void defer::preparePipelines() {
      // 9-2 deferred pipeline layout
      const std::array deferredLayouts{compositionDescriptorSets.setLayout0, compositionDescriptorSets.setLayout1};
      VkPipelineLayoutCreateInfo deferredLayout_CIO = FnPipeline::layoutCreateInfo(deferredLayouts);
-     UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device,&deferredLayout_CIO,nullptr, &pipelines.composition );
+     UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &deferredLayout_CIO,nullptr, &pipelines.compositionLayout );
 
      // 10
      VkPipelineDepthStencilStateCreateInfo ds_ST_CIO = FnPipeline::depthStencilStateCreateInfoEnabled();
@@ -444,7 +451,7 @@ void defer::prepareUniformBuffers() {
 void defer::updateUniformBuffers() {
      auto [width, height] = simpleSwapchain.swapChainExtent;
      mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
-
+     mrtData.model = glm::mat4(1.0f);
      mrtData.projection = mainCamera.projection();
      mrtData.projection[1][1] *= -1;
      mrtData.view = mainCamera.view();
@@ -464,13 +471,15 @@ void defer::updateUniformBuffers() {
 
 void defer::render() {
      updateUniformBuffers();
+     recordMrtCommandBuffer();
+     recordCompositionCommandBuffer();
      // Wait for swap chain presentation to finish
      submitInfo.pWaitSemaphores = &activatedImageAvailableSemaphore;
      // Signal ready with offscreen semaphore
      const auto &mrtSemaphore = mrtSemaphores[currentFrame];
      submitInfo.pSignalSemaphores = &mrtSemaphore;
 
-     // Submit work
+     // Submit mrt work
      submitInfo.commandBufferCount = 1;
      submitInfo.pCommandBuffers = &mrtCommandBuffers[currentFrame];
      UT_Fn::invoke_and_check("error submit mrt queue", vkQueueSubmit,
@@ -481,7 +490,7 @@ void defer::render() {
      submitInfo.pWaitSemaphores = &mrtSemaphore;
      // Signal ready with render complete semaphore
      submitInfo.pSignalSemaphores = &activatedRenderFinishedSemaphore;
-     // Submit work
+     // Submit composition work
      submitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
      UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 

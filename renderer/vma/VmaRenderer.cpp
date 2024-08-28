@@ -174,8 +174,8 @@ void VmaRenderer::recordCommandBuffer() {
     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
     vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    auto viewport = FnCommand::viewport(activatedFrameCommandBufferToSubmit, simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    auto scissor = FnCommand::scissor(activatedFrameCommandBufferToSubmit, simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
     vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
 

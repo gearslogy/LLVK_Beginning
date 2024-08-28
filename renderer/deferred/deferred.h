@@ -16,9 +16,10 @@ struct defer :  VulkanRenderer{
     defer();
     struct {
         // camera
-        glm::mat4 projection;
         glm::mat4 model;
         glm::mat4 view;
+        glm::mat4 projection;
+
         // instance
         glm::vec4 instancePos[3];
         glm::vec4 instanceRot[3];
@@ -92,16 +93,16 @@ struct defer :  VulkanRenderer{
         VkFramebuffer frameBuffer{};
     } mrtFrameBuf{};
     VkSampler colorSampler{};
-
-    void prepareMrtRenderPass(); // 1
-    void prepareMrtFramebuffer(); // 2
+    void prepareAttachments();      // 0
+    void prepareMrtRenderPass();    // 1
+    void prepareMrtFramebuffer();   // 2
     void cleanupMrtFramebuffer();
-    void prepareUniformBuffers(); // 4
-    void prepareDescriptorSets(); // 3
+    void prepareUniformBuffers();   // 4
+    void prepareDescriptorSets();   // 3
     void updateUniformBuffers();
-    void preparePipelines();      // 5
-    void loadModels();            // 6
-    void loadTextures();          // 7
+    void preparePipelines();        // 5
+    void loadModels();              // 6
+    void loadTextures();            // 7
     void recordMrtCommandBuffer();
     void recordCompositionCommandBuffer();
 
@@ -110,6 +111,7 @@ struct defer :  VulkanRenderer{
 
 
     void prepare() override {
+        prepareAttachments();    // 0
         prepareMrtRenderPass();  // 1
         prepareMrtFramebuffer(); // 2
         prepareUniformBuffers(); // 3
