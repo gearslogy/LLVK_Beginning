@@ -31,10 +31,11 @@ struct Camera {
     float mAspect{16.0f/9.0f};
     float mNear{0.1};
     float mFar{1500.0};
-private:
+
     // euler Angles
     float mYaw{-90};
     float mPitch{0};
+private:
     // mouse
     float mMoveSpeed{2.5f};
     float mMouseSensitivity{0.1f};

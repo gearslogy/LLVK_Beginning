@@ -3,8 +3,10 @@
 //
 
 #include "LLVK_Camera.h"
+
+#include <iostream>
 LLVK_NAMESPACE_BEGIN
-glm::mat4 Camera::view() const {
+    glm::mat4 Camera::view() const {
     return glm::lookAt(mPosition, mPosition + mFront, mUp);
 }
 glm::mat4 Camera::projection() const {
@@ -50,6 +52,7 @@ void Camera::processMouseMovement(float xoffset, float yoffset) {
 
 void Camera::updateCameraVectors() {
     // calculate the new Front vector
+    //std::cerr << "mYaw"<< mYaw << " pitch:" << mPitch << std::endl;
     glm::vec3 front;
     front.x = cos(glm::radians(mYaw)) * cos(glm::radians(mPitch));
     front.y = sin(glm::radians(mPitch));

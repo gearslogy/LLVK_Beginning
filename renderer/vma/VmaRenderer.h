@@ -38,6 +38,8 @@ struct VmaRenderer :public VulkanRenderer{
     void render() override {
         updateUniformBuffer();
         recordCommandBuffer();
+        submitMainCommandBuffer();
+        presentMainCommandBufferFrame();
     }
     struct {
         VkPipeline pipeline;

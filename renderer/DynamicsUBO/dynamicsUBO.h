@@ -91,6 +91,8 @@ struct DynamicsUBO : public VulkanRenderer{
         updateUniformBuffers();
         updateDynamicUniformBuffer();
         recordCommandBuffer();
+        submitMainCommandBuffer();
+        presentMainCommandBufferFrame();
     }
 
     GLTFLoader plantGeo{};

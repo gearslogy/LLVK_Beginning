@@ -434,6 +434,9 @@ void VulkanRenderer::createCommandBuffers() {
 
 
 void VulkanRenderer::createSyncObjects() {
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pWaitDstStageMask = waitStages;
+
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -452,13 +455,13 @@ void VulkanRenderer::createSyncObjects() {
 
 
 void VulkanRenderer::draw() {
+
     //std::cout << "draw frame:" << currentFrame << std::endl;
     // GPU -> CPU, 等待上一帧是不是渲染完成
     vkWaitForFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
 
     //std::cout << "frame:" << currentFrame << std::endl;
     // GPU->GPU 获取可以绘制的交换链图片
-    uint32_t imageIndex;
     auto result =vkAcquireNextImageKHR(mainDevice.logicalDevice, simpleSwapchain.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     if(result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreateSwapChain();
@@ -466,61 +469,20 @@ void VulkanRenderer::draw() {
     }else if(result !=VK_SUCCESS and result!=VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error{"failed to acquire swap chain image!"};
     }
-    /* user setup
-    simpleDescriptorManager.simpleUniformBuffer.updateUniform(currentFrame);
-
-    // update the PushConstants of the CPP
-
-    PushConstant::update<VK_SHADER_STAGE_VERTEX_BIT>(currentFrame, [](PushVertexStageData &dataToChange) {
-        dataToChange = {0,1,0,0};
-    });
-    PushConstant::update<VK_SHADER_STAGE_FRAGMENT_BIT>(currentFrame, [](PushFragmentStageData &dataToChange) {
-        dataToChange ={1,0,0,1};
-    });*/
+    // here can push constant and update uniform
 
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
-
     activatedFrameCommandBufferToSubmit = commandBuffers[currentFrame];
-    vkResetCommandBuffer(activatedFrameCommandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
+    vkResetCommandBuffer(activatedFrameCommandBufferToSubmit, 0); //0: main command buffer reset
     activatedSwapChainFramebuffer = simpleFramebuffer.swapChainFramebuffers[imageIndex];
     activatedImageAvailableSemaphore = imageAvailableSemaphores[currentFrame];
     activatedRenderFinishedSemaphore = renderFinishedSemaphores[currentFrame];
     render(); // call the pure virtual function(record command buffer)                         //1: command buffer new content
 
-
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount  = 1;
-    submitInfo.pWaitSemaphores = &activatedImageAvailableSemaphore; // 如果交换链图片已经准备好信号
-    constexpr VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    submitInfo.pWaitDstStageMask = waitStages;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
-    // 渲染完成信号，发射renderFinishedSemaphores
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &activatedRenderFinishedSemaphore;
-    if (vkQueueSubmit(mainDevice.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-        throw std::runtime_error("failed to submit draw command buffer!");
-    }
-    //std::cout << "submit:" << currentFrame << std::endl;
-    // present
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &activatedRenderFinishedSemaphore; // render完成
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &simpleSwapchain.swapchain;
-    presentInfo.pImageIndices = &imageIndex;
-    result = vkQueuePresentKHR(mainDevice.presentationQueue, &presentInfo);
-
-    if(result == VK_ERROR_OUT_OF_DATE_KHR or result == VK_SUBOPTIMAL_KHR or framebufferResized) {
-        framebufferResized = false;
-        recreateSwapChain();
-    }else if(result != VK_SUCCESS) {
-        throw std::runtime_error{"failed to present swapchain image"};
-    }
-
     // advanced
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
+
+
 
 LLVK_NAMESPACE_END

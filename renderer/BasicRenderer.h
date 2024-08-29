@@ -33,6 +33,8 @@ struct BasicRenderer : public VulkanRenderer{
     void render() override {
         updateUniformBuffer();
         recordCommandBuffer();
+        submitMainCommandBuffer();
+        presentMainCommandBufferFrame();
     }
 
     ObjLoader simpleObjLoader{};

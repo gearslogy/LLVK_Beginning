@@ -19,8 +19,8 @@ layout (set=0, binding = 0) uniform UBO
 
 
 layout(set=1, binding = 0) uniform sampler2D PositionTexSampler;
-layout(set=1, binding = 1) uniform sampler2D AlbedoTexSampler;
-layout(set=1, binding = 2) uniform sampler2D NormalTexSampler;
+layout(set=1, binding = 1) uniform sampler2D NormalTexSampler;
+layout(set=1, binding = 2) uniform sampler2D AlbedoTexSampler;
 layout(set=1, binding = 3) uniform sampler2D RoughnessTexSampler;
 layout(set=1, binding = 4) uniform sampler2D DisplaceTexSampler;
 
@@ -28,6 +28,7 @@ layout(set=1, binding = 4) uniform sampler2D DisplaceTexSampler;
 // opengl can do without the "location" keyword
 layout (location = 0) out vec4 outColor;
 void main(){
-    vec4 result = vec4(texture(PositionTexSampler, uv).rgb ,1);
+    vec4 result = vec4(texture(AlbedoTexSampler, uv).rgb ,1);
+    result = pow(result, vec4(1/2.2));
     outColor = result;
 }

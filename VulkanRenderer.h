@@ -71,6 +71,7 @@ protected:
     VkCommandBuffer activatedFrameCommandBufferToSubmit{};  // [two command buffer,MAX_FLIGHT=2]  only one frame activated
     VkSemaphore activatedImageAvailableSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
     VkSemaphore activatedRenderFinishedSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
+    uint32_t imageIndex{};                                  // may be 0 1 2 based on swapchain images
     VmaAllocator vmaAllocator{};
     Camera mainCamera{};
     float dt = 0.0f;
@@ -79,7 +80,7 @@ protected:
 
 
 
-    VkSubmitInfo submitInfo{};
+
     // create functions
     void createInstance();
     void createDebugCallback();
@@ -103,8 +104,58 @@ protected:
     void recreateSwapChain();
     static void checkInstanceExtensionSupport(const std::vector<const char *> &checkExtensions);
 
-    void
-    void present();
+
+    inline static constexpr VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkSubmitInfo submitInfo{};
+
+
+    inline void submitTask(const VkCommandBuffer &cmdBuffer,
+        const VkSemaphore &waitSemaphore,
+        const VkSemaphore &signalSemaphore,
+        const VkFence &fence = VK_NULL_HANDLE) {
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmdBuffer;
+        // wait -> signal
+        submitInfo.waitSemaphoreCount  = 1;
+        submitInfo.pWaitSemaphores = &waitSemaphore; // if this semaphore was signaled
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &signalSemaphore;
+        if (vkQueueSubmit(mainDevice.graphicsQueue, 1, &submitInfo,fence) != VK_SUCCESS) {
+            throw std::runtime_error("failed to submit command buffer!");
+        }
+    }
+    inline void presentFrame(const VkSemaphore &waitSemaphore) {
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &waitSemaphore; // render完成
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &simpleSwapchain.swapchain;
+        presentInfo.pImageIndices = &imageIndex;
+        auto result = vkQueuePresentKHR(mainDevice.presentationQueue, &presentInfo);
+        if(result == VK_ERROR_OUT_OF_DATE_KHR or result == VK_SUBOPTIMAL_KHR or framebufferResized) {
+            framebufferResized = false;
+            recreateSwapChain();
+        }else if(result != VK_SUCCESS) {
+            throw std::runtime_error{"failed to present swapchain image"};
+        }
+    }
+
+    // this can direct present
+    void submitMainCommandBuffer() {
+        submitTask(activatedFrameCommandBufferToSubmit,
+            activatedImageAvailableSemaphore,
+            activatedRenderFinishedSemaphore, inFlightFences[currentFrame]);
+    }
+    void presentMainCommandBufferFrame() {
+        presentFrame(activatedRenderFinishedSemaphore);
+    }
+
+
+
+
+
+
 
     // interface
     virtual void cleanupObjects(){};

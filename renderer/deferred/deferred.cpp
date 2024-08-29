@@ -18,6 +18,9 @@ defer::defer() {
      mainCamera.mPosition = {154.865,205.119,198.508};
      auto [width, height] = simpleSwapchain.swapChainExtent;
      mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
+     mainCamera.mYaw = 243.6;
+     mainCamera.mPitch = -43.99;
+     mainCamera.updateCameraVectors();
 }
 
 
@@ -30,7 +33,6 @@ void defer::cleanupObjects() {
           vkDestroySemaphore(device, mrtSemaphores[i], nullptr);
      }
      vkDestroyRenderPass(device, mrtFrameBuf.renderPass, nullptr);
-     vkDestroyFramebuffer(device, mrtFrameBuf.frameBuffer, nullptr);
      vkDestroySampler(device,colorSampler, nullptr);
      vkDestroyDescriptorPool(device, descPool, nullptr);
      UT_Fn::cleanup_descriptor_set_layout(device, geoDescriptorSets.setLayout0, geoDescriptorSets.setLayout1);
@@ -141,6 +143,7 @@ void defer::prepareMrtFramebuffer() {
      attachments[3] = mrtFrameBuf.roughness.view;
      attachments[4] = mrtFrameBuf.displace.view;
      attachments[5] = mrtFrameBuf.depth.view;
+     std::cout << "prepareMrtFramebuffer: "<<  mrtFrameBuf.position.view<< std::endl;
      VkFramebufferCreateInfo framebufferCreateInfo{};
      framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
      framebufferCreateInfo.width = simpleSwapchain.swapChainExtent.width;
@@ -190,6 +193,7 @@ void defer::prepareMrtRenderPass() {
      subpass.pColorAttachments = colorReferences.data();
      subpass.pDepthStencilAttachment = &depthReference;
      // dependency transition
+     /*
      VkSubpassDependency dependency_0{};
      dependency_0.srcSubpass = VK_SUBPASS_EXTERNAL;
      dependency_0.dstSubpass = 0;
@@ -211,6 +215,26 @@ void defer::prepareMrtRenderPass() {
      dependency_1.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
      const std::array <VkSubpassDependency, 2> dependencies = {dependency_0, dependency_1};
+*/
+     // Use subpass dependencies for attachment layout transitions
+     std::array<VkSubpassDependency, 2> dependencies;
+
+     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+     dependencies[0].dstSubpass = 0;
+     dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+     dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+     dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+     dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+     dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+     dependencies[1].srcSubpass = 0;
+     dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+     dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+     dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+     dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+     dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
 
      VkRenderPassCreateInfo renderPassInfo{};
      renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -283,7 +307,6 @@ void defer::createGeoDescriptorSets() {
           std::vector<VkWriteDescriptorSet> writeSets;
           writeSets.emplace_back(  FnDescriptor::writeDescriptorSet(set0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo));
           for(auto &&[k, tex]: UT_Fn::enumerate(textures)) {
-               std::cout << "update set " << k <<  " " << tex.descImageInfo.imageView << std::endl;
                auto writeSet = FnDescriptor::writeDescriptorSet(set1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, k , &tex.descImageInfo );
                writeSets.emplace_back(writeSet);
           }
@@ -318,28 +341,13 @@ void defer::createCompositionDescriptorSets() {
      const auto allocInfo = FnDescriptor::setAllocateInfo(descPool, layouts);
      UT_Fn::invoke_and_check("Error create comp sets",vkAllocateDescriptorSets,device, &allocInfo,compositionDescriptorSets.composition );
 
-
-     std::cout <<"mrtFrameBuf imageview:" <<mrtFrameBuf.position.descImageInfo.imageView << std::endl;
      std::vector<VkWriteDescriptorSet> writeSets;
-     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.mrt.descBufferInfo)); // set = 0, binding =0 ubo
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.composition.descBufferInfo)); // set = 0, binding =0 ubo
      writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &mrtFrameBuf.position.descImageInfo));
      writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &mrtFrameBuf.normal.descImageInfo));
      writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &mrtFrameBuf.albedo.descImageInfo));
      writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &mrtFrameBuf.roughness.descImageInfo));
      writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &mrtFrameBuf.displace.descImageInfo));
-     // tex write set
-     /*
-     std::array <VkDescriptorImageInfo, composition_tex_count> texImageInfos{};
-     for(auto &t : texImageInfos) {
-          t.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-          t.sampler = colorSampler;
-     }
-     texImageInfos[0].imageView = mrtFrameBuf.position.view;
-     texImageInfos[1].imageView = mrtFrameBuf.normal.view;
-     texImageInfos[2].imageView = mrtFrameBuf.albedo.view;
-     texImageInfos[3].imageView = mrtFrameBuf.roughness.view;
-     texImageInfos[4].imageView = mrtFrameBuf.displace.view;*/
-
      vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
 }
 
@@ -446,7 +454,7 @@ void defer::prepareUniformBuffers() {
      uniformBuffers.mrt.createAndMapping(sizeof(mrtData));
      uniformBuffers.composition.createAndMapping(sizeof(compositionData));
      // Setup instanced model positions
-     mrtData.instancePos[0] = glm::vec4(30.0f,11,0,0);
+     mrtData.instancePos[0] = glm::vec4(0);
      mrtData.instancePos[1] = glm::vec4(128.0f, 8.0, 13, 0.0f);
      mrtData.instancePos[2] = glm::vec4(23, 8, -52.0f, 0.0f);
      mrtData.instanceRot[0] = glm::vec4(0,-42,0,0);
@@ -480,29 +488,46 @@ void defer::updateUniformBuffers() {
 
 
 void defer::render() {
+
      updateUniformBuffers();
      recordMrtCommandBuffer();
      recordCompositionCommandBuffer();
-     // Wait for swap chain presentation to finish
-     submitInfo.pWaitSemaphores = &activatedImageAvailableSemaphore;
-     // Signal ready with offscreen semaphore
-     const auto &mrtSemaphore = mrtSemaphores[currentFrame];
-     submitInfo.pSignalSemaphores = &mrtSemaphore;
 
+     //
+     //    [[WAIT]]              ->         [[SIGNAL]]
+     // imageAvailableSemaphore  ->      mrt semaphore
+     // mrt semaphore            ->      renderFinishedSemaphore
+     // renderFinished           ->      present
+     //
+
+     VkSubmitInfo mrtSubmitInfo = {};
+     mrtSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+     mrtSubmitInfo.commandBufferCount = 1;
+     mrtSubmitInfo.waitSemaphoreCount = 1;
+     mrtSubmitInfo.signalSemaphoreCount = 1;
+     mrtSubmitInfo.pWaitDstStageMask = waitStages;
+     mrtSubmitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFrame];     // Wait for swap chain presentation to finish
+     mrtSubmitInfo.pSignalSemaphores = & mrtSemaphores[currentFrame];     // Signal ready with offscreen semaphore
      // Submit mrt work
-     submitInfo.commandBufferCount = 1;
-     submitInfo.pCommandBuffers = &mrtCommandBuffers[currentFrame];
-     UT_Fn::invoke_and_check("error submit mrt queue", vkQueueSubmit,
-          mainDevice.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+     mrtSubmitInfo.pCommandBuffers = &mrtCommandBuffers[currentFrame];
+     UT_Fn::invoke_and_check("error submit mrt queue", vkQueueSubmit, mainDevice.graphicsQueue, 1, &mrtSubmitInfo, VK_NULL_HANDLE);
 
-
+     VkSubmitInfo compSubmitInfo = {};
+     compSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+     compSubmitInfo.commandBufferCount = 1;
+     compSubmitInfo.waitSemaphoreCount = 1;
+     compSubmitInfo.signalSemaphoreCount = 1;
+     compSubmitInfo.pWaitDstStageMask = waitStages;
      // Wait for offscreen semaphore
-     submitInfo.pWaitSemaphores = &mrtSemaphore;
+     compSubmitInfo.pWaitSemaphores = &mrtSemaphores[currentFrame];
      // Signal ready with render complete semaphore
-     submitInfo.pSignalSemaphores = &activatedRenderFinishedSemaphore;
+     compSubmitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
      // Submit composition work
-     submitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
-     UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+     compSubmitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
+     UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &compSubmitInfo, inFlightFences[currentFrame]);
+
+     presentMainCommandBufferFrame();
+
 
 
 }
@@ -525,6 +550,16 @@ void defer::createMrtCommandBuffers() {
 
 void defer::swapChainResize() {
      cleanupMrtFramebuffer();
+     prepareAttachments();
+
+     std::vector<VkWriteDescriptorSet> writeSets;
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.composition.descBufferInfo)); // set = 0, binding =0 ubo
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &mrtFrameBuf.position.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &mrtFrameBuf.normal.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &mrtFrameBuf.albedo.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &mrtFrameBuf.roughness.descImageInfo));
+     writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compositionDescriptorSets.composition[1], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &mrtFrameBuf.displace.descImageInfo));
+     vkUpdateDescriptorSets(mainDevice.logicalDevice, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
      prepareMrtFramebuffer();
 }
 void defer::cleanupMrtFramebuffer() {
@@ -537,6 +572,7 @@ void defer::cleanupMrtFramebuffer() {
           mrtFrameBuf.roughness,
           mrtFrameBuf.displace,
           mrtFrameBuf.depth );
+     vkDestroyFramebuffer(mainDevice.logicalDevice, mrtFrameBuf.frameBuffer, nullptr);
 }
 void defer::recordMrtCommandBuffer() {
 
@@ -578,6 +614,7 @@ void defer::recordMrtCommandBuffer() {
      vkCmdBindIndexBuffer(mrtCommandBuffer,skull_gltf.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
      vkCmdBindDescriptorSets(mrtCommandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.mrtLayout, 0, 2, geoDescriptorSets.skull, 0, nullptr);
      vkCmdDrawIndexed(mrtCommandBuffer, skull_gltf.parts[0].indices.size(), 3, 0, 0, 0);
+     vkCmdEndRenderPass(mrtCommandBuffer);
      UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,mrtCommandBuffer );
 }
 

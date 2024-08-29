@@ -51,6 +51,8 @@ struct ktx_tex2darray  : public VulkanRenderer{
     void render() override {
         updateUniformBuffer();
         recordCommandBuffer();
+        submitMainCommandBuffer();
+        presentMainCommandBufferFrame();
     }
     struct {
         VkPipeline pipeline;
