@@ -35,8 +35,7 @@ struct Camera {
     // euler Angles
     float mYaw{-90};
     float mPitch{0};
-private:
-    // mouse
+
     float mMoveSpeed{2.5f};
     float mMouseSensitivity{0.1f};
     float mZoom{45};

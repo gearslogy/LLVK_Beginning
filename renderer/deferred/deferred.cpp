@@ -20,6 +20,7 @@ defer::defer() {
      mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
      mainCamera.mYaw = 243.6;
      mainCamera.mPitch = -43.99;
+     mainCamera.mMoveSpeed = 20;
      mainCamera.updateCameraVectors();
 }
 
@@ -460,9 +461,9 @@ void defer::prepareUniformBuffers() {
      mrtData.instanceRot[0] = glm::vec4(0,-42,0,0);
      mrtData.instanceRot[1] = glm::vec4(0,35,0,0);
      mrtData.instanceRot[2] = glm::vec4(0,-93,0,0);
-     mrtData.instanceScale[0] = 2;
-     mrtData.instanceScale[1] = 2;
-     mrtData.instanceScale[2] = 2;
+     mrtData.instanceScale[0] = glm::vec4(1.0);
+     mrtData.instanceScale[1] = glm::vec4(2.0);
+     mrtData.instanceScale[2] = glm::vec4(3.0);
 
      updateUniformBuffers();
 }

@@ -23,7 +23,7 @@ struct defer :  VulkanRenderer{
         // instance
         glm::vec4 instancePos[3];
         glm::vec4 instanceRot[3];
-        float instanceScale[3];
+        glm::vec4 instanceScale[3];
     }mrtData{};// vert ubo
 
     struct Light {
