@@ -19,9 +19,9 @@
 			"componentType":5126,
 			"count":10387,
 			"type":"VEC3",
-			"min":[-211.778732,-1.92550302,-160.754272
+			"min":[-236.078735,-1.92550302,-160.754272
 			],
-			"max":[209.123077,36.6732674,164.07634
+			"max":[184.823074,36.6732674,164.07634
 			]
 		},
 		{
@@ -29,9 +29,9 @@
 			"componentType":5126,
 			"count":10387,
 			"type":"VEC4",
-			"min":[-0.999950767,-0.998825192,-0.999997437,1
+			"min":[-0.999950469,-0.998825192,-0.999997616,1
 			],
-			"max":[0.999998629,0.999609828,0.999628305,1
+			"max":[0.999998629,0.999609888,0.999628425,1
 			]
 		},
 		{
@@ -118,11 +118,19 @@
 	],
 	"materials":[
 		{
-			"name":"initialShadingGroup",
+			"name":"principledshader",
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[0.75686276,0.75686276,0.75686276,1
-				],
-				"metallicFactor":0
+				"metallicFactor":0,
+				"roughnessFactor":0.300000012,
+				"baseColorTexture":{
+					"index":0
+				},
+				"metallicRoughnessTexture":{
+					"index":1
+				}
+			},
+			"normalTexture":{
+				"index":2
 			}
 		}
 	],
@@ -130,6 +138,31 @@
 		{
 			"nodes":[0
 			]
+		}
+	],
+	"textures":[
+		{
+			"source":0
+		},
+		{
+			"source":1
+		},
+		{
+			"source":2
+		}
+	],
+	"images":[
+		{
+			"uri":"albedo.jpg",
+			"mimeType":"image/jpeg"
+		},
+		{
+			"uri":"roughness.jpg",
+			"mimeType":"image/jpeg"
+		},
+		{
+			"uri":"normal.jpg",
+			"mimeType":"image/jpeg"
 		}
 	],
 	"scene":0

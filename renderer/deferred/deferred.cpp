@@ -77,12 +77,12 @@ void defer::loadTextures() {
      for(auto &&[i, tex] : UT_Fn::enumerate(UBOTextures.ground_textures) ){
           auto ground_file = ground_root / names[i];
           std::cout << ground_file << std::endl;
-          tex.create(ground_file.generic_string(), colorSampler );
+          tex.create(ground_file.generic_string(), colorSampler, VK_FORMAT_R8G8B8A8_UNORM );
      }
      // read skull textures
      for(auto &&[i, tex] : UT_Fn::enumerate(UBOTextures.skull_textures) ){
           auto skull_file = skull_root / names[i];
-          tex.create(skull_file.generic_string(), colorSampler );
+          tex.create(skull_file.generic_string(), colorSampler,VK_FORMAT_R8G8B8A8_UNORM );
      }
 
 }
@@ -457,13 +457,15 @@ void defer::prepareUniformBuffers() {
      // Setup instanced model positions
      mrtData.instancePos[0] = glm::vec4(0);
      mrtData.instancePos[1] = glm::vec4(128.0f, 8.0, 13, 0.0f);
-     mrtData.instancePos[2] = glm::vec4(23, 8, -52.0f, 0.0f);
-     mrtData.instanceRot[0] = glm::vec4(0,-42,0,0);
-     mrtData.instanceRot[1] = glm::vec4(0,35,0,0);
-     mrtData.instanceRot[2] = glm::vec4(0,-93,0,0);
+     mrtData.instancePos[2] = glm::vec4(23.7558, 8.08336, -52.067f, 0.0f);
+
+     mrtData.instanceRot[0] = glm::vec4(0,0,0,0);
+     mrtData.instanceRot[1] = glm::vec4(0,35.955,0,0);
+     mrtData.instanceRot[2] = glm::vec4(0,-40,0,0);
+
      mrtData.instanceScale[0] = glm::vec4(1.0);
-     mrtData.instanceScale[1] = glm::vec4(2.0);
-     mrtData.instanceScale[2] = glm::vec4(3.0);
+     mrtData.instanceScale[1] = glm::vec4(3.0);
+     mrtData.instanceScale[2] = glm::vec4(2.0);
 
      updateUniformBuffers();
 }
@@ -479,10 +481,10 @@ void defer::updateUniformBuffers() {
      // Current view position
      compositionData.viewPos = glm::vec4(mainCamera.mPosition, 0.0f);
      compositionData.lights[0] = {
-          {482.972,231.21,124.495 ,0 },{1,1,1},300
+          {482.972,231.21,124.495 ,0 },{10,10,10},800
      };
      compositionData.lights[1] = {
-          {-204.601,98.3806,0 ,0 },{0.533,0.647415,1},300
+          {-204.601,98.3806,0 ,0 },{0.533 * 5,0.647415*5,1*5},600
      };
      memcpy(uniformBuffers.composition.mapped, &compositionData, sizeof(compositionData));
 }

@@ -156,7 +156,7 @@ struct FnVmaImage {
     static void createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
                                              uint32_t width, uint32_t height,
                                              uint32_t mipLevels, uint32_t layerCount,
-                                             VkFormat format,
+                                             const VkFormat format,
                                              VkImageTiling tiling,
                                              VkImageUsageFlags usageFlags,
                                              bool canMapping,
@@ -164,7 +164,7 @@ struct FnVmaImage {
     static void createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
         const VkImageCreateInfo &createInfo, bool canMapping, VkImage &image, VmaAllocation &allocation );
 
-    static void createTexture(const VmaBufferRequiredObjects &reqObj,
+    static void createTexture(const VmaBufferRequiredObjects &reqObj,const VkFormat format,
         const std::string &filePath,
         VkImage &image, VmaAllocation &allocation,uint32_t &createdMipLevels
         );
@@ -180,7 +180,7 @@ struct IVmaUBOTexture {
 // read tga/jpg/ ... etc use
 struct VmaUBOTexture : IVmaUBOTexture {
     VmaBufferRequiredObjects requiredObjects{};
-    void create(const std::string &file, VkSampler sampler);
+    void create(const std::string &file, const VkSampler &sampler,const VkFormat &imageFormat = VK_FORMAT_R8G8B8A8_SRGB);
     void cleanup();
 };
 

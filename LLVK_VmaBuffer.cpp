@@ -42,7 +42,7 @@ void VmaSimpleGeometryBufferManager::cleanup() {
 void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
                                              uint32_t width, uint32_t height,
                                              uint32_t mipLevels, uint32_t layerCount,
-                                             VkFormat format,
+                                             const VkFormat format,
                                              VkImageTiling tiling,
                                              VkImageUsageFlags usageFlags,
                                              bool canMapping,
@@ -74,7 +74,7 @@ void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj
 
 
 
-void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
+void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFormat format,
     const std::string &filePath,VkImage &image, VmaAllocation &allocation,
     uint32_t &createdMipLevels) {
     const auto &[device,physicalDevice,commandPool, queue, allocator] = reqObj;
@@ -101,7 +101,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
 
     // create our image and allocation
 
-    constexpr VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+    //constexpr VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
     createImageAndAllocation(reqObj, texWidth, texHeight,
         mipLevels,1,
         format,VK_IMAGE_TILING_OPTIMAL,
@@ -127,10 +127,11 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,
     vmaDestroyBuffer(allocator, stagingBuffer,stagingBufferAllocation);
 }
 
-void VmaUBOTexture::create(const std::string &file, VkSampler sampler) {
-    constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+void VmaUBOTexture::create(const std::string &file, const VkSampler &sampler,const VkFormat &imageFormat) {
+    //constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB; // need gamma correct
+    //constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM; // do not need gamma correct
     uint32_t createMipLevels{};
-    FnVmaImage::createTexture(requiredObjects, file, image, imageAllocation,createMipLevels);
+    FnVmaImage::createTexture(requiredObjects, imageFormat, file, image, imageAllocation,createMipLevels);
     FnImage::createImageView( requiredObjects.device, image,
             imageFormat,
             VK_IMAGE_ASPECT_COLOR_BIT,
