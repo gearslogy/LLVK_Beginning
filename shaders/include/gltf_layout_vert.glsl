@@ -9,7 +9,7 @@ layout(location=6) in vec2 uv1;
 
 
 layout(location = 0) out vec3 fragPosition; // World space position
-layout(location = 1) out vec3 fragColor;
+layout(location = 1) out vec3 fragColor;    // out vertex color
 layout(location = 2) out vec3 fragN;        // Transformed normal
 layout(location = 3) out vec3 fragTangent;        // Transformed normal
 layout(location = 4) out vec3 fragBitangent;        // Transformed normal

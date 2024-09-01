@@ -33,7 +33,7 @@ void main(){
     fragTexCoord = uv0;
     fragN =  normalize(normalMatrix* N);
     fragTangent = normalize(normalMatrix * T);
-    fragBitangent = B;
+    fragBitangent =  normalize(normalMatrix * B);
     fragColor = Cd;
 
 }
