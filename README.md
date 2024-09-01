@@ -10,3 +10,9 @@ Learn Vulkan from scratch
 ## ktx tex array
 ![texarray.png](screenshot/texarray.png)
 
+## REF
+```html
+https://github.com/SaschaWillems/Vulkan
+https://docs.vulkan.org/tutorial/latest/00_Introduction.html
+https://docs.vulkan.org/guide/latest/vertex_input_data_processing.html
+```
