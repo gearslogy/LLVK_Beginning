@@ -88,52 +88,18 @@ void defer::loadTextures() {
 }
 
 
-
-void defer::createAttachment(const VkFormat &format, const VkImageUsageFlagBits &usage, IVmaUBOTexture & attachment ) {
-     const auto device = mainDevice.logicalDevice;
-     const auto physicalDevice = mainDevice.physicalDevice;
-     const auto width = simpleSwapchain.swapChainExtent.width;
-     const auto height = simpleSwapchain.swapChainExtent.height;
-     // 1. build req objects. we use vma allocation
-     VmaBufferRequiredObjects req{};
-     req.allocator = vmaAllocator;
-     req.device = device;
-     req.physicalDevice = physicalDevice;
-     req.queue = mainDevice.graphicsQueue;
-     req.commandPool = graphicsCommandPool;
-     // 2. create image and allocation
-     FnVmaImage::createImageAndAllocation(req, width, height, 1, 1,
-      format,
-      VK_IMAGE_TILING_OPTIMAL, usage | VK_IMAGE_USAGE_SAMPLED_BIT,
-      false,
-      attachment.image,
-      attachment.imageAllocation);
-     // 3. assign to format
-     attachment.format = format;
-     // 4. make sure the aspect mask type
-     VkImageAspectFlags aspectMask = 0;
-     if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT){
-          aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-     }
-     if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT){
-          aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-          if (format >= VK_FORMAT_D16_UNORM_S8_UINT)
-               aspectMask |=VK_IMAGE_ASPECT_STENCIL_BIT;
-     }
-     // 5. create image view
-     FnImage::createImageView(device, attachment.image, format,aspectMask,1, 1, attachment.view);
-     attachment.descImageInfo.sampler = colorSampler;
-     attachment.descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-     attachment.descImageInfo.imageView = attachment.view;
-}
-
 void defer::prepareAttachments() {
-     createAttachment(VK_FORMAT_R16G16B16A16_SFLOAT,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.position);
-     createAttachment(VK_FORMAT_R16G16B16A16_SFLOAT,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.normal);
-     createAttachment(VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.albedo);
-     createAttachment(VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.roughness);
-     createAttachment(VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, mrtFrameBuf.displace);
-     createAttachment(FnImage::findDepthFormat(mainDevice.physicalDevice),VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,mrtFrameBuf.depth); // depth
+     setRequiredObjects(mrtFrameBuf.position, mrtFrameBuf.normal, mrtFrameBuf.albedo, mrtFrameBuf.roughness);
+     setRequiredObjects(mrtFrameBuf.displace, mrtFrameBuf.depth);
+     auto attachmentWidth = simpleSwapchain.swapChainExtent.width;
+     auto attachmentHeight = simpleSwapchain.swapChainExtent.height;
+     VkImageUsageFlagBits colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+     mrtFrameBuf.position.create(attachmentWidth,attachmentHeight, VK_FORMAT_R16G16B16A16_SFLOAT, colorSampler, colorUsage);
+     mrtFrameBuf.normal.create(attachmentWidth,attachmentHeight, VK_FORMAT_R16G16B16A16_SFLOAT, colorSampler, colorUsage);
+     mrtFrameBuf.albedo.create(attachmentWidth,attachmentHeight, VK_FORMAT_R8G8B8A8_UNORM, colorSampler, colorUsage);
+     mrtFrameBuf.roughness.create(attachmentWidth,attachmentHeight, VK_FORMAT_R8G8B8A8_UNORM, colorSampler, colorUsage);
+     mrtFrameBuf.displace.create(attachmentWidth,attachmentHeight, VK_FORMAT_R8G8B8A8_UNORM, colorSampler, colorUsage);
+     mrtFrameBuf.depth.create(attachmentWidth,attachmentHeight, FnImage::findDepthFormat(mainDevice.physicalDevice), colorSampler, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 void defer::prepareMrtFramebuffer() {
@@ -566,15 +532,12 @@ void defer::swapChainResize() {
      prepareMrtFramebuffer();
 }
 void defer::cleanupMrtFramebuffer() {
-     auto clean = [this](auto & ... attachment) {
-          (vmaDestroyImage(this->vmaAllocator, attachment.image, attachment.imageAllocation) , ... );
-          (vkDestroyImageView(this->mainDevice.logicalDevice, attachment.view, nullptr), ... );
-     };
-     clean( mrtFrameBuf.position, mrtFrameBuf.albedo,
-          mrtFrameBuf.normal,
-          mrtFrameBuf.roughness,
-          mrtFrameBuf.displace,
-          mrtFrameBuf.depth );
+     mrtFrameBuf.position.cleanup();
+     mrtFrameBuf.normal.cleanup();
+     mrtFrameBuf.albedo.cleanup();
+     mrtFrameBuf.roughness.cleanup();
+     mrtFrameBuf.displace.cleanup();
+     mrtFrameBuf.depth.cleanup();
      vkDestroyFramebuffer(mainDevice.logicalDevice, mrtFrameBuf.frameBuffer, nullptr);
 }
 void defer::recordMrtCommandBuffer() {

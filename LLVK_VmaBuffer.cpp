@@ -72,6 +72,43 @@ void FnVmaImage::createImageAndAllocation(const VmaBufferRequiredObjects &reqObj
     }
 }
 
+void VmaAttachment::create(uint32_t width, uint32_t height,
+    const VkFormat &attachFormat,
+    const VkSampler & sampler,
+    const VkImageUsageFlagBits &usage) {
+    // 2. create image and allocation
+    format = attachFormat;
+    FnVmaImage::createImageAndAllocation(requiredObjects, width, height, 1, 1,
+     format,
+     VK_IMAGE_TILING_OPTIMAL, usage | VK_IMAGE_USAGE_SAMPLED_BIT,
+     false,
+     image,
+     imageAllocation);
+    // 3. assign to format
+    format = attachFormat;
+    // 4. make sure the aspect mask type
+    VkImageAspectFlags aspectMask = 0;
+    if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT){
+        aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+    if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT){
+        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (format >= VK_FORMAT_D16_UNORM_S8_UINT)
+            aspectMask |=VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+    // 5. create image view
+    FnImage::createImageView(requiredObjects.device, image, format,aspectMask,1, 1, view);
+    descImageInfo.sampler = sampler;
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descImageInfo.imageView = view;
+}
+void VmaAttachment::cleanup() {
+    vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
+    vkDestroyImageView(requiredObjects.device, view, nullptr);
+}
+
+
+
 
 
 void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFormat format,

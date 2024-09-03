@@ -177,6 +177,19 @@ struct IVmaUBOTexture {
     VkFormat format{};
     VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
 };
+
+// for G-Buffer usage
+struct VmaAttachment : IVmaUBOTexture {
+    void create(uint32_t width, uint32_t height,
+        const VkFormat &attachFormat,
+        const VkSampler & sampler,
+        const VkImageUsageFlagBits &usage);
+    void cleanup();
+    VmaBufferRequiredObjects requiredObjects{};
+};
+
+
+
 // read tga/jpg/ ... etc use
 struct VmaUBOTexture : IVmaUBOTexture {
     VmaBufferRequiredObjects requiredObjects{};

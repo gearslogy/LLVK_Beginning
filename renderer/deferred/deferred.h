@@ -87,8 +87,8 @@ struct defer :  VulkanRenderer{
 
 
     struct FrameBuffer {
-        IVmaUBOTexture position, normal, albedo, roughness, displace;
-        IVmaUBOTexture depth;
+        VmaAttachment position, normal, albedo, roughness, displace;
+        VmaAttachment depth;
         VkRenderPass renderPass{};
         VkFramebuffer frameBuffer{};
     } mrtFrameBuf{};
@@ -134,10 +134,6 @@ private:
         ((ubo.requiredObjects.queue = this->mainDevice.graphicsQueue),...);
         ((ubo.requiredObjects.allocator = this->vmaAllocator),...);
     };
-
-    void createAttachment(const VkFormat &format,
-        const VkImageUsageFlagBits &usage,
-        IVmaUBOTexture & attachment);
 
     void createGeoDescriptorSets();
     void createCompositionDescriptorSets();
