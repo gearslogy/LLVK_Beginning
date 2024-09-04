@@ -31,14 +31,13 @@ struct shadowmap : VulkanRenderer{
         glm::mat4 depthBiasMVP;
         glm::vec4 lightPos;
         // Used for depth map visualization
-        float zNear;
-        float zFar;
+        float zNear{1.0};
+        float zFar{96.0};
     } uniformDataScene;
 
     struct {
-        //VkPipeline offscreenOpacity; // used for foliage depth map gen
-        //VkPipeline offscreenOpaque;  // used for grid depth map gen
-        VkPipeline offscreen;
+        VkPipeline offscreenOpacity; // used for foliage depth map gen
+        VkPipeline offscreenOpaque;  // used for grid depth map gen
         VkPipeline sceneOpacity;     // used for foliage render with depth map. forward rendering
         VkPipeline sceneOpaque;      // used for grid render with depth map     forward rendering
         VkPipelineLayout layout{};   // binding=0 UBO, binding=1 colormaps_array, binding=2 shadowmap
@@ -57,6 +56,10 @@ struct shadowmap : VulkanRenderer{
 
     struct {
         VkDescriptorSetLayout descriptorSetLayout{}; // only one set=0
+        VkDescriptorSet offscreenOpacity{};
+        VkDescriptorSet offscreenOpaque{};
+        VkDescriptorSet sceneOpacity{};
+        VkDescriptorSet sceneOpaque{};
     }descriptorSets;
     VkDescriptorPool descPool{};
 

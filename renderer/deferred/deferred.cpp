@@ -108,7 +108,7 @@ void defer::prepareMrtFramebuffer() {
      attachments[1] = mrtFrameBuf.normal.view;
      attachments[2] = mrtFrameBuf.albedo.view;
      attachments[3] = mrtFrameBuf.roughness.view;
-     attachments[4] = mrtFrameBuf.displace.view;
+          attachments[4] = mrtFrameBuf.displace.view;
      attachments[5] = mrtFrameBuf.depth.view;
      std::cout << "prepareMrtFramebuffer: "<<  mrtFrameBuf.position.view<< std::endl;
      VkFramebufferCreateInfo framebufferCreateInfo{};
