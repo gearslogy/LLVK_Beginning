@@ -23,6 +23,7 @@ struct shadowmap : VulkanRenderer{
         glm::mat4 depthMVP;
     } uniformDataOffscreen;
 
+    glm::vec3 lightPos{};
     struct UniformDataScene {
         glm::mat4 projection;
         glm::mat4 view;

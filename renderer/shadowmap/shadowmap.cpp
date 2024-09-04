@@ -18,6 +18,7 @@ void shadowmap::cleanupObjects() {
     gridTex.cleanup();
     UT_Fn::cleanup_pipeline(device, pipelines.offscreen, pipelines.sceneOpacity, pipelines.sceneOpaque);
     vkDestroyPipelineLayout(device, pipelines.layout, nullptr);
+
 }
 
 void shadowmap::prepare() {
@@ -46,6 +47,12 @@ void shadowmap::prepareOffscreen() {
 }
 
 void shadowmap::prepareUniformBuffers() {
+    setRequiredObjects(uniformBuffers.scene, uniformBuffers.scene);
+    uniformBuffers.offscreen.createAndMapping(sizeof(uniformDataOffscreen));
+    uniformBuffers.scene.createAndMapping(sizeof(uniformDataScene));
+}
+void shadowmap::updateUniformBuffers() {
+    // offscreen
 }
 
 void shadowmap::prepareDescriptorSets() {
@@ -92,9 +99,6 @@ void shadowmap::preparePipelines() {
 
 }
 
-void shadowmap::updateUniformBuffers() {
-
-}
 
 
 LLVK_NAMESPACE_END
