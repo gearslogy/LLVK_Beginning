@@ -22,6 +22,7 @@ struct shadowmap : VulkanRenderer{
     struct {
         glm::mat4 depthMVP;
     } uniformDataOffscreen;
+
     struct UniformDataScene {
         glm::mat4 projection;
         glm::mat4 view;
@@ -34,12 +35,18 @@ struct shadowmap : VulkanRenderer{
     } uniformDataScene;
 
     struct {
-        VkPipeline offscreenOpacity; // used for foliage depth map gen
-        VkPipeline offscreenOpaque;  // used for grid depth map gen
+        //VkPipeline offscreenOpacity; // used for foliage depth map gen
+        //VkPipeline offscreenOpaque;  // used for grid depth map gen
+        VkPipeline offscreen;
         VkPipeline sceneOpacity;     // used for foliage render with depth map. forward rendering
         VkPipeline sceneOpaque;      // used for grid render with depth map     forward rendering
         VkPipelineLayout layout{};   // binding=0 UBO, binding=1 colormaps_array, binding=2 shadowmap
     }pipelines;
+
+    // push constant data
+    struct {
+        float enable_opacity_texture{0};
+    }constantData;
 
     struct {
         VmaUBOBuffer scene;     // final rendering : opaque and opacity use same UBO
@@ -51,8 +58,11 @@ struct shadowmap : VulkanRenderer{
         VkDescriptorSetLayout descriptorSetLayout{}; // only one set=0
     }descriptorSets;
     VkDescriptorPool descPool{};
-    struct {
 
+    struct {
+        VmaAttachment depthAttachment{};
+        VkFramebuffer framebuffer{};
+        VkRenderPass renderPass{};
     }shadowFramebuffer;
 
 

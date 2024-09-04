@@ -16,6 +16,8 @@ void shadowmap::cleanupObjects() {
     geoBufferManager.cleanup();
     foliageTex.cleanup();
     gridTex.cleanup();
+    UT_Fn::cleanup_pipeline(device, pipelines.offscreen, pipelines.sceneOpacity, pipelines.sceneOpaque);
+    vkDestroyPipelineLayout(device, pipelines.layout, nullptr);
 }
 
 void shadowmap::prepare() {
