@@ -11,27 +11,27 @@ void shadowmap::render() {
 
 void shadowmap::cleanupObjects() {
     auto device = mainDevice.logicalDevice;
-    vkDestroySampler(device, sampler, nullptr);
+
     vkDestroyDescriptorPool(device, descPool, nullptr);
-    geoBufferManager.cleanup();
-    foliageTex.cleanup();
-    gridTex.cleanup();
+    UT_Fn::cleanup_resources(geoBufferManager, foliageTex, gridTex);
+    UT_Fn::cleanup_sampler(device, colorSampler, depthSampler);
     UT_Fn::cleanup_pipeline(device, pipelines.sceneOpacity, pipelines.sceneOpaque);
     UT_Fn::cleanup_pipeline(device, pipelines.offscreenOpacity, pipelines.offscreenOpaque);
-    vkDestroyPipelineLayout(device, pipelines.layout, nullptr);
-
+    UT_Fn::cleanup_descriptor_set_layout(device, descriptorSets.descriptorSetLayout);
+    UT_Fn::cleanup_pipeline_layout(device, pipelines.layout);
 }
 
 void shadowmap::prepare() {
+    colorSampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
+    depthSampler = FnImage::createDepthSampler(mainDevice.logicalDevice);
     loadTextures();
     loadModels();
 }
 
 void shadowmap::loadTextures() {
-    sampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
     setRequiredObjects(foliageTex, gridTex);
-    foliageTex.create("content/plants/gardenplants/tex_array.ktx2", sampler );
-    gridTex.create("content/shadowmap/grid_tex/tex_array.ktx2",sampler);
+    foliageTex.create("content/plants/gardenplants/tex_array.ktx2", colorSampler );
+    gridTex.create("content/shadowmap/grid_tex/tex_array.ktx2",colorSampler);
 }
 
 void shadowmap::loadModels() {
@@ -42,9 +42,44 @@ void shadowmap::loadModels() {
     UT_VmaBuffer::addGeometryToSimpleBufferManager(foliageGeo, geoBufferManager);
 }
 
+void shadowmap::createOffscreenRenderPass() {
+
+}
+
+void shadowmap::createOffscreenFramebuffer() {
+    const auto device = mainDevice.logicalDevice;
+    setRequiredObjects(shadowFramebuffer.depthAttachment);
+    shadowFramebuffer.depthAttachment.create(shadowFramebuffer.width,
+        shadowFramebuffer.height,
+        FnImage::findDepthFormat(mainDevice.physicalDevice), depthSampler,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT // create function will auto add VK_IMAGE_USAGE_SAMPLED_BIT
+        );
+    // framebuffer create
+    std::array<VkImageView,1> attachments = {shadowFramebuffer.depthAttachment.view};
+    VkFramebufferCreateInfo framebufferInfo = {};
+    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebufferInfo.renderPass = shadowFramebuffer.renderPass;
+    framebufferInfo.attachmentCount = 1;
+    framebufferInfo.width = shadowFramebuffer.width;           // FIXED shadow map size;
+    framebufferInfo.height = shadowFramebuffer.height;         // FIXED shadow map size;
+    framebufferInfo.layers = 1;
+    framebufferInfo.pAttachments = attachments.data();
+    UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &shadowFramebuffer.framebuffer);
+}
+
+void shadowmap::cleanupOffscreenFramebuffer() {
+    const auto device = mainDevice.logicalDevice;
+    vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
+    vkDestroyRenderPass(device, shadowFramebuffer.renderPass, nullptr);
+    shadowFramebuffer.depthAttachment.cleanup();
+}
+
 
 void shadowmap::prepareOffscreen() {
+    // attachment create
 
+    // render pass create
+    // framebuffer create
 }
 
 void shadowmap::prepareUniformBuffers() {
@@ -110,10 +145,10 @@ void shadowmap::prepareDescriptorSets() {
 
     // create set
     auto allocInfo = FnDescriptor::setAllocateInfo(descPool,layouts);
-    UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &allocInfo,descriptorSets.offscreenOpacity );
-    UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &allocInfo,descriptorSets.offscreenOpaque );
-    UT_Fn::invoke_and_check("Error create scene sets",vkAllocateDescriptorSets,device, &allocInfo,descriptorSets.sceneOpacity );
-    UT_Fn::invoke_and_check("Error create scene sets",vkAllocateDescriptorSets,device, &allocInfo,descriptorSets.sceneOpaque );
+    UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &allocInfo,&descriptorSets.offscreenOpacity );
+    UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &allocInfo,&descriptorSets.offscreenOpaque );
+    UT_Fn::invoke_and_check("Error create scene sets",vkAllocateDescriptorSets,device, &allocInfo,&descriptorSets.sceneOpacity );
+    UT_Fn::invoke_and_check("Error create scene sets",vkAllocateDescriptorSets,device, &allocInfo,&descriptorSets.sceneOpaque );
     // write set
     // - offscreen opacity
     std::vector<VkWriteDescriptorSet> opacityWriteSets;
@@ -145,6 +180,7 @@ void shadowmap::prepareDescriptorSets() {
 void shadowmap::preparePipelines() {
 
 }
+
 
 
 

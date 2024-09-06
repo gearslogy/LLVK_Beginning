@@ -74,6 +74,7 @@ struct FnImage {
     // need manully destory:vkDestroySampler(device, textureSampler, nullptr);
     static VkSampler createImageSampler(VkPhysicalDevice physicalDevice,
                                         VkDevice device);
+    static VkSampler createDepthSampler(VkDevice device);
 
     static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
                                       VkImageTiling tiling,

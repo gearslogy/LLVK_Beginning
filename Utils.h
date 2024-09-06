@@ -30,6 +30,9 @@ namespace UT_Fn {
     constexpr auto cleanup_range_resources(Concept::is_range auto &&range) {
         for(auto &t : range) t.cleanup();
     }
+    constexpr auto cleanup_resources(auto && ... r) {
+        (r.cleanup(),...);
+    }
     constexpr auto cleanup_shader_module(VkDevice device, auto ... module) {
         (vkDestroyShaderModule(device, module, nullptr),...);
     }
@@ -41,6 +44,12 @@ namespace UT_Fn {
     }
     constexpr auto cleanup_pipeline(VkDevice device, auto ... pipeline) {
         (vkDestroyPipeline(device,pipeline,nullptr),...);
+    }
+    constexpr auto cleanup_sampler(VkDevice device, auto ... sampler) {
+        (vkDestroySampler(device,sampler,nullptr),...);
+    }
+    constexpr auto cleanup_render_pass(VkDevice device, auto ... pass) {
+        (vkDestroyRenderPass(device,pass,nullptr),...);
     }
 
 

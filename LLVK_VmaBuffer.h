@@ -183,7 +183,7 @@ struct VmaAttachment : IVmaUBOTexture {
     void create(uint32_t width, uint32_t height,
         const VkFormat &attachFormat,
         const VkSampler & sampler,
-        const VkImageUsageFlagBits &usage);
+        const VkImageUsageFlags &usage);
     void cleanup();
     VmaBufferRequiredObjects requiredObjects{};
 };

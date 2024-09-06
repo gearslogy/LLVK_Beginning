@@ -64,13 +64,19 @@ struct shadowmap : VulkanRenderer{
     VkDescriptorPool descPool{};
 
     struct {
+        uint32_t width{2048};
+        uint32_t height{2048};
         VmaAttachment depthAttachment{};
         VkFramebuffer framebuffer{};
         VkRenderPass renderPass{};
     }shadowFramebuffer;
+    void createOffscreenRenderPass();
+    void createOffscreenFramebuffer();
+    void cleanupOffscreenFramebuffer();
 
 
-    VkSampler sampler{};
+    VkSampler colorSampler{};
+    VkSampler depthSampler{};
     VmaUBOKTX2Texture foliageTex;
     VmaUBOKTX2Texture gridTex;
     GLTFLoader gridGeo{};

@@ -306,6 +306,30 @@ VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice d
     }
     return textureSampler;
 }
+VkSampler FnImage::createDepthSampler(VkDevice device) {
+    VkSamplerCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    createInfo.magFilter = VK_FILTER_LINEAR;
+    createInfo.magFilter = VK_FILTER_LINEAR;
+    createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    createInfo.anisotropyEnable = VK_TRUE;
+    createInfo.maxAnisotropy = 1;
+    createInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;//it only effects when the addressModeU/V/W=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
+    // setting up mip
+    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    createInfo.mipLodBias = 0;
+    createInfo.minLod = 0.0f;
+    createInfo.maxLod = 1.0;
+    VkSampler textureSampler;
+    if (vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture sampler!");
+    }
+    return textureSampler;
+}
+
+
 
 
 VkFormat FnImage::findSupportedFormat(VkPhysicalDevice physicalDevice,

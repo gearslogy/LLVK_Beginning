@@ -1,6 +1,6 @@
 #version 460 core
 #include "gltf_layout_vert.glsl"
-
+#include "math.glsl"
 
 layout (binding = 0) uniform UBO
 {
@@ -18,6 +18,7 @@ void main(){
     vec4 worldPos = ubo.model * vec4(P,1.0);
     gl_Position = ubo.projection * ubo.view * worldPos;
 
+    mat3 normalMatrix =  normal_matrix(ubo.model);
     fragPosition = worldPos.xyz;
     fragTexCoord = uv0;
     fragN =  normalize(normalMatrix* N);
