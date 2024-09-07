@@ -43,7 +43,13 @@ void shadowmap::loadModels() {
 }
 
 void shadowmap::createOffscreenRenderPass() {
-
+    std::array<VkAttachmentDescription,1 > attachmentDescriptions = {};
+    attachmentDescriptions[0].format = shadowFramebuffer.depthAttachment.format;
+    attachmentDescriptions[0].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachmentDescriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachmentDescriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachmentDescriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachmentDescriptions[0].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 }
 
 void shadowmap::createOffscreenFramebuffer() {
