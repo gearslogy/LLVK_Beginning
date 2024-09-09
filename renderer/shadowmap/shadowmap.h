@@ -13,7 +13,6 @@ struct shadowmap : VulkanRenderer{
     // user functions
     void loadTextures();
     void loadModels();
-    void prepareOffscreen();
     void prepareUniformBuffers();
     void prepareDescriptorSets();
     void preparePipelines();
@@ -36,12 +35,19 @@ struct shadowmap : VulkanRenderer{
     } uniformDataScene;
 
     struct {
-        VkPipeline offscreenOpacity; // used for foliage depth map gen
-        VkPipeline offscreenOpaque;  // used for grid depth map gen
-        VkPipeline sceneOpacity;     // used for foliage render with depth map. forward rendering
-        VkPipeline sceneOpaque;      // used for grid render with depth map     forward rendering
-        VkPipelineLayout layout{};   // binding=0 UBO, binding=1 colormaps_array, binding=2 shadowmap
-    }pipelines;
+        VkPipeline opacity; // used for foliage depth map gen
+        VkPipeline opaque;  // used for grid depth map gen
+    }offscreenPipelines;
+    VkDescriptorSetLayout offscreenDescriptorSetLayout{}; // only one set=0
+    VkPipelineLayout offscreenPipelineLayout{};   //only 1 set: binding=0 UBO, binding=1 colormaps_array
+
+    struct {
+        VkPipeline opacity;     // used for foliage render with depth map. forward rendering
+        VkPipeline opaque;      // used for grid render with depth map     forward rendering
+    }scenePipeline;
+    VkDescriptorSetLayout sceneDescriptorSetLayout{}; // only one set=0 .
+    VkPipelineLayout scenePipelineLayout{};       //only 1 set: binding=0 UBO, binding=1 colormaps_array, binding=2 shadowmap
+
 
     // push constant data
     struct {
@@ -55,12 +61,18 @@ struct shadowmap : VulkanRenderer{
 
 
     struct {
-        VkDescriptorSetLayout descriptorSetLayout{}; // only one set=0
-        VkDescriptorSet offscreenOpacity{};
-        VkDescriptorSet offscreenOpaque{};
-        VkDescriptorSet sceneOpacity{};
-        VkDescriptorSet sceneOpaque{};
-    }descriptorSets;
+        VkDescriptorSet opacity{};
+        VkDescriptorSet opaque{};
+    }offscreenSets;
+
+    struct {
+        VkDescriptorSet opacity{};
+        VkDescriptorSet opaque{};
+    }sceneSets;
+
+
+
+
     VkDescriptorPool descPool{};
 
     struct {
@@ -69,6 +81,7 @@ struct shadowmap : VulkanRenderer{
         VmaAttachment depthAttachment{};
         VkFramebuffer framebuffer{};
         VkRenderPass renderPass{};
+        VkSampler depthSampler{};
     }shadowFramebuffer;
     void createOffscreenRenderPass();
     void createOffscreenFramebuffer();
@@ -76,7 +89,6 @@ struct shadowmap : VulkanRenderer{
 
 
     VkSampler colorSampler{};
-    VkSampler depthSampler{};
     VmaUBOKTX2Texture foliageTex;
     VmaUBOKTX2Texture gridTex;
     GLTFLoader gridGeo{};
