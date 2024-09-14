@@ -7,12 +7,14 @@
 #include "renderer/ktx_texture/ktx_texture.h"
 #include "renderer/ktx_texarray/ktx_tex2darray.h"
 #include "renderer/deferred/deferred.h"
+#include "renderer/shadowmap/shadowmap.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
     //LLVK::DynamicsUBO app;
     //LLVK::ktx_tex2darray app;
-    LLVK::defer app;
+    //LLVK::defer app;
+    LLVK::shadowmap app;
     try {
         app.run();
     }

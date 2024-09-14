@@ -7,6 +7,7 @@
 #include "LLVK_GeomtryLoader.h"
 LLVK_NAMESPACE_BEGIN
 struct shadowmap : VulkanRenderer{
+    shadowmap();
     void render() override;
     void cleanupObjects() override;
     void prepare() override;
@@ -31,13 +32,10 @@ struct shadowmap : VulkanRenderer{
         glm::vec4 lightPos;
         // Used for depth map visualization
         float zNear{1.0};
-        float zFar{96.0};
+        float zFar{1000.0};
     } uniformDataScene;
 
-    struct {
-        VkPipeline opacity; // used for foliage depth map gen
-        VkPipeline opaque;  // used for grid depth map gen
-    }offscreenPipelines;
+    VkPipeline offscreenPipeline{};
     VkDescriptorSetLayout offscreenDescriptorSetLayout{}; // only one set=0
     VkPipelineLayout offscreenPipelineLayout{};   //only 1 set: binding=0 UBO, binding=1 colormaps_array
 
@@ -50,9 +48,9 @@ struct shadowmap : VulkanRenderer{
 
 
     // push constant data
-    struct {
-        float enable_opacity_texture{0};
-    }constantData;
+
+    static constexpr float enable_opacity_texture{1};
+    static constexpr float disable_opacity_texture{0};
 
     struct {
         VmaUBOBuffer scene;     // final rendering : opaque and opacity use same UBO
@@ -83,10 +81,11 @@ struct shadowmap : VulkanRenderer{
         VkRenderPass renderPass{};
         VkSampler depthSampler{};
     }shadowFramebuffer;
+    void createOffscreenDepthAttachment();
     void createOffscreenRenderPass();
     void createOffscreenFramebuffer();
     void cleanupOffscreenFramebuffer();
-
+    void recordCommandBuffer();
 
     VkSampler colorSampler{};
     VmaUBOKTX2Texture foliageTex;

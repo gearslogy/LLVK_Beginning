@@ -37,6 +37,24 @@ namespace UT_VmaBuffer {
             geom.parts[i].indicesBuffer = manager.createIndexedBuffers.back().buffer;
         }
     }
+    struct RenderGLTFRequiredObjects {
+        const GLTFLoader *geo;
+        uint32_t part;
+        VkPipelineLayout layout;
+        VkCommandBuffer commandBuffer;
+    };
+
+    /*
+    inline void renderGLTFGeo(const RenderGLTFRequiredObjects &requiredData) {
+        const auto &cmdBuf = requiredData.commandBuffer;
+        const auto &geo = requiredData.geo;
+        //const auto &partVerticesBuffer =
+        VkDeviceSize offsets[1] = { 0 };
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, &gridGeo.parts[0].verticesBuffer, offsets);
+        vkCmdBindIndexBuffer(cmdBuf,gridGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(cmdBuf,VK_PIPELINE_BIND_POINT_GRAPHICS, scenePipelineLayout, 0, 1, &sceneSets.opaque, 0, nullptr);
+        vkCmdDrawIndexed(cmdBuf, gridGeo.parts[0].indices.size(), 1, 0, 0, 0);
+    }*/
 
 
 }

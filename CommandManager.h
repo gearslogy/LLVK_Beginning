@@ -30,6 +30,32 @@ struct FnCommand {
                                                          const VkRenderPass &renderpass,
                                                          const VkExtent2D *swapChainExtent,
                                                          const std::vector<VkClearValue> &clearValues);
+
+    inline static VkCommandBufferBeginInfo commandBufferBeginInfo() {
+        // cmd begin
+        VkCommandBufferBeginInfo cmdBufBeginInfo{};
+        cmdBufBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cmdBufBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        return cmdBufBeginInfo;
+    }
+
+    inline static VkRenderPassBeginInfo renderPassBeginInfo(const VkFramebuffer &framebuffer,
+                                                            const VkRenderPass &renderpass,
+                                                            const VkExtent2D extent,
+                                                            const std::vector<VkClearValue> &clearValues) {
+        VkRenderPassBeginInfo renderPassBeginInfo{};
+        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassBeginInfo.framebuffer = framebuffer;
+        renderPassBeginInfo.renderPass = renderpass;
+        renderPassBeginInfo.renderArea.extent = extent;
+        renderPassBeginInfo.renderArea.offset = {0, 0};
+        renderPassBeginInfo.pClearValues = clearValues.data();
+        renderPassBeginInfo.clearValueCount = clearValues.size();
+        return renderPassBeginInfo;
+    }
+
+
+
     //vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
     static VkViewport viewport( auto width, auto height) {
         VkViewport viewport{};

@@ -7,7 +7,6 @@
 #include "LLVK_Image.h"
 #include <ktx.h>
 #include "libs/magic_enum.hpp"
-
 LLVK_NAMESPACE_BEGIN
     void VmaUBOBuffer::createAndMapping(VkDeviceSize bufferSize) {
     auto result = FnVmaBuffer::createBuffer(requiredObjects.device,
@@ -104,7 +103,57 @@ void VmaAttachment::cleanup() {
     vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
     vkDestroyImageView(requiredObjects.device, view, nullptr);
 }
+void VmaAttachment::createDepth32(uint32_t width, uint32_t height,
+        const VkSampler & sampler) {
+    //format = VK_FORMAT_D32_SFLOAT;
+    //format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+    format = FnImage::findDepthFormat(requiredObjects.physicalDevice);
+    VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    FnVmaImage::createImageAndAllocation(requiredObjects, width, height, 1, 1,
+                                         format,
+                                         VK_IMAGE_TILING_OPTIMAL,
+                                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                         false,
+                                         image,
+                                         imageAllocation);
+    // 4. create image view
+    FnImage::createImageView(requiredObjects.device, image, format,aspect,1, 1, view);
 
+
+    descImageInfo.sampler = sampler;
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    descImageInfo.imageView = view;
+}
+
+void VmaDepthStencilAttachment::create(uint32_t width, uint32_t height, const VkSampler &sampler) {
+    FnVmaImage::createImageAndAllocation(requiredObjects, width, height, 1, 1,
+     format,
+     VK_IMAGE_TILING_OPTIMAL,
+     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+     false,
+     image,
+     imageAllocation);
+    // 4. create image view
+    VkImageAspectFlagBits depthAspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    FnImage::createImageView(requiredObjects.device, image, format,depthAspectMask,1, 1, depthView);
+    descDepthImageInfo.sampler = sampler;
+    descDepthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descDepthImageInfo.imageView = depthView;
+
+    VkImageAspectFlagBits stencilAspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+    FnImage::createImageView(requiredObjects.device, image, format,stencilAspectMask,1, 1, stencilView);
+    descStencilImageInfo.sampler = sampler;
+    descStencilImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descStencilImageInfo.imageView = stencilView;
+}
+
+
+
+void VmaDepthStencilAttachment::cleanup() {
+    vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
+    vkDestroyImageView(requiredObjects.device, depthView, nullptr);
+    vkDestroyImageView(requiredObjects.device, stencilView, nullptr);
+}
 
 
 
@@ -354,6 +403,9 @@ void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
     result = ktxTexture_CreateFromNamedFile(file.c_str(),
                                                KTX_TEXTURE_CREATE_NO_FLAGS,
                                                &kTexture);
+    if (result != KTX_SUCCESS)
+        throw std::runtime_error(std::format("failed to load textures:{}",file));
+
     if(kTexture->classId == ktxTexture2_c)
         kTexture2 = reinterpret_cast<ktxTexture2*>(kTexture); // if ktx->classId == ktxTexture2_c
 

@@ -9,6 +9,7 @@
 #include "vma/vk_mem_alloc.h"
 #include "CommandManager.h"
 #include <ktxvulkan.h>
+#include <cassert>
 LLVK_NAMESPACE_BEGIN
 
 namespace FnVmaBuffer {
@@ -21,6 +22,8 @@ namespace FnVmaBuffer {
     VkBuffer& buffer,
     VmaAllocation& allocation)
     {
+        assert(allocator!=VK_NULL_HANDLE);
+        assert(allocator!=VK_NULL_HANDLE);
         // buffer struct same as vulkan api
         VkBufferCreateInfo bufferInfo = {};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -178,15 +181,38 @@ struct IVmaUBOTexture {
     VkDescriptorImageInfo descImageInfo{}; // for writeDescriptorSet
 };
 
-// for G-Buffer usage
+
+// for G-Buffer usage. also can will use for the Depth attachment
 struct VmaAttachment : IVmaUBOTexture {
     void create(uint32_t width, uint32_t height,
         const VkFormat &attachFormat,
         const VkSampler & sampler,
         const VkImageUsageFlags &usage);
+    //only create as depth attachment
+    void createDepth32(uint32_t width, uint32_t height,const VkSampler & sampler);
+    void cleanup();
+    VmaBufferRequiredObjects requiredObjects{};
+
+};
+
+
+
+
+// depth and stencil attachment
+struct VmaDepthStencilAttachment {
+    VkImage image{};
+    VmaAllocation imageAllocation{};
+    VkImageView depthView{};
+    VkImageView stencilView{};
+    VkFormat format{VK_FORMAT_D32_SFLOAT_S8_UINT}; // ALWAYS THIS FORMAT!
+    VkDescriptorImageInfo descDepthImageInfo{};
+    VkDescriptorImageInfo descStencilImageInfo{};
+
+    void create(uint32_t width, uint32_t height,const VkSampler & sampler);
     void cleanup();
     VmaBufferRequiredObjects requiredObjects{};
 };
+
 
 
 
