@@ -10,10 +10,9 @@ layout(push_constant) uniform PushConstantsFragment {
 } pc_data;
 
 void main(){
-    /*
     if(pc_data.enable_opacity_texture > 0.5){
         vec3 uv  = vec3(fragTexCoord, 4 );
         float alpha = texture(tex2d, uv).r;
         if(alpha<0.1) discard;
-    }*/
+    }
 }

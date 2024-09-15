@@ -105,10 +105,10 @@ void VmaAttachment::cleanup() {
 }
 void VmaAttachment::createDepth32(uint32_t width, uint32_t height,
         const VkSampler & sampler) {
-    //format = VK_FORMAT_D32_SFLOAT;
+    format = VK_FORMAT_D32_SFLOAT;// d32只用这个够了。
     //format = VK_FORMAT_D32_SFLOAT_S8_UINT;
-    format = FnImage::findDepthFormat(requiredObjects.physicalDevice);
-    VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    //format = FnImage::findDepthFormat(requiredObjects.physicalDevice);
+    VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_DEPTH_BIT; // 这个很关键 imageview要用。如果要stencil，必须还得一个imageview
     FnVmaImage::createImageAndAllocation(requiredObjects, width, height, 1, 1,
                                          format,
                                          VK_IMAGE_TILING_OPTIMAL,

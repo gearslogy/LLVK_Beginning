@@ -31,7 +31,7 @@ struct shadowmap : VulkanRenderer{
         glm::mat4 depthBiasMVP;
         glm::vec4 lightPos;
         // Used for depth map visualization
-        float zNear{1.0};
+        float zNear{0.1};
         float zFar{1000.0};
     } uniformDataScene;
 

@@ -162,8 +162,6 @@ void shadowmap::prepareUniformBuffers() {
 }
 void shadowmap::updateUniformBuffers() {
     // offscreen
-    uniformDataScene.zNear = 0.1;
-    uniformDataScene.zFar = 96.0;
     auto depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, uniformDataScene.zNear, uniformDataScene.zFar);
     const auto depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
     const auto depthModelMatrix = glm::mat4(1.0f);
@@ -365,13 +363,27 @@ void shadowmap::recordCommandBuffer() {
         shadowClearValues[0].depthStencil = { 1.0f, 0 };
         // --------------- generate shadow map process
         const auto shadowSwapchainExtent = VkExtent2D{shadowFramebuffer.width, shadowFramebuffer.height};
+
+    	/*
     	auto shadowRenderpassBeginInfo = FnCommand::renderPassBeginInfo(shadowFramebuffer.framebuffer,
         	shadowFramebuffer.renderPass,
         	shadowSwapchainExtent,
         	shadowClearValues);
-    	shadowRenderpassBeginInfo.renderPass = shadowFramebuffer.renderPass;
+    	shadowRenderpassBeginInfo.renderPass = shadowFramebuffer.renderPass;*/
+    	VkClearValue cleaValue;
+    	cleaValue.depthStencil = { 1.0f, 0 };
+    	VkRenderPassBeginInfo renderPassBeginInfo {};
+    	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    	renderPassBeginInfo.renderPass = shadowFramebuffer.renderPass;
+    	renderPassBeginInfo.framebuffer = shadowFramebuffer.framebuffer;
+    	renderPassBeginInfo.renderArea.extent.width = 2048;
+    	renderPassBeginInfo.renderArea.extent.height = 2048;
+    	renderPassBeginInfo.clearValueCount = 1;
+    	renderPassBeginInfo.pClearValues = &cleaValue;
 
-        vkCmdBeginRenderPass(cmdBuf, &shadowRenderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
+        vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , offscreenPipeline); // FIRST generate depth for opaque object
         VkDeviceSize offsets[1] = { 0 };
         auto viewport = FnCommand::viewport(2048,2048 );

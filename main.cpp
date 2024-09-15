@@ -13,8 +13,8 @@ int main() {
     //LLVK::ktx_texture app;
     //LLVK::DynamicsUBO app;
     //LLVK::ktx_tex2darray app;
-    //LLVK::defer app;
-    LLVK::shadowmap app;
+    LLVK::defer app;
+    //LLVK::shadowmap app;
     try {
         app.run();
     }
