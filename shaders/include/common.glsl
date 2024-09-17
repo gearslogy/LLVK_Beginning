@@ -68,9 +68,8 @@ float calLight(vec3 N){
     return max(dot(lightDir, N),0.4);
 }
 
-const float near = 0.1;
-const float far  = 10.0;
-float LinearizeDepth(float depth)
+
+float LinearizeDepth(float depth, float near, float far)
 {
     float z = depth * 2.0 - 1.0; // back to NDC
     return (2.0 * near * far) / (far + near - z * (far - near));
