@@ -22,6 +22,7 @@ float opengl_textureProj(vec4 shadow_coord, vec2 off){
     float bias = 0.173;
     vec3 projCoords = in_shadow_uv.xyz / in_shadow_uv.w;
     projCoords = projCoords*0.5 + 0.5;
+    // 不知道为什么，用这个线性化depth判断才可以判断出来
     float realz = LinearizeDepth(projCoords.z, 0.1, 1000 ) / 1000;
     float close_dist = texture(shadowMap, projCoords.st).r;
     close_dist = LinearizeDepth( close_dist,0.1, 1000) / 1000;

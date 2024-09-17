@@ -39,6 +39,6 @@ void main(){
 
     //
     uvShadow =  ubo.lightSpace * worldPos;
-    bias_uvShadow = biasMat * uvShadow; // [-1,1] ---> [0,1],因为采样贴图必须0-1
+    bias_uvShadow = biasMat * uvShadow; // [-1,1] ---> [0,1],因为采样贴图必须0-1 相当于*.5 然后再加0.5
 
 }
