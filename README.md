@@ -4,6 +4,7 @@ Learn Vulkan from scratch
 ## shadow map
 * opacity/foliage objects rendering
 * opaque objects rendering
+
 1:generate depth test:
 ![shadow.png](screenshot/shadow_map_gen_depth.png)
 2:using depth and pcf:
@@ -13,7 +14,7 @@ Learn Vulkan from scratch
 ![deferred.png](screenshot/deferred.png)
 ![deferred.png](screenshot/deferred_gen_attachments.png)
 
-## vma buffer
+## vma memory management 
 ![vma.png](screenshot%2Fvma.png)
 ## dynamic ubo
 ![dynamicUBO_UseGLTF_BasicPBR.png](screenshot%2FdynamicUBO_UseGLTF_BasicPBR.png)
