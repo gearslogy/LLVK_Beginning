@@ -80,7 +80,7 @@ void main(){
         vec3 color = (kD * diffuse + specular) * radiance;
         result += color;
     }
-
+    result = gammaCorrect(result, 2.2);
     outColor = vec4(result,1);
 
 

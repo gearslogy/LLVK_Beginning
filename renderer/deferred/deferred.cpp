@@ -77,12 +77,19 @@ void defer::loadTextures() {
      for(auto &&[i, tex] : UT_Fn::enumerate(UBOTextures.ground_textures) ){
           auto ground_file = ground_root / names[i];
           std::cout << ground_file << std::endl;
-          tex.create(ground_file.generic_string(), colorSampler, VK_FORMAT_R8G8B8A8_UNORM );
+          if (not names[i].contains("normal") ) {
+               tex.create(ground_file.generic_string(), colorSampler, VK_FORMAT_R8G8B8A8_SRGB );
+          }
+          else tex.create(ground_file.generic_string(), colorSampler, VK_FORMAT_R8G8B8A8_UNORM );
+
      }
      // read skull textures
      for(auto &&[i, tex] : UT_Fn::enumerate(UBOTextures.skull_textures) ){
           auto skull_file = skull_root / names[i];
-          tex.create(skull_file.generic_string(), colorSampler,VK_FORMAT_R8G8B8A8_UNORM );
+          if (not names[i].contains("normal") ) {
+               tex.create(skull_file.generic_string(), colorSampler,VK_FORMAT_R8G8B8A8_SRGB );
+          }else
+               tex.create(skull_file.generic_string(), colorSampler,VK_FORMAT_R8G8B8A8_UNORM );
      }
 
 }
