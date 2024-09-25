@@ -93,20 +93,21 @@ void ShadowMapPass::createOffscreenRenderPass() {
     UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, mainDevice.logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
 }
 void ShadowMapPass::createOffscreenFramebuffer() {
-	const auto device = mainDevice.logicalDevice;
+	const auto device = renderer->getMainDevice().logicalDevice;
 	// framebuffer create
 	VkFramebufferCreateInfo framebufferInfo = {};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	framebufferInfo.renderPass = shadowFramebuffer.renderPass;
 	framebufferInfo.attachmentCount = 1;
 	framebufferInfo.pAttachments = &shadowFramebuffer.depthAttachment.view;
-	framebufferInfo.width = shadowFramebuffer.width;           // FIXED shadow map size;
-	framebufferInfo.height = shadowFramebuffer.height;         // FIXED shadow map size;
+	framebufferInfo.width = depth_width;           // FIXED shadow map size;
+	framebufferInfo.height = depth_height;         // FIXED shadow map size;
 	framebufferInfo.layers = 1;
 	UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &shadowFramebuffer.framebuffer);
 }
 
 void ShadowMapPass::prepareDescriptorSets() {
+
 }
 
 void ShadowMapPass::preparePipelines() {
