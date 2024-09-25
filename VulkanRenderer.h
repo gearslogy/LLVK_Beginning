@@ -40,6 +40,9 @@ public :
     void cleanup();
     void run();
     void draw();
+
+    const Device &getMainDevice() const ;
+
 protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;

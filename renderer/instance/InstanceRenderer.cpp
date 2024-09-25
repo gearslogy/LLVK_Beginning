@@ -3,55 +3,52 @@
 //
 
 #include "InstanceRenderer.h"
-
+#include "LLVK_UT_VmaBuffer.hpp"
 LLVK_NAMESPACE_BEGIN
 void InstanceRenderer::cleanupObjects() {
+    const auto &device = mainDevice.logicalDevice;
+    UT_Fn::cleanup_resources(Geos.geoBufferManager);
+    UT_Fn::cleanup_resources(Textures.greenPlant, Textures.yellowPlant, Textures.largePlant );
+    UT_Fn::cleanup_resources(Textures.groundCliff,Textures.groundGrass, Textures.groundGrass );
 
+    UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
+    //UT_Fn::cleanup_descriptor_set_layout(device, descSetLayout);
+    UT_Fn::cleanup_sampler(device,colorSampler);
+
+    vkDestroyDescriptorPool(device, pool, nullptr);
 }
 
 void InstanceRenderer::loadTexture() {
-
+    const auto &device = mainDevice.logicalDevice;
+    const auto &phyDevice = mainDevice.physicalDevice;
+    setRequiredObjects(Textures.greenPlant, Textures.yellowPlant,Textures.largePlant);
+    setRequiredObjects(Textures.groundCliff, Textures.groundGrass,Textures.groundRock);
+    colorSampler = FnImage::createImageSampler(phyDevice, device);
+    Textures.greenPlant.create("content/scene/instance/tex/green_grass_texarray.ktx2",colorSampler);
+    Textures.yellowPlant.create("content/scene/instance/tex/yellow_grass_texarray.ktx2",colorSampler);
+    Textures.largePlant.create("content/scene/instance/tex/large_foliage_texarray.ktx2",colorSampler);
+    Textures.groundCliff.create("content/scene/instance/tex/green_cliff_texarray.ktx2",colorSampler);
+    Textures.groundGrass.create("content/scene/instance/tex/green_grass_texarray.ktx2",colorSampler);
+    Textures.groundRock.create("content/scene/instance/tex/green_rock_texarray.ktx2",colorSampler);
 }
 
 void InstanceRenderer::loadModel() {
-    Geos.plantGeo.load("content/plants/gardenplants/var0.gltf");
+    setRequiredObjects(Geos.geoBufferManager);
+    Geos.greenPlantGeo.load("content/scene/instance/gltf/green_grass_output.gltf");
+    Geos.yellowPlantGeo.load("content/scene/instance/gltf/yellow_foliage_output.gltf");
+    Geos.largePlantGeo.load("content/scene/instance/gltf/large_foliage_output.gltf");
     Geos.groundGeo.load("content/ground/ground.gltf");
 
-    constexpr VkBufferUsageFlags vertex_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    constexpr VkBufferUsageFlags index_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-
-    auto getGLTFVerticesSize = [](const GLTFLoader &geom, int32_t partIdx, VkBufferUsageFlags usage) {
-        if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) {
-            // Create for plant
-            size_t vertexBufferSize = sizeof(GLTFVertex) * geom.parts[partIdx].vertices.size();
-            return vertexBufferSize;
-        }
-        if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) {
-            size_t indexBufferSize = sizeof(uint32_t) * geom.parts[partIdx].indices.size();
-            return indexBufferSize;
-        }
-        assert(false);
-        return static_cast<size_t>(0);
-    };
-    const auto plantVertexBufferSize = getGLTFVerticesSize(Geos.plantGeo, 0, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    const auto plantIndexBufferSize = getGLTFVerticesSize(Geos.plantGeo, 0, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-    Geos.bufferManager.createBufferWithStagingBuffer<vertex_usage>(plantVertexBufferSize, Geos.plantGeo.parts[0].vertices.data());
-    Geos.bufferManager.createBufferWithStagingBuffer<index_usage>(plantIndexBufferSize, Geos.plantGeo.parts[0].indices.data());
-    Geos.plantGeo.parts[0].verticesBuffer =  Geos.bufferManager.createVertexBuffers.end()->buffer;
-    Geos.plantGeo.parts[0].indicesBuffer =   Geos.bufferManager.createIndexedBuffers.end()->buffer;
-
-
-    const auto groundVertexBufferSize = getGLTFVerticesSize(Geos.groundGeo, 0, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    const auto groundIndexBufferSize = getGLTFVerticesSize(Geos.groundGeo, 0, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-    Geos.bufferManager.createBufferWithStagingBuffer<vertex_usage>(groundVertexBufferSize, Geos.groundGeo.parts[0].vertices.data());
-    Geos.bufferManager.createBufferWithStagingBuffer<index_usage>(groundIndexBufferSize, Geos.groundGeo.parts[0].indices.data());
-    Geos.groundGeo.parts[0].verticesBuffer =  Geos.bufferManager.createVertexBuffers.end()->buffer;
-    Geos.groundGeo.parts[0].indicesBuffer =   Geos.bufferManager.createIndexedBuffers.end()->buffer;
-
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(Geos.greenPlantGeo, Geos.geoBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(Geos.yellowPlantGeo, Geos.geoBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(Geos.largePlantGeo, Geos.geoBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(Geos.groundGeo, Geos.geoBufferManager);
 }
 
 void InstanceRenderer::setupDescriptors() {
+
 }
+
 
 void InstanceRenderer::preparePipelines() {
 }
@@ -63,6 +60,7 @@ void InstanceRenderer::updateUniformBuffers() {
 }
 
 void InstanceRenderer::bindResources() {
+
 }
 
 void InstanceRenderer::recordCommandBuffer() {
