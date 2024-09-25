@@ -43,7 +43,6 @@ void Shadowmap_v2::cleanupObjects() {
 
 void Shadowmap_v2::prepare() {
     colorSampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
-    shadowFramebuffer.depthSampler = FnImage::createDepthSampler(mainDevice.logicalDevice);
     loadTextures();
     loadModels();
     createOffscreenDepthAttachment();

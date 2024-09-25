@@ -4,13 +4,10 @@
 
 #ifndef SHADOWMAP_PASS_H
 #define SHADOWMAP_PASS_H
-#include "BufferManager.h"
 #include "LLVK_VmaBuffer.h"
 
 LLVK_NAMESPACE_BEGIN
-
 class VulkanRenderer;
-
 class ShadowMapPass {
 public:
     constexpr static uint32_t depth_width = 2048;
@@ -29,7 +26,7 @@ private:
     VkDescriptorSetLayout offscreenDescriptorSetLayout{}; // only one set=0
     VkPipelineLayout offscreenPipelineLayout{};   //only 1 set: binding=0 UBO depthMVP, binding=1 colormap. use .a discard
 
-    constexpr static void setRequiredObjects  (auto *renderer, auto && ... ubo) {
+    constexpr static void setRequiredObjects  (const auto *renderer, auto && ... ubo) {
         ((ubo.requiredObjects.device = renderer->mainDevice.logicalDevice),...);
         ((ubo.requiredObjects.physicalDevice = renderer->mainDevice.physicalDevice),...);
         ((ubo.requiredObjects.commandPool = renderer->graphicsCommandPool),...);
@@ -43,6 +40,7 @@ private:
         VkRenderPass renderPass{};
         VkSampler depthSampler{};
     }shadowFramebuffer;
+
     VulkanRenderer * renderer{};
 };
 LLVK_NAMESPACE_END

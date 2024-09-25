@@ -2,31 +2,36 @@
 // Created by lp on 2024/9/25.
 //
 
-#include "ShadowMapPass.h"
+
 #include <libs/magic_enum.hpp>
 #include <iostream>
 #include "Utils.h"
 #include "VulkanRenderer.h"
+#include "ShadowMapPass.h"
 
 LLVK_NAMESPACE_BEGIN
+void ShadowMapPass::prepare(VulkanRenderer *pRenderer) {
 
-void ShadowMapPass::prepare(VulkanRenderer * pRenderer) {
 	renderer = pRenderer;
-
+	const auto &device= renderer->getMainDevice().logicalDevice;
+	shadowFramebuffer.depthSampler = FnImage::createDepthSampler(device);
 }
-void ShadowMapPass::cleanup() {
 
-	const auto device = renderer->mainDevice.logicalDevice;
+
+
+
+void ShadowMapPass::cleanup() {
+	auto device = renderer->getMainDevice().logicalDevice;
 	vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
-	shadowFramebuffer.depthAttachment.cleanup();
+	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
 	UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
 	UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
 }
 
 
 void ShadowMapPass::createOffscreenDepthAttachment() {
-	setRequiredObjects(shadowFramebuffer.depthAttachment);
-	shadowFramebuffer.depthAttachment.createDepth32(shadowFramebuffer.width, shadowFramebuffer.height, shadowFramebuffer.depthSampler);
+	setRequiredObjects(renderer, shadowFramebuffer.depthAttachment);
+	shadowFramebuffer.depthAttachment.createDepth32(depth_width, depth_height, shadowFramebuffer.depthSampler);
 	//shadowFramebuffer.depthAttachment.create(shadowFramebuffer.width, shadowFramebuffer.height,VK_FORMAT_D32_SFLOAT_S8_UINT, colorSampler, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
@@ -99,9 +104,6 @@ void ShadowMapPass::createOffscreenFramebuffer() {
 	framebufferInfo.height = shadowFramebuffer.height;         // FIXED shadow map size;
 	framebufferInfo.layers = 1;
 	UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &shadowFramebuffer.framebuffer);
-}
-
-void ShadowMapPass::cleanupOffscreenFramebuffer() {
 }
 
 void ShadowMapPass::prepareDescriptorSets() {
