@@ -19,9 +19,7 @@ struct Shadowmap_v2 : VulkanRenderer{
     void preparePipelines();
     void updateUniformBuffers();
 
-    struct {
-        glm::mat4 depthMVP;
-    } uniformDataOffscreen;
+
 
     glm::vec3 lightPos{};
     struct UniformDataScene {
@@ -50,7 +48,6 @@ struct Shadowmap_v2 : VulkanRenderer{
 
     struct {
         VmaUBOBuffer scene;     // final rendering : opaque and opacity use same UBO
-        VmaUBOBuffer offscreen; // depth generate  : opaque and opacity use same UBO
     }uniformBuffers;
 
 

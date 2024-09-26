@@ -8,12 +8,34 @@
 
 LLVK_NAMESPACE_BEGIN
 class VulkanRenderer;
+struct ShadowMapPassRequiredObjects {
+    const VmaUBOKTX2Texture *map; // color map. RGBA, a to drop texture
+};
+
 class ShadowMapPass {
 public:
+    explicit ShadowMapPass(VulkanRenderer* pRenderer);
     constexpr static uint32_t depth_width = 2048;
     constexpr static uint32_t depth_height = depth_width;
-    void prepare(VulkanRenderer * pRenderer);
+    void prepare();
     void cleanup();
+
+
+    void prepareUniformBuffers();
+    void updateUniformBuffers();
+
+    // param to setting
+    glm::vec3 lightPos{};
+    float near{};
+    float far{};
+
+    // generated
+    glm::mat4 depthMVP{};
+    VmaUBOBuffer uboBuffer{};
+
+    // required object
+    ShadowMapPassRequiredObjects requiredObjects;
+
 private:
     void createOffscreenDepthAttachment();
     void createOffscreenRenderPass();

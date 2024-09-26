@@ -8,17 +8,14 @@
 #include "Utils.h"
 #include "VulkanRenderer.h"
 #include "ShadowMapPass.h"
-
+#include "LLVK_Descriptor.hpp"
 LLVK_NAMESPACE_BEGIN
-void ShadowMapPass::prepare(VulkanRenderer *pRenderer) {
+ShadowMapPass::ShadowMapPass(VulkanRenderer *pRenderer):renderer{pRenderer} {	}
 
-	renderer = pRenderer;
+void ShadowMapPass::prepare() {
 	const auto &device= renderer->getMainDevice().logicalDevice;
 	shadowFramebuffer.depthSampler = FnImage::createDepthSampler(device);
 }
-
-
-
 
 void ShadowMapPass::cleanup() {
 	auto device = renderer->getMainDevice().logicalDevice;
@@ -26,6 +23,24 @@ void ShadowMapPass::cleanup() {
 	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
 	UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
 	UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
+	// cleanup offscreen
+	UT_Fn::cleanup_pipeline(device, offscreenPipeline);
+	UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
+	UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
+}
+
+void ShadowMapPass::prepareUniformBuffers() {
+	setRequiredObjects(renderer, uboBuffer);
+	uboBuffer.createAndMapping(sizeof(depthMVP));
+}
+
+void ShadowMapPass::updateUniformBuffers() {
+	auto depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, near, far);
+	const auto depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
+	constexpr auto depthModelMatrix = glm::mat4(1.0f);
+	depthProjectionMatrix[1][1] *= -1.0f;
+	depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
+	memcpy(uboBuffer.mapped, &depthMVP, sizeof(depthMVP));
 }
 
 
@@ -39,7 +54,7 @@ void ShadowMapPass::createOffscreenDepthAttachment() {
 void ShadowMapPass::createOffscreenRenderPass() {
     VkAttachmentDescription attachmentDescription{};
 	attachmentDescription.format = shadowFramebuffer.depthAttachment.format;
-	std::cout << "depth attachment format: " << magic_enum::enum_name(shadowFramebuffer.depthAttachment.format) << std::endl;
+	std::cout << "[[ShadowMapPass::createOffscreenRenderPass]]:depth attachment format: " << magic_enum::enum_name(shadowFramebuffer.depthAttachment.format) << std::endl;
 	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear depth at beginning of the render pass
 	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// We will read from depth, so it's important to store the depth attachment results
@@ -90,7 +105,7 @@ void ShadowMapPass::createOffscreenRenderPass() {
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
 	renderPassCreateInfo.pDependencies = dependencies.data();
 
-    UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, mainDevice.logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
+    UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, renderer->getMainDevice().logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
 }
 void ShadowMapPass::createOffscreenFramebuffer() {
 	const auto device = renderer->getMainDevice().logicalDevice;
@@ -107,6 +122,9 @@ void ShadowMapPass::createOffscreenFramebuffer() {
 }
 
 void ShadowMapPass::prepareDescriptorSets() {
+	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
+	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // opacity map
+
 
 }
 

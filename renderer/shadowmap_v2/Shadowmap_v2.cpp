@@ -26,11 +26,8 @@ void Shadowmap_v2::cleanupObjects() {
     vkDestroyDescriptorPool(device, descPool, nullptr);
     UT_Fn::cleanup_resources(geoBufferManager, foliageTex, gridTex);
     UT_Fn::cleanup_sampler(device, colorSampler);
-    // cleanup offscreen
-    UT_Fn::cleanup_pipeline(device, offscreenPipeline);
-    UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
-    UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
-    cleanupOffscreenFramebuffer();
+
+
     // cleanup scene
     UT_Fn::cleanup_pipeline(device, scenePipeline.opacity, scenePipeline.opaque);
     UT_Fn::cleanup_descriptor_set_layout(device, sceneDescriptorSetLayout);
@@ -66,42 +63,21 @@ void Shadowmap_v2::loadModels() {
     UT_VmaBuffer::addGeometryToSimpleBufferManager(gridGeo, geoBufferManager);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(foliageGeo, geoBufferManager);
 }
-void Shadowmap_v2::createOffscreenDepthAttachment() {
 
-}
-
-void Shadowmap_v2::createOffscreenRenderPass() {
-
-}
-
-void Shadowmap_v2::createOffscreenFramebuffer() {
-
-}
-
-void Shadowmap_v2::cleanupOffscreenFramebuffer() {
-    const auto device = mainDevice.logicalDevice;
-    vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
-    shadowFramebuffer.depthAttachment.cleanup();
-    UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
-    UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
-}
 
 
 void Shadowmap_v2::prepareUniformBuffers() {
-    setRequiredObjects(uniformBuffers.offscreen, uniformBuffers.scene);
-    uniformBuffers.offscreen.createAndMapping(sizeof(uniformDataOffscreen));
+    setRequiredObjects(uniformBuffers.scene);
     uniformBuffers.scene.createAndMapping(sizeof(uniformDataScene));
     lightPos = {281.654, 120,316.942};
+
+
+
     updateUniformBuffers();
 }
 void Shadowmap_v2::updateUniformBuffers() {
     // offscreen
-    auto depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, uniformDataScene.zNear, uniformDataScene.zFar);
-    const auto depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
-    const auto depthModelMatrix = glm::mat4(1.0f);
-    depthProjectionMatrix[1][1] *= -1.0f;
-    uniformDataOffscreen.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
-    memcpy(uniformBuffers.offscreen.mapped, &uniformDataOffscreen, sizeof(uniformDataOffscreen));
+
 
     auto [width, height] = simpleSwapchain.swapChainExtent;
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
