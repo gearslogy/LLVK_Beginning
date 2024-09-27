@@ -10,6 +10,7 @@ LLVK_NAMESPACE_BEGIN
 class VulkanRenderer;
 struct ShadowMapPassRequiredObjects {
     const VmaUBOKTX2Texture *map; // color map. RGBA, a to drop texture
+    const VkDescriptorPool *descriptorPool;
 };
 
 class ShadowMapPass {
@@ -23,7 +24,7 @@ public:
 
     void prepareUniformBuffers();
     void updateUniformBuffers();
-
+    void updateColorMap(const VmaUBOKTX2Texture *map); // update rgba map.
     // param to setting
     glm::vec3 lightPos{};
     float near{};
@@ -32,6 +33,7 @@ public:
     // generated
     glm::mat4 depthMVP{};
     VmaUBOBuffer uboBuffer{};
+    VkDescriptorSet set{};
 
     // required object
     ShadowMapPassRequiredObjects requiredObjects;

@@ -18,6 +18,7 @@ void ShadowMapPass::prepare() {
 }
 
 void ShadowMapPass::cleanup() {
+
 	auto device = renderer->getMainDevice().logicalDevice;
 	vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
 	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
@@ -27,6 +28,8 @@ void ShadowMapPass::cleanup() {
 	UT_Fn::cleanup_pipeline(device, offscreenPipeline);
 	UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
 	UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
+	// cleanup ubo
+	UT_Fn::cleanup_resources(device, uboBuffer);
 }
 
 void ShadowMapPass::prepareUniformBuffers() {
@@ -122,11 +125,22 @@ void ShadowMapPass::createOffscreenFramebuffer() {
 }
 
 void ShadowMapPass::prepareDescriptorSets() {
+	const auto device = renderer->getMainDevice().logicalDevice;
+	const auto &pool = *requiredObjects.descriptorPool;
 	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
 	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // opacity map
-
+	const std::array offscreen_setLayout_bindings = {set0_ubo_binding0, set0_ubo_binding1};
+	const VkDescriptorSetLayoutCreateInfo offscreenSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(offscreen_setLayout_bindings);
+	UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",vkCreateDescriptorSetLayout,device, &offscreenSetLayoutCIO, nullptr, &offscreenDescriptorSetLayout);
+	std::array offscreen_setLayouts = {offscreenDescriptorSetLayout}; // only one set
+	auto offscreenAllocInfo = FnDescriptor::setAllocateInfo(pool,offscreen_setLayouts);
+	UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &offscreenAllocInfo,&set );
 
 }
+void ShadowMapPass::updateColorMap(const VmaUBOKTX2Texture *map) {
+
+}
+
 
 void ShadowMapPass::preparePipelines() {
 }
