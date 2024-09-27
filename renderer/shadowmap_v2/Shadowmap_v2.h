@@ -51,10 +51,6 @@ struct Shadowmap_v2 : VulkanRenderer{
     }uniformBuffers;
 
 
-    struct {
-        VkDescriptorSet opacity{};
-        VkDescriptorSet opaque{};
-    }offscreenSets;
 
     struct {
         VkDescriptorSet opacity{};
