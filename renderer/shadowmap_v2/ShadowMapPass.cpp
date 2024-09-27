@@ -10,6 +10,15 @@
 #include "ShadowMapPass.h"
 #include "LLVK_Descriptor.hpp"
 LLVK_NAMESPACE_BEGIN
+
+void ShadowMapGeometry::cleanup() {
+
+}
+void ShadowMapGeometry::render() {
+
+}
+
+
 ShadowMapPass::ShadowMapPass(VulkanRenderer *pRenderer):renderer{pRenderer} {	}
 
 void ShadowMapPass::prepare() {
@@ -108,7 +117,7 @@ void ShadowMapPass::createOffscreenRenderPass() {
     UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, renderer->getMainDevice().logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
 }
 void ShadowMapPass::createOffscreenFramebuffer() {
-	const auto device = renderer->getMainDevice().logicalDevice;
+	const auto &device = renderer->getMainDevice().logicalDevice;
 	// framebuffer create
 	VkFramebufferCreateInfo framebufferInfo = {};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -122,8 +131,18 @@ void ShadowMapPass::createOffscreenFramebuffer() {
 }
 
 void ShadowMapPass::prepareDescriptorSets() {
+	const auto &device = renderer->getMainDevice().logicalDevice;
 	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
 	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // opacity map
+
+	const std::array offscreen_setLayout_bindings = {set0_ubo_binding0, set0_ubo_binding1};
+	const VkDescriptorSetLayoutCreateInfo offscreenSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(offscreen_setLayout_bindings);
+	UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",vkCreateDescriptorSetLayout,device, &offscreenSetLayoutCIO, nullptr, &offscreenDescriptorSetLayout);
+	// create set
+	std::array offscreen_setLayouts = {offscreenDescriptorSetLayout}; // only one set
+	auto offscreenAllocInfo = FnDescriptor::setAllocateInfo(descPool,offscreen_setLayouts);
+	UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &offscreenAllocInfo,&offscreenSets.opacity );
+	UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &offscreenAllocInfo,&offscreenSets.opaque );
 
 
 }

@@ -4,12 +4,34 @@
 
 #ifndef SHADOWMAP_PASS_H
 #define SHADOWMAP_PASS_H
+#include "LLVK_GeomtryLoader.h"
 #include "LLVK_VmaBuffer.h"
 
 LLVK_NAMESPACE_BEGIN
 class VulkanRenderer;
+
+struct ShadowMapGeometry {
+    struct RequiredObjects {
+        const GLTFLoader *pGeometry;
+        const VmaUBOBuffer *pDepthMVP_UBO;
+        const VkDescriptorPool *pPool;
+        std::vector<VmaUBOKTX2Texture *> pTextures; // one geometry container multi textures
+    };
+    RequiredObjects requiredObjects;
+
+    VkDescriptorSet set;
+    VkDescriptorSetLayout setLayout; // one set
+    VkPipelineLayout pipelineLayout;
+
+    void render();
+    void cleanup();
+
+};
+
+
 struct ShadowMapPassRequiredObjects {
     const VmaUBOKTX2Texture *map; // color map. RGBA, a to drop texture
+    std::vector<GLTFLoader *> geometries ;
 };
 
 class ShadowMapPass {
