@@ -41,8 +41,16 @@ public :
     void run();
     void draw();
 
-    const Device &getMainDevice() const ;
+    template<class Self>
+    auto&& getMainDevice(this Self& self) { return std::forward<Self>(self).mainDevice;}
+    template<class Self>
+    auto&& getGraphicsCommandPool(this Self&self) {return std::forward<Self>(self).graphicsCommandPool;}
+    template<class Self>
+    auto&& getGraphicsQueue(this Self&self) {return std::forward<Self>(self).getMainDevice().graphicsQueue;}
+    template<class Self>
+    auto&& getVmaAllocator(this Self&self) {return std::forward<Self>(self).vmaAllocator;}
 
+    [[nodiscard]] const PipelineCache &getPipelineCache() const ;
 protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;

@@ -1,10 +1,10 @@
-//
+﻿//
 // Created by liuya on 7/28/2024.
 //
 
 #pragma once
-
-
+#include <vulkan/vulkan.h>
+#include <type_traits>
 
 #define LLVK_NAMESPACE_BEGIN namespace LLVK{
 #define LLVK_NAMESPACE_END }
@@ -26,6 +26,9 @@ namespace Concept {
     concept has_cleanFn = requires(T var){
         var.cleanup();
     };
+    template<typename T>
+    concept is_shader_module = std::is_same_v<std::remove_cvref_t<T>, VkShaderModule>;
+
 }
 
 

@@ -45,7 +45,7 @@ void GLTFLoader::load(const std::string &path) {
     if (!ret) {
         std::cerr << "Failed to load GLTF file" << std::endl;
     }
-
+    filePath = path;
     for (const auto &mesh: model.meshes) {
         parts.resize(mesh.primitives.size());
         for (auto &&[part_id,primitive]: UT_Fn::enumerate(mesh.primitives)) {

@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by lp on 2024/9/25.
 //
 
@@ -9,25 +9,57 @@
 #include "VulkanRenderer.h"
 #include "ShadowMapPass.h"
 #include "LLVK_Descriptor.hpp"
+#include "Pipeline.hpp"
+#include "LLVK_GeomtryLoader.h"
 LLVK_NAMESPACE_BEGIN
 
-void ShadowMapGeometry::cleanup() {
 
+void ShadowMapGeometryContainer::buildSet() {
+	const auto &device = requiredObjects.pVulkanRenderer->getMainDevice().logicalDevice;
+	const auto &pool = *requiredObjects.pPool;
+	const auto &setLayout = *requiredObjects.pSetLayout;
+	const auto &ubo = *requiredObjects.pUBO;
+	for(auto &geo: renderableObjects) {
+		auto offscreenAllocInfo = FnDescriptor::setAllocateInfo(pool,&setLayout, 1);
+		UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &offscreenAllocInfo,&geo.set);
+	}
+	// update set
+	for(const auto &geo: renderableObjects) {
+		const auto &set = geo.set;
+		std::vector<VkWriteDescriptorSet> opacityWriteSets;
+		opacityWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(set,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &ubo.descBufferInfo));
+		opacityWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(set,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &geo.pTexture->descImageInfo));
+		vkUpdateDescriptorSets(device,static_cast<uint32_t>(opacityWriteSets.size()),opacityWriteSets.data(),0, nullptr);
+	}
 }
-void ShadowMapGeometry::render() {
 
+void ShadowMapGeometryContainer::addRenderableGeometry(RenderableObject rRenderableObject) {
+	renderableObjects.emplace_back(std::forward<RenderableObject>(rRenderableObject) );
+}
+
+void ShadowMapGeometryContainer::setRequiredObjects( RequiredObjects &&rRequiredObjects) {
+	requiredObjects = std::forward< RequiredObjects>(rRequiredObjects);
 }
 
 
-ShadowMapPass::ShadowMapPass(VulkanRenderer *pRenderer):renderer{pRenderer} {	}
+ShadowMapPass::ShadowMapPass(const VulkanRenderer *renderer,
+	const VkDescriptorPool *descPool,
+	const VkCommandBuffer *cmd): pRenderer{renderer},pDescriptorPool{descPool}, pCommandBuffer{cmd} {
+}
 
 void ShadowMapPass::prepare() {
-	const auto &device= renderer->getMainDevice().logicalDevice;
+	const auto &device= pRenderer->getMainDevice().logicalDevice;
 	shadowFramebuffer.depthSampler = FnImage::createDepthSampler(device);
+	createOffscreenDepthAttachment();
+	createOffscreenRenderPass();
+	createOffscreenFramebuffer();
+	prepareUniformBuffers();
+	prepareDescriptorSets();
+	preparePipelines();
 }
 
 void ShadowMapPass::cleanup() {
-	auto device = renderer->getMainDevice().logicalDevice;
+	const auto device = pRenderer->getMainDevice().logicalDevice;
 	vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
 	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
 	UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
@@ -39,8 +71,9 @@ void ShadowMapPass::cleanup() {
 }
 
 void ShadowMapPass::prepareUniformBuffers() {
-	setRequiredObjects(renderer, uboBuffer);
+	setRequiredObjects(pRenderer, uboBuffer);
 	uboBuffer.createAndMapping(sizeof(depthMVP));
+	updateUniformBuffers();
 }
 
 void ShadowMapPass::updateUniformBuffers() {
@@ -54,10 +87,10 @@ void ShadowMapPass::updateUniformBuffers() {
 
 
 void ShadowMapPass::createOffscreenDepthAttachment() {
-	setRequiredObjects(renderer, shadowFramebuffer.depthAttachment);
-	shadowFramebuffer.depthAttachment.createDepth32(depth_width, depth_height, shadowFramebuffer.depthSampler);
+	setRequiredObjects(pRenderer, shadowFramebuffer.depthAttachment);	shadowFramebuffer.depthAttachment.createDepth32(depth_width, depth_height, shadowFramebuffer.depthSampler);
 	//shadowFramebuffer.depthAttachment.create(shadowFramebuffer.width, shadowFramebuffer.height,VK_FORMAT_D32_SFLOAT_S8_UINT, colorSampler, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
+
 
 
 void ShadowMapPass::createOffscreenRenderPass() {
@@ -114,10 +147,10 @@ void ShadowMapPass::createOffscreenRenderPass() {
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
 	renderPassCreateInfo.pDependencies = dependencies.data();
 
-    UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, renderer->getMainDevice().logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
+    UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, pRenderer->getMainDevice().logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
 }
 void ShadowMapPass::createOffscreenFramebuffer() {
-	const auto &device = renderer->getMainDevice().logicalDevice;
+	const auto &device = pRenderer->getMainDevice().logicalDevice;
 	// framebuffer create
 	VkFramebufferCreateInfo framebufferInfo = {};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -131,24 +164,72 @@ void ShadowMapPass::createOffscreenFramebuffer() {
 }
 
 void ShadowMapPass::prepareDescriptorSets() {
-	const auto &device = renderer->getMainDevice().logicalDevice;
+	const auto &device = pRenderer->getMainDevice().logicalDevice;
+	// we only have one set.
 	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
-	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // opacity map
-
+	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // maps
 	const std::array offscreen_setLayout_bindings = {set0_ubo_binding0, set0_ubo_binding1};
+
 	const VkDescriptorSetLayoutCreateInfo offscreenSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(offscreen_setLayout_bindings);
-	UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",vkCreateDescriptorSetLayout,device, &offscreenSetLayoutCIO, nullptr, &offscreenDescriptorSetLayout);
-	// create set
-	std::array offscreen_setLayouts = {offscreenDescriptorSetLayout}; // only one set
-	auto offscreenAllocInfo = FnDescriptor::setAllocateInfo(descPool,offscreen_setLayouts);
-	UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &offscreenAllocInfo,&offscreenSets.opacity );
-	UT_Fn::invoke_and_check("Error create offscreen sets",vkAllocateDescriptorSets,device, &offscreenAllocInfo,&offscreenSets.opaque );
+	UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",
+		vkCreateDescriptorSetLayout,device,
+		&offscreenSetLayoutCIO,
+		nullptr, &offscreenDescriptorSetLayout);
 
-
+	ShadowMapGeometryContainer::RequiredObjects SMRequiredObjects{};
+	SMRequiredObjects.pVulkanRenderer = pRenderer;
+	SMRequiredObjects.pPool = pDescriptorPool;
+	SMRequiredObjects.pUBO = &uboBuffer;
+	SMRequiredObjects.pSetLayout = &offscreenDescriptorSetLayout;
+	geoContainer.setRequiredObjects(std::move(SMRequiredObjects));
+	geoContainer.buildSet();
 }
 
 void ShadowMapPass::preparePipelines() {
+	auto device = pRenderer->getMainDevice().logicalDevice;
+	auto pipelineCache=  pRenderer->getPipelineCache().pipelineCache;
+	pipelinePSOs.requiredObjects.device = device; // Required Object first
+	pipelinePSOs.asDepth("shaders/sm_v2_offscreen_vert.spv", "shaders/sm_v2_offscreen_frag.spv");
+	// create pipeline layout
+	const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};
+	VkPipelineLayoutCreateInfo offscreenSetLayout_CIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
+	UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &offscreenSetLayout_CIO,nullptr, &offscreenPipelineLayout );
+	pipelinePSOs.layoutCIO = offscreenSetLayout_CIO;
+	// now create our pipeline
+	UT_Fn::invoke_and_check( "error create offscreen opacity pipeline" ,vkCreateGraphicsPipelines, device,pipelineCache, 1, &pipelinePSOs.pipelineCIO, nullptr, &offscreenPipeline);
+	pipelinePSOs.cleanupShaderModule();
 }
+void ShadowMapPass::recordCommandBuffer() {
+	VkCommandBuffer commandBuffer = *pCommandBuffer;
+	VkClearValue cleaValue;
+	cleaValue.depthStencil = { 1.0f, 0 };
+	VkRenderPassBeginInfo renderPassBeginInfo {};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.renderPass = shadowFramebuffer.renderPass;
+	renderPassBeginInfo.framebuffer = shadowFramebuffer.framebuffer;
+	renderPassBeginInfo.renderArea.extent.width = 2048;
+	renderPassBeginInfo.renderArea.extent.height = 2048;
+	renderPassBeginInfo.clearValueCount = 1;
+	renderPassBeginInfo.pClearValues = &cleaValue;
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , offscreenPipeline); // FIRST generate depth for opaque object
+	VkDeviceSize offsets[1] = { 0 };
+	auto viewport = FnCommand::viewport(2048,2048 );
+	auto scissor = FnCommand::scissor(2048,2048);
+	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(commandBuffer,0, 1, &scissor);
+	for (const auto &renderGeo: geoContainer.getRenderableObjects()) {
+		const GLTFLoader::Part *gltfPartGeo = renderGeo.pGeometry;
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &gltfPartGeo->verticesBuffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffer,gltfPartGeo->indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, offscreenPipelineLayout, 0, 1, &renderGeo.set, 0, nullptr);
+		vkCmdDrawIndexed(commandBuffer, gltfPartGeo->indices.size(), 1, 0, 0, 0);
+	}
+	vkCmdEndRenderPass(commandBuffer); // end of depth pass
+}
+
+
 
 
 LLVK_NAMESPACE_END

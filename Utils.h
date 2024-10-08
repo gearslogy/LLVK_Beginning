@@ -33,9 +33,14 @@ namespace UT_Fn {
     constexpr auto cleanup_resources(auto && ... r) {
         (r.cleanup(),...);
     }
-    constexpr auto cleanup_shader_module(VkDevice device, auto ... module) {
+    constexpr auto cleanup_shader_module(VkDevice device, const Concept::is_shader_module auto& ... module) {
         (vkDestroyShaderModule(device, module, nullptr),...);
     }
+    constexpr auto cleanup_shader_module(VkDevice device, const Concept::is_range auto &container) {
+        for (const auto &t : container)
+            vkDestroyShaderModule(device, t, nullptr);
+    }
+
     constexpr auto cleanup_descriptor_set_layout(VkDevice device, auto ... layout) {
         (vkDestroyDescriptorSetLayout(device, layout, nullptr),...);
     }

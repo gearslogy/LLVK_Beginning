@@ -63,7 +63,7 @@ struct GLTFLoader {
     }
     void load(const std::string &path);
     std::vector<Part> parts;
-
+    std::string filePath;
 
     /*
     struct RenderGLTFRequiredObjects {
