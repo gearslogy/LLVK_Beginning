@@ -69,12 +69,12 @@ void main(){
 
     vec4 albedo = texture(albedo, fragTexCoord);
     float alpha = albedo.a;
-    //if(alpha<0.1) discard;
+    if(alpha<0.1) discard;
 
 
     float shadow = filterPCF(bias_in_shadow_uv);
     albedo *= shadow;
-    outColor = vec4(vec3(1,0,0),1);
+    outColor = vec4(albedo.rgb,1);
 
 
     //float shadow = opengl_textureProj(in_shadow_uv,vec2(0));

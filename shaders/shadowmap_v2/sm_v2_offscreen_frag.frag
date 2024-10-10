@@ -6,6 +6,6 @@
 layout (binding = 1) uniform sampler2D albedo;
 
 void main(){
-    float alpha = texture(albedo, fragTexCoord).r;
-    if(alpha<0.1) discard;
+    float alpha = texture(albedo, fragTexCoord).a;
+    if(alpha<0.35) discard;
 }

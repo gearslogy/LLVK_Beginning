@@ -53,6 +53,7 @@ void ShadowMapPass::prepare() {
 	createOffscreenDepthAttachment();
 	createOffscreenRenderPass();
 	createOffscreenFramebuffer();
+	prepareUniformBuffers();
 	prepareDescriptorSets();
 	preparePipelines();
 }
@@ -60,13 +61,17 @@ void ShadowMapPass::prepare() {
 void ShadowMapPass::cleanup() {
 	const auto device = pRenderer->getMainDevice().logicalDevice;
 	vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
+	// cleanup ubo
+	UT_Fn::cleanup_resources(uboBuffer);
+	// cleanup framebuffer
 	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
 	UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
 	UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
-	// cleanup offscreen
+	// cleanup pipeline
 	UT_Fn::cleanup_pipeline(device, offscreenPipeline);
 	UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
 	UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
+
 }
 
 void ShadowMapPass::prepareUniformBuffers() {
@@ -195,58 +200,6 @@ void ShadowMapPass::preparePipelines() {
 	UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &offscreenSetLayout_CIO,nullptr, &offscreenPipelineLayout );
 	pipelinePSOs.setPipelineLayout(offscreenPipelineLayout);
 	// now create our pipeline
-
-
-
-
-
-	// 2. vertex input
-	std::array bindings = {GLTFVertex::bindings()};
-	auto attribs = GLTFVertex::attribs();
-	VkPipelineVertexInputStateCreateInfo vertexInput_ST_CIO = FnPipeline::vertexInputStateCreateInfo(bindings, attribs);
-	// 3. assembly
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly_ST_CIO = FnPipeline::inputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,0, VK_FALSE);
-	// 4 viewport and scissor
-	VkPipelineViewportStateCreateInfo viewport_ST_CIO = FnPipeline::viewPortStateCreateInfo();
-	// 5. dynamic state
-	auto dynamicsStates = FnPipeline::simpleDynamicsStates();
-	VkPipelineDynamicStateCreateInfo dynamics_ST_CIO= FnPipeline::dynamicStateCreateInfo(dynamicsStates);
-	// 6. rasterization
-	VkPipelineRasterizationStateCreateInfo rasterization_ST_CIO = FnPipeline::rasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-	// 7. multisampling
-	VkPipelineMultisampleStateCreateInfo multisample_ST_CIO=FnPipeline::multisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);
-	// 8. blending
-	std::array colorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttacmentState()};
-	VkPipelineColorBlendStateCreateInfo blend_ST_CIO = FnPipeline::colorBlendStateCreateInfo(colorBlendAttamentState);
-	// 10
-	VkPipelineDepthStencilStateCreateInfo ds_ST_CIO = FnPipeline::depthStencilStateCreateInfoEnabled();
-
-
-	auto &pipeline_CIO = pipelinePSOs.pipelineCIO;
-	pipeline_CIO.stageCount = 2;
-	//pipeline_CIO.pVertexInputState = &vertexInput_ST_CIO;
-	pipeline_CIO.pInputAssemblyState = &inputAssembly_ST_CIO;
-	//pipeline_CIO.pViewportState = &viewport_ST_CIO;
-	//pipeline_CIO.pDynamicState = &dynamics_ST_CIO;
-	//pipeline_CIO.pMultisampleState = &multisample_ST_CIO;
-	pipeline_CIO.pDepthStencilState = &ds_ST_CIO;
-	pipeline_CIO.subpass = 0; // ONLY USE ONE PASS
-	//pipeline_CIO.pColorBlendState = &blend_ST_CIO;
-
-	//rasterization_ST_CIO.cullMode = VK_CULL_MODE_NONE; // Disable culling, so all faces contribute to shadows
-	//pipeline_CIO.renderPass = shadowFramebuffer.renderPass;
-	//pipeline_CIO.layout = offscreenPipelineLayout;
-	//pipeline_CIO.pRasterizationState = &rasterization_ST_CIO;
-	//pipeline_CIO.stageCount = 2;
-	//pipeline_CIO.pStages = pipelinePSOs.shaderStageCIOs.data();
-	/*
-	VkPipelineColorBlendStateCreateInfo emptyBlending_CIO = {};
-	emptyBlending_CIO.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	emptyBlending_CIO.logicOpEnable = VK_FALSE;
-	emptyBlending_CIO.attachmentCount = 0; // 无颜色附件
-	pipeline_CIO.pColorBlendState = &emptyBlending_CIO; // offscreen阶段不许用*/
-
-
 	UT_Fn::invoke_and_check( "error create offscreen opacity pipeline" ,vkCreateGraphicsPipelines,
 		device,pipelineCache, 1, &pipelinePSOs.pipelineCIO, nullptr, &offscreenPipeline);
 	pipelinePSOs.cleanupShaderModule();

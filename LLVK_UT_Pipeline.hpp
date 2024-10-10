@@ -13,7 +13,7 @@ struct UT_GraphicsPipelinePSOs{
         shaderModules.reserve(5);
         shaderStageCIOs.reserve(5);
         // 2. vertex input
-
+        vertexInputBindingDescriptions =  {GLTFVertex::bindings()};
         vertexInputAttributeDescriptions  = GLTFVertex::attribs();
         vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(vertexInputBindingDescriptions, vertexInputAttributeDescriptions);//2
         inputAssemblyCIO = FnPipeline::inputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,0, VK_FALSE); // 3

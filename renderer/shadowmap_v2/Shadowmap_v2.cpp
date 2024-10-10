@@ -14,6 +14,7 @@ Shadowmap_v2::Shadowmap_v2() {
     shadowMapPass = std::make_unique<ShadowMapPass>(this,
         &descPool,
         &activatedFrameCommandBufferToSubmit);
+    lightPos = {281.654, 120,316.942};
 }
 Shadowmap_v2::~Shadowmap_v2() = default;
 
@@ -49,6 +50,7 @@ void Shadowmap_v2::prepare() {
     loadModels();
     createDescriptorPool();
     // shadow pass prepare
+    shadowMapPass->lightPos = lightPos;
     auto &&geoContainer = shadowMapPass->getGeometryContainer();
     ShadowMapGeometryContainer::RenderableObject renderObjs[2];
     renderObjs[0].pGeometry = &gridGeo.parts[0];
@@ -85,11 +87,8 @@ void Shadowmap_v2::loadModels() {
 
 
 void Shadowmap_v2::prepareUniformBuffers() {
-    lightPos = {281.654, 120,316.942};
-    shadowMapPass->lightPos = lightPos;
     setRequiredObjects(uniformBuffers.scene);
     uniformBuffers.scene.createAndMapping(sizeof(uniformDataScene));
-    shadowMapPass->prepareUniformBuffers();     // prepare shadow uniform buffer
     updateUniformBuffers();
 }
 void Shadowmap_v2::updateUniformBuffers() {
