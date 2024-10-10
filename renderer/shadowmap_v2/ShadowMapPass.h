@@ -57,8 +57,8 @@ public:
 
     // param to setting
     glm::vec3 lightPos{};
-    float near{};
-    float far{};
+    float near{0.1};
+    float far{1000};
 
     struct {
         VmaAttachment depthAttachment{};

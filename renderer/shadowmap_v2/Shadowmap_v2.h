@@ -19,7 +19,7 @@ struct Shadowmap_v2 : VulkanRenderer{
     // user functions
     void loadTextures();
     void loadModels();
-    void createDescritorPool();
+    void createDescriptorPool();
     void prepareUniformBuffers();
     void prepareDescriptorSets();
     void preparePipelines();

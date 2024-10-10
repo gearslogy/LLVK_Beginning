@@ -47,7 +47,7 @@ void Shadowmap_v2::prepare() {
     colorSampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
     loadTextures();
     loadModels();
-
+    createDescriptorPool();
     // shadow pass prepare
     auto &&geoContainer = shadowMapPass->getGeometryContainer();
     ShadowMapGeometryContainer::RenderableObject renderObjs[2];
@@ -85,9 +85,11 @@ void Shadowmap_v2::loadModels() {
 
 
 void Shadowmap_v2::prepareUniformBuffers() {
+    lightPos = {281.654, 120,316.942};
+    shadowMapPass->lightPos = lightPos;
     setRequiredObjects(uniformBuffers.scene);
     uniformBuffers.scene.createAndMapping(sizeof(uniformDataScene));
-    lightPos = {281.654, 120,316.942};
+    shadowMapPass->prepareUniformBuffers();     // prepare shadow uniform buffer
     updateUniformBuffers();
 }
 void Shadowmap_v2::updateUniformBuffers() {
@@ -103,7 +105,7 @@ void Shadowmap_v2::updateUniformBuffers() {
     uniformDataScene.depthBiasMVP = shadowMapPass->depthMVP;
     memcpy(uniformBuffers.scene.mapped, &uniformDataScene, sizeof(uniformDataScene));
 }
-void Shadowmap_v2::createDescritorPool() {
+void Shadowmap_v2::createDescriptorPool() {
     const auto &device = mainDevice.logicalDevice;
     std::array<VkDescriptorPoolSize, 2> poolSizes  = {{
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2},
@@ -164,8 +166,8 @@ void Shadowmap_v2::preparePipelines() {
     UT_Fn::invoke_and_check("ERROR create scene pipeline layout",vkCreatePipelineLayout,device, &sceneSetLayout_CIO,nullptr, &scenePipelineLayout );
     // back data to pso
     scenePSO.setShaderStages(sceneVertShaderStageCreateInfo, sceneFragShaderStageCreateInfo);
-    scenePSO.setPipelineLayoutCreateInfo(sceneSetLayout_CIO);
-
+    scenePSO.setPipelineLayout(scenePipelineLayout);
+    scenePSO.setRenderPass(simplePass.pass);
     // create pipeline
     UT_GraphicsPipelinePSOs::createPipeline(device, scenePSO, simplePipelineCache.pipelineCache, scenePipeline.opaque);
     scenePSO.rasterizerStateCIO.cullMode = VK_CULL_MODE_NONE;

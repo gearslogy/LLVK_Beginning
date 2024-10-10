@@ -13,17 +13,16 @@ struct UT_GraphicsPipelinePSOs{
         shaderModules.reserve(5);
         shaderStageCIOs.reserve(5);
         // 2. vertex input
-        std::array bindings = {GLTFVertex::bindings()};
-        auto attribs = GLTFVertex::attribs();
-        vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindings, attribs);//2
+
+        vertexInputAttributeDescriptions  = GLTFVertex::attribs();
+        vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(vertexInputBindingDescriptions, vertexInputAttributeDescriptions);//2
         inputAssemblyCIO = FnPipeline::inputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,0, VK_FALSE); // 3
         viewportStateCIO = FnPipeline::viewPortStateCreateInfo();                     // 4
-        auto dynamicsStates = FnPipeline::simpleDynamicsStates();// 5
+        dynamicsStates = FnPipeline::simpleDynamicsStates();// 5
         dynamicStateCIO = FnPipeline::dynamicStateCreateInfo(dynamicsStates);
         rasterizerStateCIO = FnPipeline::rasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);//6
         multisampleStateCIO = FnPipeline::multisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);// 7
         // one color blend. if one color attachment
-        std::array colorBlendAttachmentState = {FnPipeline::simpleOpaqueColorBlendAttacmentState()};
         colorBlendStateCIO = FnPipeline::colorBlendStateCreateInfo(colorBlendAttachmentState); // 8
         depthStencilStateCIO = FnPipeline::depthStencilStateCreateInfoEnabled();    // 10
         pipelineCIO = FnPipeline::pipelineCreateInfo();                             //11
@@ -35,12 +34,13 @@ struct UT_GraphicsPipelinePSOs{
         pipelineCIO.pMultisampleState = &multisampleStateCIO;
         pipelineCIO.pDepthStencilState = &depthStencilStateCIO;
         pipelineCIO.pColorBlendState = &colorBlendStateCIO;
+        pipelineCIO.pRasterizationState = &rasterizerStateCIO;
         pipelineCIO.subpass = 0; // ONLY USE ONE PASS
 
     }
 
     // exmp: vertPath:"shaders/offscreen_vert.spv" fragPath: "shaders/offscreen_frag.spv", with single pipelineLayout
-    void asDepth(std::string_view vertPath, std::string_view fragPath) {
+    void asDepth(std::string_view vertPath, std::string_view fragPath, VkRenderPass renderPass) {
         auto device = requiredObjects.device;
         const auto offscreenVertModule = FnPipeline::createShaderModuleFromSpvFile(vertPath.data(),  device);
         const auto offscreenFragModule = FnPipeline::createShaderModuleFromSpvFile(fragPath.data(),  device);
@@ -54,6 +54,7 @@ struct UT_GraphicsPipelinePSOs{
         colorBlendStateCIO.attachmentCount = 0;
         colorBlendStateCIO.logicOpEnable = VK_FALSE;
         pipelineCIO.pColorBlendState = &colorBlendStateCIO;
+        pipelineCIO.renderPass = renderPass;
 
         /*
         // we must build it manully
@@ -68,17 +69,11 @@ struct UT_GraphicsPipelinePSOs{
         (shaderStageCIOs.emplace_back(stage), ...);
         pipelineCIO.pStages = shaderStageCIOs.data();
     }
-    void setShaderModule(auto && ... module) {
-        (shaderModules.emplace_back(module), ... );
-    }
-    void setPipelineLayoutCreateInfo(VkPipelineLayoutCreateInfo info) {
-        layoutCIO = info;
-    }
-
+    void setRenderPass(VkRenderPass renderPass) {pipelineCIO.renderPass = renderPass;}
+    void setShaderModule(auto && ... module) { (shaderModules.emplace_back(module), ... ); }
+    void setPipelineLayout(VkPipelineLayout layout) { pipelineCIO.layout = layout;}
     // after pipeline creation, call this function
-    void cleanupShaderModule() {
-        UT_Fn::cleanup_shader_module(requiredObjects.device, shaderModules);
-    }
+    void cleanupShaderModule() { UT_Fn::cleanup_shader_module(requiredObjects.device, shaderModules);}
 
     std::vector<VkPipelineShaderStageCreateInfo> shaderStageCIOs; // 1 : vert frag ...
     VkPipelineVertexInputStateCreateInfo vertexInputStageCIO{};   // 2
@@ -88,7 +83,7 @@ struct UT_GraphicsPipelinePSOs{
     VkPipelineRasterizationStateCreateInfo rasterizerStateCIO{};  // 6
     VkPipelineMultisampleStateCreateInfo multisampleStateCIO{};   // 7
     VkPipelineColorBlendStateCreateInfo colorBlendStateCIO{};     // 8
-    VkPipelineLayoutCreateInfo layoutCIO{};                       // 9
+        // 9
     VkPipelineDepthStencilStateCreateInfo depthStencilStateCIO{}; //10
     VkGraphicsPipelineCreateInfo pipelineCIO{};                   //11
 
@@ -108,6 +103,12 @@ struct UT_GraphicsPipelinePSOs{
                                 &pipeline);
     }
 
+private:
+    //Before we can create a pipeline, we must ensure that these objects are persistent
+    std::vector<VkDynamicState> dynamicsStates;
+    std::array<VkVertexInputBindingDescription,1> vertexInputBindingDescriptions{};      // binding = 0 ,only one vertex buffer, may be in instance,should be one more
+    std::array<VkVertexInputAttributeDescription,7> vertexInputAttributeDescriptions{};  // binding = 0, 7 attributes
+    std::array<VkPipelineColorBlendAttachmentState,1> colorBlendAttachmentState = { FnPipeline::simpleOpaqueColorBlendAttacmentState()};
 };
 
 
