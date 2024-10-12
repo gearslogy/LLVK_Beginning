@@ -121,7 +121,19 @@ mat3 right_hand_eulerAnglesToRotationMatrix(vec3 angles)
     return rotZ * rotY * rotX;
 }
 
+vec3 rotateVectorByQuat(vec3 v, vec4 quat) {
+    // 提取四元数的分量
+    float w = quat.w;
+    float x = quat.x;
+    float y = quat.y;
+    float z = quat.z;
 
+    // 计算四元数乘积
+    vec3 t = 2.0 * cross(vec3(x, y, z), v);
+    vec3 rotatedVector = v + w * t + cross(vec3(x, y, z), t);
+
+    return rotatedVector;
+}
 
 mat3 normal_matrix(mat4 model_matrix){
     mat3 normalMatrix = mat3(model_matrix);

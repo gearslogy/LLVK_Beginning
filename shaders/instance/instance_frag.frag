@@ -1,25 +1,21 @@
 #version 460 core
-
-layout(location = 0) in vec3 fragPosition; // World space position
-layout(location = 1) in vec3 fragColor;
-layout(location = 2) in vec3 fragN;
-layout(location = 3) in vec3 fragTangent;
-layout(location = 4) in vec3 fragBitangent;
-layout(location = 5) in vec3 fragTexCoord;
-
+#include "gltf_layout_frag.glsl"
 
 // opengl can do without the "location" keyword
 layout (location = 0) out vec4 outColor;
 
 
 // uniform texture. in feature we should be diff + N + ordp texture.
-layout(set=1, binding = 0) uniform sampler2D AlbedoTexSampler;
-layout(set=1, binding = 1) uniform sampler2D AOTexSampler;
-layout(set=1, binding = 2) uniform sampler2D DisplaceTexSampler;
-layout(set=1, binding = 3) uniform sampler2D NormalTexSampler;
-layout(set=1, binding = 4) uniform sampler2D RoughnessTexSampler;
+layout(set=1, binding = 0) uniform sampler2D albedoTex;
+layout(set=1, binding = 1) uniform sampler2D ordpTex;
+layout(set=1, binding = 2) uniform sampler2D NTex;
 
 
 void main(){
+    vec2 uv = fragTexCoord;
+    vec4 albedo = texture(albedoTex, uv);
+    float alpha = albedo.r;
+    if(alpha < 0.1)
+        discard;
     outColor = vec4(1,0,0,1);
 }
