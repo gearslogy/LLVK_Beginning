@@ -88,14 +88,6 @@ private:
     VkDescriptorSetLayout offscreenDescriptorSetLayout{}; // only one set=0
     VkPipelineLayout offscreenPipelineLayout{};   //only 1 set: binding=0 UBO depthMVP, binding=1 colormap. use .a discard
 
-    constexpr static void setRequiredObjects  (const auto *renderer, auto && ... ubo) {
-        ((ubo.requiredObjects.device = renderer->getMainDevice().logicalDevice),...);
-        ((ubo.requiredObjects.physicalDevice = renderer->getMainDevice().physicalDevice),...);
-        ((ubo.requiredObjects.commandPool = renderer->getGraphicsCommandPool()),...);
-        ((ubo.requiredObjects.queue = renderer->getGraphicsQueue()),...);
-        ((ubo.requiredObjects.allocator = renderer->getVmaAllocator()),...);
-    };
-
 
     const VulkanRenderer * pRenderer{VK_NULL_HANDLE};      // required object at ctor
     const VkDescriptorPool *pDescriptorPool{VK_NULL_HANDLE}; // required object at ctor

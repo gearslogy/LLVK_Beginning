@@ -87,22 +87,13 @@ void Shadowmap_v2::loadModels() {
 
 
 void Shadowmap_v2::prepareUniformBuffers() {
-    setRequiredObjects(uniformBuffers.scene);
-    uniformBuffers.scene.createAndMapping(sizeof(uniformDataScene));
-    updateUniformBuffers();
+
 }
 void Shadowmap_v2::updateUniformBuffers() {
     // offscreen
     shadowMapPass->updateUniformBuffers();
 
-    auto [width, height] = simpleSwapchain.swapChainExtent;
-    mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
-    uniformDataScene.projection = mainCamera.projection();
-    uniformDataScene.projection[1][1] *= -1;
-    uniformDataScene.view = mainCamera.view();
-    uniformDataScene.model = glm::mat4(1.0f);
-    uniformDataScene.depthBiasMVP = shadowMapPass->depthMVP;
-    memcpy(uniformBuffers.scene.mapped, &uniformDataScene, sizeof(uniformDataScene));
+
 }
 void Shadowmap_v2::createDescriptorPool() {
     const auto &device = mainDevice.logicalDevice;
@@ -118,35 +109,7 @@ void Shadowmap_v2::createDescriptorPool() {
 
 
 void Shadowmap_v2::prepareDescriptorSets() {
-    const auto &device = mainDevice.logicalDevice;
-    const auto &physicalDevice = mainDevice.physicalDevice;
-    // we only have one set.
-    auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);           // ubo
-    auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // base
-    auto set0_ubo_binding2 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, VK_SHADER_STAGE_FRAGMENT_BIT); // ordp
-    auto set0_ubo_binding3 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, VK_SHADER_STAGE_FRAGMENT_BIT); // depth
-    const std::array scene_setLayout_bindings = {set0_ubo_binding0, set0_ubo_binding1, set0_ubo_binding2, set0_ubo_binding3};
-    const VkDescriptorSetLayoutCreateInfo sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(scene_setLayout_bindings);
-    UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",vkCreateDescriptorSetLayout,device, &sceneSetLayoutCIO, nullptr, &sceneDescriptorSetLayout);
-    auto sceneAllocInfo = FnDescriptor::setAllocateInfo(descPool,&sceneDescriptorSetLayout,1); // only one set
-    UT_Fn::invoke_and_check("Error create scene sets",vkAllocateDescriptorSets,device, &sceneAllocInfo,&sceneSets.opacity );
-    UT_Fn::invoke_and_check("Error create scene sets",vkAllocateDescriptorSets,device, &sceneAllocInfo,&sceneSets.opaque );
 
-    // - scene opacity
-    std::vector<VkWriteDescriptorSet> opacitySceneWriteSets;
-    opacitySceneWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opacity,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformBuffers.scene.descBufferInfo));
-    opacitySceneWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opacity,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &foliageAlbedoTex.descImageInfo));
-    opacitySceneWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opacity,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &foliageOrdpTex.descImageInfo));
-    opacitySceneWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opacity,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &shadowMapPass->shadowFramebuffer.depthAttachment.descImageInfo));
-    vkUpdateDescriptorSets(device,static_cast<uint32_t>(opacitySceneWriteSets.size()),opacitySceneWriteSets.data(),0, nullptr);
-
-    // - scene opaque
-    std::vector<VkWriteDescriptorSet> sceneOpaqueWriteSets;
-    sceneOpaqueWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opaque,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformBuffers.scene.descBufferInfo));
-    sceneOpaqueWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opaque,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &gridAlbedoTex.descImageInfo));
-    sceneOpaqueWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opaque,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &gridOrdpTex.descImageInfo));
-    sceneOpaqueWriteSets.emplace_back(FnDescriptor::writeDescriptorSet(sceneSets.opaque,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &shadowMapPass->shadowFramebuffer.depthAttachment.descImageInfo));
-    vkUpdateDescriptorSets(device,static_cast<uint32_t>(sceneOpaqueWriteSets.size()),sceneOpaqueWriteSets.data(),0, nullptr);
 }
 
 

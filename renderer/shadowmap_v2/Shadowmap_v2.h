@@ -27,16 +27,6 @@ struct Shadowmap_v2 : VulkanRenderer{
 
 
     glm::vec3 lightPos{};
-    struct UniformDataScene {
-        glm::mat4 projection;
-        glm::mat4 view;
-        glm::mat4 model;
-        glm::mat4 depthBiasMVP;
-        glm::vec4 lightPos;
-        // Used for depth map visualization
-        float zNear{0.1};
-        float zFar{1000.0};
-    } uniformDataScene;
 
     struct {
         VkPipeline opacity;     // used for foliage render with depth map. forward rendering
