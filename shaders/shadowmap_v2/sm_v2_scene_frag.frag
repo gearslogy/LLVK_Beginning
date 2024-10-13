@@ -5,9 +5,9 @@ layout(location=6) in vec3 in_L; // world space vertexP to lightP
 layout(location=7) in vec4 in_shadow_uv;
 layout(location=8) in vec4 bias_in_shadow_uv;
 
-layout (binding = 1) uniform sampler2D albedo;
-layout (binding = 2) uniform sampler2D ordp;
-layout (binding = 3) uniform sampler2D shadowMap;
+layout (set=1, binding = 0) uniform sampler2D albedo;
+layout (set=1, binding = 1) uniform sampler2D ordp;
+layout (set=1, binding = 2) uniform sampler2D shadowMap;
 
 // OUT
 layout (location = 0) out vec4 outColor;

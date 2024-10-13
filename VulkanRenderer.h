@@ -50,7 +50,13 @@ public :
     template<class Self>
     auto&& getVmaAllocator(this Self&self) {return std::forward<Self>(self).vmaAllocator;}
 
-    [[nodiscard]] const PipelineCache &getPipelineCache() const ;
+    template<class Self> auto&& getMainCamera(this Self&self)  {return std::forward<Self>(self).mainCamera;}
+
+    [[nodiscard]] auto getSwapChainExtent() const { return simpleSwapchain.swapChainExtent;}
+    [[nodiscard]] VkPipelineCache getPipelineCache() const ;
+    [[nodiscard]] VkRenderPass getMainRenderPass() const { return simplePass.pass;}
+    [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return activatedSwapChainFramebuffer;}
+    [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return activatedFrameCommandBufferToSubmit;}
 protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;

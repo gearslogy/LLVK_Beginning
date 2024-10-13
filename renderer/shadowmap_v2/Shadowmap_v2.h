@@ -9,7 +9,7 @@
 
 LLVK_NAMESPACE_BEGIN
 class ShadowMapPass;
-
+class ScenePass;
 struct Shadowmap_v2 : VulkanRenderer{
     Shadowmap_v2();
     ~Shadowmap_v2() override;
@@ -20,30 +20,9 @@ struct Shadowmap_v2 : VulkanRenderer{
     void loadTextures();
     void loadModels();
     void createDescriptorPool();
-    void prepareUniformBuffers();
-    void prepareDescriptorSets();
-    void preparePipelines();
     void updateUniformBuffers();
 
-
     glm::vec3 lightPos{};
-
-    struct {
-        VkPipeline opacity;     // used for foliage render with depth map. forward rendering
-        VkPipeline opaque;      // used for grid render with depth map     forward rendering
-    }scenePipeline{};
-    VkDescriptorSetLayout sceneDescriptorSetLayout{}; // only one set=0 .
-    VkPipelineLayout scenePipelineLayout{};       //only 1 set: binding=0 UBO, binding=1 colormaps_array, binding=2 shadowmap_v2
-
-    struct {
-        VmaUBOBuffer scene;     // final rendering : opaque and opacity use same UBO
-    }uniformBuffers;
-    struct {
-        VkDescriptorSet opacity{};
-        VkDescriptorSet opaque{};
-    }sceneSets;
-    UT_GraphicsPipelinePSOs scenePSO{};
-
     VkDescriptorPool descPool{};
 
     void recordCommandBuffer();
@@ -62,7 +41,7 @@ struct Shadowmap_v2 : VulkanRenderer{
 
     // SHADOW PASS
     std::unique_ptr<ShadowMapPass> shadowMapPass;
-
+    std::unique_ptr<ScenePass>     scenePass;
 
 private:
     inline void setRequiredObjects  (auto && ... ubo) {

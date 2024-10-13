@@ -483,8 +483,8 @@ void VulkanRenderer::draw() {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-const PipelineCache &VulkanRenderer::getPipelineCache() const {
-    return simplePipelineCache;
+VkPipelineCache VulkanRenderer::getPipelineCache() const {
+    return simplePipelineCache.pipelineCache;
 }
 
 

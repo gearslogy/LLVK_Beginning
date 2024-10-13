@@ -5,7 +5,7 @@
 layout(location = 6) out vec3 L;  // world space vertexP to lightP
 layout(location = 7) out vec4 uvShadow;
 layout(location = 8) out vec4 bias_uvShadow;
-layout (binding = 0) uniform UBO
+layout (set=0, binding = 0) uniform UBO
 {
     mat4 projection;
     mat4 view;

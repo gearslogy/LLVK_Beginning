@@ -11,6 +11,7 @@
 #include "LLVK_Descriptor.hpp"
 #include "Pipeline.hpp"
 #include "LLVK_GeomtryLoader.h"
+#include "UT_ShadowMap.hpp"
 LLVK_NAMESPACE_BEGIN
 
 
@@ -191,7 +192,7 @@ void ShadowMapPass::prepareDescriptorSets() {
 
 void ShadowMapPass::preparePipelines() {
 	auto device = pRenderer->getMainDevice().logicalDevice;
-	auto pipelineCache=  pRenderer->getPipelineCache().pipelineCache;
+	auto pipelineCache=  pRenderer->getPipelineCache();
 	pipelinePSOs.requiredObjects.device = device; // Required Object first
 	pipelinePSOs.asDepth("shaders/sm_v2_offscreen_vert.spv", "shaders/sm_v2_offscreen_frag.spv", shadowFramebuffer.renderPass);
 	// create pipeline layout
