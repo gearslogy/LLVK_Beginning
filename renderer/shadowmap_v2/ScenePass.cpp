@@ -15,17 +15,18 @@ void SceneGeometryContainer::buildSet() {
     const auto &tex_setLayout = *requiredObjects.pSetLayoutTexture;
     const auto &ubo = *requiredObjects.pUBO;
 
+
+    auto uboSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&ubo_setLayout, 1);
+    auto texSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&tex_setLayout, 1);
     auto allocateSetForObjects = [&](auto &objs) {
         for(auto &geo : objs) {
-            std::cout << "A:"<<pool << std::endl;
-            const auto uboSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&ubo_setLayout, 1);
             UT_Fn::invoke_and_check("Error create --A scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
-            const auto texSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&tex_setLayout, 1);
             UT_Fn::invoke_and_check("Error create --A scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
         }
     };
-    auto uboSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&ubo_setLayout, 1);
-    auto texSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&tex_setLayout, 1);
+    allocateSetForObjects(opacityRenderableObjects);
+    allocateSetForObjects(opaqueRenderableObjects);
+
     for(auto &geo : opacityRenderableObjects) {
         UT_Fn::invoke_and_check("Error create opacity scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
         UT_Fn::invoke_and_check("Error create opacity scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
@@ -34,8 +35,7 @@ void SceneGeometryContainer::buildSet() {
         UT_Fn::invoke_and_check("Error create opaque scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
         UT_Fn::invoke_and_check("Error create opaque scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
     }
-    //allocateSetForObjects(opacityRenderableObjects);
-    //allocateSetForObjects(opaqueRenderableObjects);
+
 
     auto updateWriteSets = [&,this](auto &&objs) {
         for(const auto &geo: objs) {
