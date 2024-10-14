@@ -1,6 +1,22 @@
 # LLVK_Beginning
 Learn Vulkan from scratch
 
+## instance 
+### resource gen(houdini20.5):
+1. terrain from houdini:
+
+![terrain.png](screenshot/hou_terrain_build.png)
+
+2. four layers:
+* cliff1
+* cliff2
+* rocks
+* grass
+
+
+
+
+
 ## shadow map
 * opacity/foliage objects rendering
 * opaque objects rendering
