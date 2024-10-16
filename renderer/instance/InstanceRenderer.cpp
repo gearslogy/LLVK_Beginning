@@ -6,10 +6,16 @@
 #include "LLVK_UT_VmaBuffer.hpp"
 #include "LLVK_Descriptor.hpp"
 LLVK_NAMESPACE_BEGIN
+InstanceRenderer::InstanceRenderer() {
+    terrainPass = std::make_unique<TerrainPass>(this, &descPool);
+
+}
+InstanceRenderer::~InstanceRenderer() = default;
+
 void InstanceRenderer::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
     UT_Fn::cleanup_resources(geos.geoBufferManager);
-    UT_Fn::cleanup_resources(Textures.groundCliff,Textures.groundGrass, Textures.groundGrass );
+    UT_Fn::cleanup_resources(terrainTextures.albedoArray, terrainTextures.normalArray,terrainTextures.ordpArray );
     UT_Fn::cleanup_sampler(device,colorSampler);
     vkDestroyDescriptorPool(device, descPool, nullptr);
 }
@@ -18,22 +24,32 @@ void InstanceRenderer::loadTexture() {
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     colorSampler = FnImage::createImageSampler(phyDevice, device);
-    setRequiredObjects(Textures.groundCliff, Textures.groundGrass,Textures.groundRock);
-    Textures.groundCliff.create("content/scene/instance/tex/green_cliff_texarray.ktx2",colorSampler);
-    Textures.groundGrass.create("content/scene/instance/tex/green_grass_texarray.ktx2",colorSampler);
-    Textures.groundRock.create("content/scene/instance/tex/green_rock_texarray.ktx2",colorSampler);
+    setRequiredObjects(terrainTextures.albedoArray, terrainTextures.normalArray,terrainTextures.ordpArray);
+    terrainTextures.albedoArray.create("content/scene/instance/tex/terrain/gpu_albedo_2darray.ktx2",colorSampler);
+    terrainTextures.normalArray.create("content/scene/instance/tex/terrain/gpu_n_2darray.ktx2",colorSampler);
+    terrainTextures.ordpArray.create("content/scene/instance/tex/terrain/gpu_ordp_2darray.ktx2",colorSampler);
 }
-
 void InstanceRenderer::loadModel() {
     setRequiredObjects(geos.geoBufferManager);
     geos.terrain.load("content/scene/instance/gltf/terrain_output.gltf");
-    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.terrain, Geos.geoBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.terrain, geos.geoBufferManager);
 }
+
+
 void InstanceRenderer::prepare() {
     loadTexture();
     loadModel();
     createDescriptorPool();
-    prepareUniformBuffers();
+
+    // scene pass prepare
+    TerrainGeometryContainer::RenderableObject terrain;
+    terrain.pGeometry = &geos.terrain.parts[0];
+    terrain.pTextures.emplace_back(&terrainTextures.albedoArray );
+    terrain.pTextures.emplace_back(&terrainTextures.ordpArray);
+    terrain.pTextures.emplace_back(&terrainTextures.normalArray);
+    auto &&terrainGeoContainer = terrainPass->getGeometryContainer();
+    terrainGeoContainer.addRenderableGeometry(terrain);
+    terrainPass->prepare();
 }
 
 void InstanceRenderer::createDescriptorPool() {
@@ -49,18 +65,19 @@ void InstanceRenderer::createDescriptorPool() {
 }
 
 
-void InstanceRenderer::preparePipelines() {
-}
-
-void InstanceRenderer::prepareUniformBuffers() {
-}
 
 void InstanceRenderer::updateUniformBuffers() {
+    auto identity = glm::mat4(1.0f);
+    terrainPass->updateUniformBuffers(identity, glm::vec4{lightPos,1.0f});
 }
 
 
 void InstanceRenderer::recordCommandBuffer() {
-
+    auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
+    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
+    terrainPass->recordCommandBuffer();
+    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
 
 LLVK_NAMESPACE_END

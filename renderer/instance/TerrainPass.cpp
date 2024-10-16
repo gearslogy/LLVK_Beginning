@@ -5,7 +5,7 @@
 #include "TerrainPass.h"
 #include "LLVK_Descriptor.hpp"
 #include "VulkanRenderer.h"
-
+#include "renderer/shadowmap_v2/UT_ShadowMap.hpp"
 LLVK_NAMESPACE_BEGIN
 void TerrainGeometryContainer::buildSet() {
     const auto &device = requiredObjects.pVulkanRenderer->getMainDevice().logicalDevice;
@@ -41,6 +41,8 @@ void TerrainGeometryContainer::buildSet() {
     updateWriteSets(opaqueRenderableObjects);
 
 }
+TerrainPass::TerrainPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool):pRenderer(renderer),pDescriptorPool(descPool) { }
+
 
 void TerrainPass::prepare() {
     prepareUniformBuffers();
@@ -111,10 +113,10 @@ void TerrainPass::preparePipelines() {
     const auto &mainDevice = pRenderer->getMainDevice();
     auto device = mainDevice.logicalDevice;
     //shader modules
-    const auto sceneVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/sm_v2_scene_vert.spv",  device);
-    const auto sceneFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/sm_v2_scene_frag.spv",  device); // need VK_CULLING_NONE
+    const auto sceneVertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/terrain_vert.spv",  device);
+    const auto sceneFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/terrain_frag.spv",  device);
     //shader stages
-    VkPipelineShaderStageCreateInfo sceneVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, sceneVertMoudule);
+    VkPipelineShaderStageCreateInfo sceneVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, sceneVertModule);
     VkPipelineShaderStageCreateInfo sceneFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, sceneFragModule);
     // layout
     const std::array sceneSetLayouts{uboDescSetLayout, textureDescSetLayout};

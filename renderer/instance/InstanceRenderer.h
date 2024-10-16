@@ -9,18 +9,15 @@
 #include "VulkanRenderer.h"
 #include "LLVK_GeomtryLoader.h"
 #include "LLVK_VmaBuffer.h"
-
+#include "TerrainPass.h"
 LLVK_NAMESPACE_BEGIN
 struct InstanceRenderer : public VulkanRenderer {
-
-    InstanceRenderer(): VulkanRenderer(){}
-
+    InstanceRenderer();
+    ~InstanceRenderer() override;
     void cleanupObjects() override;
     void loadTexture();
     void loadModel();
     void createDescriptorPool();
-    void preparePipelines();
-    void prepareUniformBuffers();
     void updateUniformBuffers();
     void recordCommandBuffer();
 
@@ -33,6 +30,7 @@ struct InstanceRenderer : public VulkanRenderer {
     }
 
     // --- Geo & texture Resources ---
+    glm::vec3 lightPos{-739.189,708.448,708.448};
     struct  {
         GLTFLoader terrain{};// only use part0
         VmaSimpleGeometryBufferManager geoBufferManager{};
@@ -40,13 +38,14 @@ struct InstanceRenderer : public VulkanRenderer {
 
     struct {
         // simulate terrain
-        VmaUBOKTX2Texture groundCliff{};
-        VmaUBOKTX2Texture groundGrass{};
-        VmaUBOKTX2Texture groundRock{};
-    }Textures;
+        VmaUBOKTX2Texture albedoArray{};
+        VmaUBOKTX2Texture normalArray{};
+        VmaUBOKTX2Texture ordpArray{};
+    }terrainTextures;
     VkSampler colorSampler{};
     // --- Geo & texture Resources ---
     VkDescriptorPool descPool{};
+    std::unique_ptr<TerrainPass> terrainPass;
 
 private:
     inline void setRequiredObjects  (auto && ... ubo) {
