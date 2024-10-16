@@ -2,7 +2,8 @@
 Learn Vulkan from scratch
 
 ## instance 
-### resource gen(houdini20.5):
+
+### terrain resource gen(houdini20.5):
 1. terrain from houdini:
 
 ![terrain.png](screenshot/hou_terrain_build.png)
@@ -13,7 +14,14 @@ Learn Vulkan from scratch
 * rocks
 * grass
 
+3: encoded terrain mask:
 
+![shadow.png](build/bin/content/scene/instance/tex/terrain/terrain_masks/mask.png)
+
+* R:cliff1
+* G:cliff2
+* B:small_rocks
+* A:Grass(as background) fully white color
 
 
 

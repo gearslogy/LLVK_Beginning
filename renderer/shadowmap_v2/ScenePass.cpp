@@ -20,22 +20,12 @@ void SceneGeometryContainer::buildSet() {
     auto texSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&tex_setLayout, 1);
     auto allocateSetForObjects = [&](auto &objs) {
         for(auto &geo : objs) {
-            UT_Fn::invoke_and_check("Error create --A scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
-            UT_Fn::invoke_and_check("Error create --A scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
+            UT_Fn::invoke_and_check("Error create scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
+            UT_Fn::invoke_and_check("Error create scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
         }
     };
     allocateSetForObjects(opacityRenderableObjects);
     allocateSetForObjects(opaqueRenderableObjects);
-
-    for(auto &geo : opacityRenderableObjects) {
-        UT_Fn::invoke_and_check("Error create opacity scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
-        UT_Fn::invoke_and_check("Error create opacity scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
-    }
-    for(auto &geo : opaqueRenderableObjects) {
-        UT_Fn::invoke_and_check("Error create opaque scene ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
-        UT_Fn::invoke_and_check("Error create opaque scene tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
-    }
-
 
     auto updateWriteSets = [&,this](auto &&objs) {
         for(const auto &geo: objs) {
