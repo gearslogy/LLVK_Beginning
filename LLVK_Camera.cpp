@@ -6,7 +6,7 @@
 
 #include <iostream>
 LLVK_NAMESPACE_BEGIN
-    glm::mat4 Camera::view() const {
+glm::mat4 Camera::view() const {
     return glm::lookAt(mPosition, mPosition + mFront, mUp);
 }
 glm::mat4 Camera::projection() const {

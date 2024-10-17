@@ -96,18 +96,26 @@ static std::vector<uint16_t> indices = {
 LLVK_NAMESPACE_BEGIN
 // control camera rotation
 void VulkanRendererWindowEvent::mouse_callback(GLFWwindow *window, double xposIn, double yposIn) {
+    /*
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) != GLFW_PRESS)
+        return;*/
+
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
     auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
     if (not vr->eventData.isPressingRightMouseButton) return;
 
+    /*
     if (vr->eventData.firstMouse) {
+        std::cout << "first pos in\n";
         vr->eventData.lastX = xpos;
         vr->eventData.lastY = ypos;
         vr->eventData.firstMouse = false;
-    }
+    }*/
     float xoffset = xpos - vr->eventData.lastX;
     float yoffset = vr->eventData.lastY - ypos;
+    //xoffset = std::clamp(xoffset, -1.0f , 1.0f);
+    //yoffset = std::clamp(yoffset, -1.0f , 1.0f);
     vr->eventData.lastX = xpos;
     vr->eventData.lastY = ypos;
     vr->mainCamera.processMouseMovement(xoffset, yoffset); // camera yaw and pitch
@@ -119,18 +127,16 @@ void VulkanRendererWindowEvent::mouse_button_callback(GLFWwindow *window, int bu
         if (action == GLFW_PRESS) {
             auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
             vr->eventData.isPressingRightMouseButton = true;
-
             // ---key !
             double xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
             vr->eventData.lastX = static_cast<float>(xpos);
             vr->eventData.lastY = static_cast<float>(ypos);
             // ---or cause camera jitter when mouse clicked
-
-
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         } else if (action == GLFW_RELEASE) {
+            //std::cout << "released\n";;
             auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
             vr->eventData.isPressingRightMouseButton = false;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

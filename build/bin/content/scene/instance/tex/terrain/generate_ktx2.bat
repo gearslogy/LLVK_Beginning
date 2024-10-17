@@ -30,3 +30,6 @@ cliff2/normal.jpg ^
 small_rocks/normal.jpg ^
 grass/normal.jpg ^
 gpu_n_2darray.ktx2
+
+:: mask
+ktx create --format=R8G8B8A8_UNORM --generate-mipmap --encode=uastc terrain_masks/mask.png gpu_terrain_mask.ktx2

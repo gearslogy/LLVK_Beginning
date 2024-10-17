@@ -7,6 +7,11 @@
 #include "LLVK_Descriptor.hpp"
 LLVK_NAMESPACE_BEGIN
 InstanceRenderer::InstanceRenderer() {
+    mainCamera.mPosition = {-411,59,523};
+    mainCamera.mYaw = -37.0f;
+    mainCamera.mMoveSpeed =  5.0;
+    mainCamera.updateCameraVectors();
+
     terrainPass = std::make_unique<TerrainPass>(this, &descPool);
 
 }
@@ -15,19 +20,26 @@ InstanceRenderer::~InstanceRenderer() = default;
 void InstanceRenderer::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
     UT_Fn::cleanup_resources(geos.geoBufferManager);
-    UT_Fn::cleanup_resources(terrainTextures.albedoArray, terrainTextures.normalArray,terrainTextures.ordpArray );
+    UT_Fn::cleanup_resources(terrainTextures.albedoArray,
+        terrainTextures.normalArray,
+        terrainTextures.ordpArray,terrainTextures.mask );
     UT_Fn::cleanup_sampler(device,colorSampler);
     vkDestroyDescriptorPool(device, descPool, nullptr);
+    terrainPass->cleanup();
 }
 
 void InstanceRenderer::loadTexture() {
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     colorSampler = FnImage::createImageSampler(phyDevice, device);
-    setRequiredObjects(terrainTextures.albedoArray, terrainTextures.normalArray,terrainTextures.ordpArray);
+    setRequiredObjects(terrainTextures.albedoArray,
+        terrainTextures.normalArray,
+        terrainTextures.ordpArray,
+        terrainTextures.mask);
     terrainTextures.albedoArray.create("content/scene/instance/tex/terrain/gpu_albedo_2darray.ktx2",colorSampler);
     terrainTextures.normalArray.create("content/scene/instance/tex/terrain/gpu_n_2darray.ktx2",colorSampler);
     terrainTextures.ordpArray.create("content/scene/instance/tex/terrain/gpu_ordp_2darray.ktx2",colorSampler);
+    terrainTextures.mask.create("content/scene/instance/tex/terrain/gpu_terrain_mask.ktx2",colorSampler);
 }
 void InstanceRenderer::loadModel() {
     setRequiredObjects(geos.geoBufferManager);
@@ -44,9 +56,10 @@ void InstanceRenderer::prepare() {
     // scene pass prepare
     TerrainGeometryContainer::RenderableObject terrain;
     terrain.pGeometry = &geos.terrain.parts[0];
-    terrain.pTextures.emplace_back(&terrainTextures.albedoArray );
-    terrain.pTextures.emplace_back(&terrainTextures.ordpArray);
-    terrain.pTextures.emplace_back(&terrainTextures.normalArray);
+    terrain.bindTextures(&terrainTextures.albedoArray,
+        &terrainTextures.ordpArray,
+        &terrainTextures.normalArray,
+        &terrainTextures.mask);
     auto &&terrainGeoContainer = terrainPass->getGeometryContainer();
     terrainGeoContainer.addRenderableGeometry(terrain);
     terrainPass->prepare();

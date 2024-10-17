@@ -9,6 +9,7 @@
 #include "renderer/deferred/deferred.h"
 #include "renderer/shadowmap/shadowmap.h"
 #include "renderer/shadowmap_v2/Shadowmap_v2.h"
+#include "renderer/instance/InstanceRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -16,7 +17,8 @@ int main() {
     //LLVK::ktx_tex2darray app;
     //LLVK::defer app;
     //LLVK::shadowmap app;
-    LLVK::Shadowmap_v2 app;
+    //LLVK::Shadowmap_v2 app;
+    LLVK::InstanceRenderer app;
     try {
         app.run();
     }

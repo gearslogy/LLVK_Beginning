@@ -450,14 +450,13 @@ void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
     image = ktx_vk_texture.image;
 
     VkImageViewCreateInfo viewCreateInfo = FnImage::imageViewCreateInfo(image, ktx_vk_texture.imageFormat);
-    std::cout <<"[[VmaUBOKTX2Texture::create]]"  <<magic_enum::enum_name(ktx_vk_texture.imageFormat) << std::endl; // VK_FORMAT_BC3_UNORM_BLOCK
     viewCreateInfo.format = ktx_vk_texture.imageFormat;
     viewCreateInfo.viewType =ktx_vk_texture.viewType;
     viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     viewCreateInfo.subresourceRange.layerCount = ktx_vk_texture.layerCount;
     viewCreateInfo.subresourceRange.levelCount = ktx_vk_texture.levelCount;
     FnImage::createImageView(device,viewCreateInfo, view);
-
+    std::cout <<"[[VmaUBOKTX2Texture::create iamge view]]"  <<magic_enum::enum_name(ktx_vk_texture.imageFormat) << " view type:" << magic_enum::enum_name(ktx_vk_texture.viewType) << std::endl; // VK_FORMAT_BC3_UNORM_BLOCK
     ktxTexture_Destroy(kTexture);
     ktxVulkanDeviceInfo_Destruct(&vdi);
 

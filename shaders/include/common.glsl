@@ -69,15 +69,21 @@ float calLight(vec3 N){
 }
 
 
-float LinearizeDepth(float depth, float near, float far)
+float linearizeDepth(float depth, float near, float far)
 {
     float z = depth * 2.0 - 1.0; // back to NDC
     return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
+
+
 vec3 gammaCorrect(vec3 color, float gamma) {
     return pow(color, vec3(1.0 / gamma));
 }
+vec4 gammaCorrect(vec4 color, float gamma) {
+    return pow(color, vec4(1.0 / gamma));
+}
+
 vec3 normalCorrect(vec3 N){
     return N * 2.0 -1.0;
 }

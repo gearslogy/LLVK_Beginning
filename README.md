@@ -4,7 +4,11 @@ Learn Vulkan from scratch
 ## instance 
 
 ### terrain resource gen(houdini20.5):
-1. terrain from houdini:
+terrain rendering:
+
+![terrain.png](screenshot/terrain_rendering.png)
+
+1. generate data from houdini
 
 ![terrain.png](screenshot/hou_terrain_build.png)
 

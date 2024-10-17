@@ -41,6 +41,8 @@ struct InstanceRenderer : public VulkanRenderer {
         VmaUBOKTX2Texture albedoArray{};
         VmaUBOKTX2Texture normalArray{};
         VmaUBOKTX2Texture ordpArray{};
+        VmaUBOKTX2Texture mask{};
+
     }terrainTextures;
     VkSampler colorSampler{};
     // --- Geo & texture Resources ---

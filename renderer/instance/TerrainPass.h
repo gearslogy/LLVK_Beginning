@@ -26,6 +26,8 @@ struct TerrainGeometryContainer {
         std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
         VkDescriptorSet setUBO{VK_NULL_HANDLE};       // allocated set  set=0
         VkDescriptorSet setTexture{VK_NULL_HANDLE};   // set=1
+
+        void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
     };
 
     struct RequiredObjects{
