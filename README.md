@@ -49,6 +49,29 @@ terrain rendering:
 ## ktx tex array
 ![texarray.png](screenshot/texarray.png)
 
+
+## command tool
+### tools\gltf_dump  : gltf info dump
+* command interface for dump geometry infos(vertex attributes)
+* Clearly determine which object you put first in the gltf primitive, so that you can determine the order of materials
+* Note that all gltf objects are discrete triangles,
+
+```
+-------------primitive part:0-----------
+attrib key:NORMAL value:3
+attrib key:POSITION value:1
+attrib key:TANGENT value:4
+attrib key:TEXCOORD_0 value:2
+0 2 1 2 0 3 1 5 4 5 1 2 4 7 6 7 4 5 3 8 2 8 3 9 2 10 5 10 2 8 5 11 7 11 5 10 9 12 8 12 9 13 8 14 10 14 8 12 10 15 11 15 10 14
+-------------primitive part:5-----------
+attrib key:NORMAL value:8
+attrib key:POSITION value:6
+attrib key:TANGENT value:9
+attrib key:TEXCOORD_0 value:7
+0 2 1 2 0 3
+
+```
+
 ## REF
 ```html
 https://github.com/SaschaWillems/Vulkan
