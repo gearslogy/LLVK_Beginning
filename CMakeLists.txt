@@ -11,6 +11,7 @@ find_package(Vulkan)
 file(GLOB SOURCES *.h *.cpp
         renderer/*
         renderer/*/*
+        renderer/*/*/*
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})

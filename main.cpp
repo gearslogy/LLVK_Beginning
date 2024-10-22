@@ -9,7 +9,7 @@
 #include "renderer/deferred/deferred.h"
 #include "renderer/shadowmap/shadowmap.h"
 #include "renderer/shadowmap_v2/Shadowmap_v2.h"
-#include "renderer/instance/InstanceRenderer.h"
+#include "renderer/instance/instance_v1/InstanceRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
