@@ -76,7 +76,7 @@ void ShadowMapPass::cleanup() {
 }
 
 void ShadowMapPass::prepareUniformBuffers() {
-	setRequiredObjects(pRenderer, uboBuffer);
+	setRequiredObjectsByRenderer(pRenderer, uboBuffer);
 	uboBuffer.createAndMapping(sizeof(depthMVP));
 	updateUniformBuffers();
 }
@@ -92,7 +92,7 @@ void ShadowMapPass::updateUniformBuffers() {
 
 
 void ShadowMapPass::createOffscreenDepthAttachment() {
-	setRequiredObjects(pRenderer, shadowFramebuffer.depthAttachment);	shadowFramebuffer.depthAttachment.createDepth32(depth_width, depth_height, shadowFramebuffer.depthSampler);
+	setRequiredObjectsByRenderer(pRenderer, shadowFramebuffer.depthAttachment);	shadowFramebuffer.depthAttachment.createDepth32(depth_width, depth_height, shadowFramebuffer.depthSampler);
 	//shadowFramebuffer.depthAttachment.create(shadowFramebuffer.width, shadowFramebuffer.height,VK_FORMAT_D32_SFLOAT_S8_UINT, colorSampler, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 

@@ -60,7 +60,7 @@ void TerrainPass::cleanup() {
 
 
 void TerrainPass::prepareUniformBuffers() {
-    setRequiredObjects(pRenderer, uboBuffer);
+    setRequiredObjectsByRenderer(pRenderer, uboBuffer);
     uboBuffer.createAndMapping(sizeof(uniformDataScene));
     //updateUniformBuffers();
 }

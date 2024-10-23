@@ -64,7 +64,7 @@ void ScenePass::cleanup() {
 
 
 void ScenePass::prepareUniformBuffers() {
-    setRequiredObjects(pRenderer, uboBuffer);
+    setRequiredObjectsByRenderer(pRenderer, uboBuffer);
     uboBuffer.createAndMapping(sizeof(uniformDataScene));
     //updateUniformBuffers();
 }

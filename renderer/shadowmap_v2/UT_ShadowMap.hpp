@@ -10,7 +10,7 @@
 
 LLVK_NAMESPACE_BEGIN
 
-constexpr static void setRequiredObjects  (const auto *renderer, auto && ... ubo) {
+constexpr static void setRequiredObjectsByRenderer  (const auto *renderer, auto && ... ubo) {
     ((ubo.requiredObjects.device = renderer->getMainDevice().logicalDevice),...);
     ((ubo.requiredObjects.physicalDevice = renderer->getMainDevice().physicalDevice),...);
     ((ubo.requiredObjects.commandPool = renderer->getGraphicsCommandPool()),...);
