@@ -70,14 +70,13 @@ void InstancedObjectPass::cleanup() {
     const auto &mainDevice = pRenderer->getMainDevice();
     const auto &device = mainDevice.logicalDevice;
     instanceBufferManager.cleanup();
-    UT_Fn::cleanup_pipeline(device, opaquePipeline);
+    UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, textureDescSetLayout, uboDescSetLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
     uboBuffer.cleanup(); // ubo buffer clean
 }
 
 void InstancedObjectPass::prepare() {
-    prepareInstanceData();
     prepareUniformBuffers();
     prepareDescriptorSets();
     preparePipelines();
@@ -130,7 +129,25 @@ void InstancedObjectPass::prepareDescriptorSets() {
 }
 
 void InstancedObjectPass::preparePipelines() {
-
+    const auto &mainDevice = pRenderer->getMainDevice();
+    auto device = mainDevice.logicalDevice;
+    //shader modules
+    const auto sceneVertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/terrain_vert.spv",  device);
+    const auto sceneFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/terrain_frag.spv",  device);
+    //shader stages
+    VkPipelineShaderStageCreateInfo sceneVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, sceneVertModule);
+    VkPipelineShaderStageCreateInfo sceneFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, sceneFragModule);
+    // layout
+    const std::array sceneSetLayouts{uboDescSetLayout, textureDescSetLayout};
+    VkPipelineLayoutCreateInfo sceneSetLayout_CIO = FnPipeline::layoutCreateInfo(sceneSetLayouts);
+    UT_Fn::invoke_and_check("ERROR create scene pipeline layout",vkCreatePipelineLayout,device, &sceneSetLayout_CIO,nullptr, &pipelineLayout );
+    // back data to pso
+    pipelinePSOs.setShaderStages(sceneVertShaderStageCreateInfo, sceneFragShaderStageCreateInfo);
+    pipelinePSOs.setPipelineLayout(pipelineLayout);
+    pipelinePSOs.setRenderPass(pRenderer->getMainRenderPass());
+    // create pipeline
+    UT_GraphicsPipelinePSOs::createPipeline(device, pipelinePSOs, pRenderer->getPipelineCache(), opaquePipeline);
+    UT_Fn::cleanup_shader_module(device,sceneVertModule, sceneFragModule);
 }
 
 void InstancedObjectPass::recordCommandBuffer() {
@@ -158,7 +175,7 @@ void InstancedObjectPass::recordCommandBuffer() {
             // Binding point 0 : Mesh vertex buffer
             vkCmdBindVertexBuffers(sceneCommandBuffer, 0, 1, &gltfPartGeo->verticesBuffer, offsets);
             // Binding point 1 : Instance data buffer
-            vkCmdBindVertexBuffers(sceneCommandBuffer, 1, 1, &instanceBuffer.buffer, offsets);
+            vkCmdBindVertexBuffers(sceneCommandBuffer, 1, 1, &geo->instanceBuffer, offsets);
 
             vkCmdBindIndexBuffer(sceneCommandBuffer,gltfPartGeo->indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
             std::array bindSets = {geo.setUBO, geo.setTexture};
@@ -177,15 +194,12 @@ void InstancedObjectPass::recordCommandBuffer() {
 
 }
 
-void InstancedObjectPass::prepareInstanceData() {
+VkBuffer InstancedObjectPass::loadInstanceData(std::string_view path) {
     setRequiredObjectsByRenderer(pRenderer,instanceBufferManager);
-    // Tree
-    JsonPointsParser jsTrees{"content/scene/instance/scene_json/trees.json"};
-    //JsonPointsParser jsGrass{"content/scene/instance/scene_json/grass.json"};
-    //JsonPointsParser jsFlowers{"content/scene/instance/scene_json/flowers.json"};
-
-    VkDeviceSize bufferSize = sizeof(InstanceData) * std::size(jsTrees.instanceData);
-    instanceBufferManager.createBufferWithStagingBuffer<VK_BUFFER_USAGE_VERTEX_BUFFER_BIT>(bufferSize, jsTrees.instanceData.data());
+    JsonPointsParser js{path.data()};
+    VkDeviceSize bufferSize = sizeof(InstanceData) * std::size(js.instanceData);
+    instanceBufferManager.createBufferWithStagingBuffer<VK_BUFFER_USAGE_VERTEX_BUFFER_BIT>(bufferSize, js.instanceData.data());
+    return instanceBufferManager.createVertexBuffers.back().buffer;
 }
 
 

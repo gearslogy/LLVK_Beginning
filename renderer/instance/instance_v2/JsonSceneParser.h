@@ -26,7 +26,7 @@ struct InstanceGeometryContainer {
         std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
         VkDescriptorSet setUBO{VK_NULL_HANDLE};       // allocated set  set=0
         VkDescriptorSet setTexture{VK_NULL_HANDLE};   // set=1
-
+        VkBuffer instanceBuffer{VK_NULL_HANDLE};      // binding point = 1
         void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
     };
     struct RequiredObjects{
@@ -64,17 +64,18 @@ struct InstancedObjectPass {
     InstancedObjectPass(const VulkanRenderer* renderer, const VkDescriptorPool *descPool);
     void cleanup();
     void prepare();
+    VkBuffer loadInstanceData(std::string_view path);
 private:
     void prepareUniformBuffers();
     void updateUniformBuffers(const glm::mat4 &depthMVP, const glm::vec4 &lightPos);
     void prepareDescriptorSets();
     void preparePipelines();
     void recordCommandBuffer();
-    void prepareInstanceData();
+
 
     InstanceGeometryContainer geoContainer{};
     VmaSimpleGeometryBufferManager instanceBufferManager{};
-    UT_GraphicsPipelinePSOs PSOs;
+    UT_GraphicsPipelinePSOs pipelinePSOs;
 
     const VulkanRenderer * pRenderer{VK_NULL_HANDLE};      // required object at ctor
     const VkDescriptorPool *pDescriptorPool{VK_NULL_HANDLE}; // required object at ctor
@@ -93,7 +94,8 @@ private:
 
     VkDescriptorSetLayout uboDescSetLayout{};
     VkDescriptorSetLayout textureDescSetLayout{};
-    VkPipelineLayout pipeLayout;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline pipeline{};
 };
 
 
