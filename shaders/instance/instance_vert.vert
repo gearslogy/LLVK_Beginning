@@ -8,11 +8,16 @@ layout(location=7) in vec3  instance_p;
 layout(location=8) in vec4  instance_orient;
 layout(location=9) in float instance_scale;
 
-layout (set=0,binding = 0) uniform UBO{
-    mat4 proj;
-    mat4 model_view;
-}camera_ubo;
-
+layout (set=0, binding = 0) uniform UBO
+{
+    mat4 projection;
+    mat4 view;
+    mat4 model; // all instance transform not nesscery! ignore it keep it simple
+    mat4 lightSpace;
+    vec4 lightPos;
+    float zNear;
+    float zFar;
+} ubo;
 
 
 void main()
@@ -28,7 +33,7 @@ void main()
 
 
     // apply mvp
-    gl_Position = camera_ubo.proj * camera_ubo.model_view * vec4(instance_transformed_p , 1.0);
+    gl_Position = ubo.proj * ubo.view * vec4(instance_transformed_p , 1.0);
 
     // var out
     fragN = nm * N;

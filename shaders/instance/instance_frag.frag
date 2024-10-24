@@ -5,11 +5,10 @@
 layout (location = 0) out vec4 outColor;
 
 
-// uniform texture. in feature we should be diff + N + ordp texture.
-layout(set=1, binding = 0) uniform sampler2D albedoTex;
-layout(set=1, binding = 1) uniform sampler2D ordpTex;
-layout(set=1, binding = 2) uniform sampler2D NTex;
 
+layout(set=1, binding = 0) uniform sampler2D albedoTex;
+layout(set=1, binding = 1) uniform sampler2D NTex;
+layout(set=1, binding = 2) uniform sampler2D rmop; // rough metal ao
 
 void main(){
     vec2 uv = fragTexCoord;

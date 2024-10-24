@@ -83,7 +83,7 @@ void TerrainPass::prepareDescriptorSets() {
     const auto &mainDevice = pRenderer->getMainDevice();
     const auto &device = mainDevice.logicalDevice;
     const auto &physicalDevice = mainDevice.physicalDevice;
-    // we only have one set.
+
     auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);           // ubo
     auto set1_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK_SHADER_STAGE_FRAGMENT_BIT); // albedo
     auto set1_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // ordp
