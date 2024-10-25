@@ -25,32 +25,41 @@ void Resources::cleanup() {
 
 }
 void Resources::loadTerrain() {
+    setRequiredObjectsByRenderer(this,geos.geoBufferManager);
+    geos.terrain.load("content/scene/instance/gltf/terrain_output_v2.gltf");
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.terrain, geos.geoBufferManager);
+
     setRequiredObjectsByRenderer(pRenderer,terrainTextures.albedoArray,terrainTextures.normalArray,
         terrainTextures.ordpArray,terrainTextures.mask);
-    terrainTextures.albedoArray.create("content/scene/instance/tex/terrain/gpu_albedo_2darray.ktx2",colorSampler);
-    terrainTextures.normalArray.create("content/scene/instance/tex/terrain/gpu_n_2darray.ktx2",colorSampler);
-    terrainTextures.ordpArray.create("content/scene/instance/tex/terrain/gpu_ordp_2darray.ktx2",colorSampler);
-    terrainTextures.mask.create("content/scene/instance/tex/terrain/gpu_terrain_mask.ktx2",colorSampler);
+    terrainTextures.albedoArray.create("content/scene/instance/tex/terrain/gpu_albedo_2darray_v2.ktx2",colorSampler);
+    terrainTextures.normalArray.create("content/scene/instance/tex/terrain/gpu_n_2darray_v2.ktx2",colorSampler);
+    terrainTextures.ordpArray.create("content/scene/instance/tex/terrain/gpu_ordp_2darray_v2.ktx2",colorSampler);
+    terrainTextures.mask.create("content/scene/instance/tex/terrain/gpu_terrain_mask.ktx2_v2",colorSampler);
 }
 
 void Resources::loadTree() {
+    // tree model loader
+    setRequiredObjectsByRenderer(this,geos.geoBufferManager);
+    geos.tree.load("content/scene/instance/gltf/tree.gltf");
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.tree, geos.geoBufferManager);
+    // tree texture loader
     setRequiredObjectsByRenderer(this, treeTextures.leaves);
     setRequiredObjectsByRenderer(this, treeTextures.branch);
     setRequiredObjectsByRenderer(this, treeTextures.root);
-    std::array<std::string,3> leaves_path= {
+    std::array<std::string,3> leavesPaths= {
         "content/scene/instance/tree_flower_grass/tree/gpu_leaves_D",
         "content/scene/instance/tree_flower_grass/tree/gpu_leaves_N",
         "content/scene/instance/tree_flower_grass/tree/gpu_leaves_M",
     };
-    std::array<std::string,3> branch_path;
-    std::array<std::string,3> root_path;
+    std::array<std::string,3> branchPaths;
+    std::array<std::string,3> rootPaths;
+
+    auto leavesIter = leavesPaths | std::views::transform([&](auto &path){return UT_STR::replace(path,"leaves","branch") ;});
+    std::ranges::copy(leavesIter, branchPaths.begin());
+    auto rootIter = leavesPaths | std::views::transform([&](auto &path){return UT_STR::replace(path,"leaves","root") ;});
+    std::ranges::copy(rootIter, rootPaths.begin());
 
 
-
-    terrainTextures.albedoArray.create("content/scene/instance/tex/terrain/gpu_albedo_2darray.ktx2",colorSampler);
-    terrainTextures.normalArray.create("content/scene/instance/tex/terrain/gpu_n_2darray.ktx2",colorSampler);
-    terrainTextures.ordpArray.create("content/scene/instance/tex/terrain/gpu_ordp_2darray.ktx2",colorSampler);
-    terrainTextures.mask.create("content/scene/instance/tex/terrain/gpu_terrain_mask.ktx2",colorSampler);
 }
 
 
@@ -67,8 +76,9 @@ InstanceRendererV2::InstanceRendererV2() {
 InstanceRendererV2::~InstanceRendererV2() = default;
 
 void InstanceRendererV2::cleanupObjects() {
-    UT_Fn::cleanup_sampler(device,colorSampler);
+    const auto && device = getMainDevice().logicalDevice;
     vkDestroyDescriptorPool(device, descPool, nullptr);
+    resources.cleanup();
     instancePass->cleanup();
 }
 
@@ -76,15 +86,13 @@ void InstanceRendererV2::loadTexture() {
 
 }
 void InstanceRendererV2::loadModel() {
-    setRequiredObjectsByRenderer(this,geos.geoBufferManager);
-    geos.terrain.load("content/scene/instance/gltf/terrain_output.gltf");
-    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.terrain, geos.geoBufferManager);
+
 }
 
 
 void InstanceRendererV2::prepare() {
-    loadTexture();
-    loadModel();
+    resources.pRenderer = this;
+    resources.loading();
     createDescriptorPool();
 
     // scene pass prepare

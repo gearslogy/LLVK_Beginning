@@ -33,9 +33,9 @@ struct Resources {
     }terrainTextures;
 
     struct {
-        std::vector<VmaUBOKTX2Texture> leaves{}; // albedo  &N  &mix
-        std::vector<VmaUBOKTX2Texture> branch{}; // albedo  &N  &mix
-        std::vector<VmaUBOKTX2Texture> root{};   // albedo  &N  &mix
+        std::array<VmaUBOKTX2Texture,3> leaves; // albedo  &N  &mix
+        std::array<VmaUBOKTX2Texture,3> branch; // albedo  &N  &mix
+        std::array<VmaUBOKTX2Texture,3> root;   // albedo  &N  &mix
     }treeTextures;
     VkSampler colorSampler{};
 private:
@@ -66,7 +66,7 @@ struct InstanceRendererV2 : public VulkanRenderer {
 
     // --- Geo & texture Resources ---
     glm::vec3 lightPos{-739.189,708.448,708.448};
-
+    Resources resources{};
 
 
     // --- Geo & texture Resources ---

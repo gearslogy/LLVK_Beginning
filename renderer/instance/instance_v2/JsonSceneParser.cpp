@@ -4,10 +4,12 @@
 
 #include "JsonSceneParser.h"
 #include <fstream>
+#include <renderer/public/UT_CustomRenderer.hpp>
+
 #include "LLVK_UT_Json.hpp"
 #include "LLVK_Descriptor.hpp"
 #include "VulkanRenderer.h"
-#include "renderer/shadowmap_v2/UT_ShadowMap.hpp"
+#include "renderer/public/UT_CustomRenderer.hpp"
 #include "LLVK_GeomtryLoader.h"
 LLVK_NAMESPACE_BEGIN
 void InstanceGeometryContainer::buildSet() {
