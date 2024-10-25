@@ -61,7 +61,7 @@ private:
     // all the geometry need to rendering depth
     std::vector<RenderableObject> opacityRenderableObjects{};
     std::vector<RenderableObject> opaqueRenderableObjects{};
-    //std::unordered_map<ObjectPipelineTag>;
+
 public:
     void buildSet();
 };

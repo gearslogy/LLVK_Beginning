@@ -15,6 +15,10 @@ LLVK_NAMESPACE_BEGIN
 class VulkanRenderer;
 
 struct InstanceGeometryContainer {
+    enum ObjectPipelineTag{
+        opaque = 1<<0,
+        opacity = 1<<1,
+    };
     void buildSet();
     struct RenderableObject {
         const GLTFLoader::Part *pGeometry;
@@ -37,11 +41,19 @@ struct InstanceGeometryContainer {
         const VkDescriptorSetLayout *pSetLayoutTexture;    // set=1
     };
     void setRequiredObjects( RequiredObjects &&rRequiredObjects) { requiredObjects = rRequiredObjects;}
-    void addRenderableGeometry( RenderableObject obj) { opaqueRenderableObjects.emplace_back(std::move(obj) );}
+    void addRenderableGeometry( RenderableObject obj, ObjectPipelineTag tag) {
+        if( tag == opacity) opacityRenderableObjects.emplace_back(std::move(obj) );
+        else opaqueRenderableObjects.emplace_back(std::move(obj) );
+    }
     template<class Self>
-    auto&& getRenderableObjects(this Self& self) { return std::forward<Self>(self).opaqueRenderableObjects;}
+    auto&& getRenderableObjects(this Self& self, ObjectPipelineTag pipelineTag) {
+        if(pipelineTag == opacity)
+            return std::forward<Self>(self).opacityRenderableObjects;
+        else return std::forward<Self>(self).opaqueRenderableObjects;
+    }
 private:
     RequiredObjects requiredObjects{};
+    std::vector<RenderableObject> opacityRenderableObjects{};
     std::vector<RenderableObject> opaqueRenderableObjects{};
 
 };
@@ -95,7 +107,8 @@ private:
     VkDescriptorSetLayout uboDescSetLayout{};
     VkDescriptorSetLayout textureDescSetLayout{};
     VkPipelineLayout pipelineLayout;
-    VkPipeline pipeline{};
+    VkPipeline opacityPipeline{}; // for rendering leaves
+    VkPipeline opaquePipeline{};  // for rendering tree-root
 };
 
 

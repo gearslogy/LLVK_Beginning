@@ -25,6 +25,7 @@ void InstanceGeometryContainer::buildSet() {
             UT_Fn::invoke_and_check("Error create terrain tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
         }
     };
+    allocateSetForObjects(opacityRenderableObjects);
     allocateSetForObjects(opaqueRenderableObjects);
 
     auto updateWriteSets = [&,this](auto &&objs) {
@@ -40,6 +41,7 @@ void InstanceGeometryContainer::buildSet() {
             vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
         }
     };
+    updateWriteSets(opacityRenderableObjects);
     updateWriteSets(opaqueRenderableObjects);
 
 }
@@ -70,7 +72,7 @@ void InstancedObjectPass::cleanup() {
     const auto &mainDevice = pRenderer->getMainDevice();
     const auto &device = mainDevice.logicalDevice;
     instanceBufferManager.cleanup();
-    UT_Fn::cleanup_pipeline(device, pipeline);
+    UT_Fn::cleanup_pipeline(device, opacityPipeline, opaquePipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, textureDescSetLayout, uboDescSetLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
     uboBuffer.cleanup(); // ubo buffer clean
@@ -147,6 +149,8 @@ void InstancedObjectPass::preparePipelines() {
     pipelinePSOs.setRenderPass(pRenderer->getMainRenderPass());
     // create pipeline
     UT_GraphicsPipelinePSOs::createPipeline(device, pipelinePSOs, pRenderer->getPipelineCache(), opaquePipeline);
+    pipelinePSOs.rasterizerStateCIO.cullMode = VK_CULL_MODE_NONE;
+    UT_GraphicsPipelinePSOs::createPipeline(device, pipelinePSOs, pRenderer->getPipelineCache(), opacityPipeline);
     UT_Fn::cleanup_shader_module(device,sceneVertModule, sceneFragModule);
 }
 
@@ -184,9 +188,13 @@ void InstancedObjectPass::recordCommandBuffer() {
         }
     };
 
+    // render opacity objs
+    auto &&opacityObjs = geoContainer.getRenderableObjects(InstanceGeometryContainer::opacity);
+    vkCmdBindPipeline(sceneCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , opacityPipeline); // FIRST generate depth for opaque object
+    renderObjects(opacityObjs);
 
     // render opaque object
-    auto &&opaqueObjs = geoContainer.getRenderableObjects();
+    auto &&opaqueObjs = geoContainer.getRenderableObjects(InstanceGeometryContainer::opaque);
     vkCmdBindPipeline(sceneCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , opaquePipeline); // FIRST generate depth for opaque object
     renderObjects(opaqueObjs);
 

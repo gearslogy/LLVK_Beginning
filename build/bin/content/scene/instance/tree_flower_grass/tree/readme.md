@@ -1,0 +1,1 @@
+mix : R rough G:metal B:AO 
