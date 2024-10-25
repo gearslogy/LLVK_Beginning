@@ -29,6 +29,10 @@ namespace Concept {
     template<typename T>
     concept is_shader_module = std::is_same_v<std::remove_cvref_t<T>, VkShaderModule>;
 
+    template<typename T>
+    concept has_requiredObjects = requires(T var)    {
+        var.requiredObjects;
+    };
 }
 
 

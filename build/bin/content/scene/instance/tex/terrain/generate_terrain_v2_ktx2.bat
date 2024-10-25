@@ -14,7 +14,7 @@ cliff2/gpu_albedo.png ^
 small_rocks/gpu_albedo.png ^
 grass/gpu_albedo.png ^
 road/gpu_albedo.png ^
-gpu_albedo_2darray.ktx2
+gpu_albedo_2darray_v2.ktx2
 
 :: ordp
 ktx create %TERRAIN_ORDP_OPTIONS% ^
@@ -23,7 +23,7 @@ cliff2/gpu_ordp.png ^
 small_rocks/gpu_ordp.png ^
 grass/gpu_ordp.png ^
 road/gpu_ordp.png ^
-gpu_ordp_2darray.ktx2
+gpu_ordp_2darray_v2.ktx2
 
 :: normal
 ktx create %TERRAIN_ORDP_OPTIONS% ^
@@ -31,8 +31,8 @@ cliff1/normal.jpg ^
 cliff2/normal.jpg ^
 small_rocks/normal.jpg ^
 grass/normal.jpg ^
-road/normal.jpg^
-gpu_n_2darray.ktx2
+road/normal.jpg ^
+gpu_n_2darray_v2.ktx2
 
 :: mask
-ktx create --format=R8G8B8A8_UNORM --generate-mipmap --encode=uastc terrain_masks/mask.png gpu_terrain_mask.ktx2
+ktx create --format=R8G8B8A8_UNORM --generate-mipmap --encode=uastc terrain_masks/mask.png gpu_terrain_mask_v2.ktx2

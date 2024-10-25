@@ -8,6 +8,7 @@
 #include "LLVK_Descriptor.hpp"
 #include "VulkanRenderer.h"
 #include "renderer/shadowmap_v2/UT_ShadowMap.hpp"
+#include "LLVK_GeomtryLoader.h"
 LLVK_NAMESPACE_BEGIN
 void InstanceGeometryContainer::buildSet() {
     const auto &device = requiredObjects.pVulkanRenderer->getMainDevice().logicalDevice;
@@ -139,6 +140,28 @@ void InstancedObjectPass::preparePipelines() {
     //shader stages
     VkPipelineShaderStageCreateInfo sceneVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, sceneVertModule);
     VkPipelineShaderStageCreateInfo sceneFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, sceneFragModule);
+    // point attributes desc
+    constexpr int vertexBufferBindingID = 0;
+    constexpr int instanceBufferBindingID  = 1;
+    std::array<VkVertexInputAttributeDescription,10> attribsDesc{};
+    attribsDesc[0] = { 0,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, P)};
+    attribsDesc[1] = { 1,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, Cd)};
+    attribsDesc[2] = { 2,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, N)};
+    attribsDesc[3] = { 3,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, T)};
+    attribsDesc[4] = { 4,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, B)};
+    attribsDesc[5] = { 5,vertexBufferBindingID,VK_FORMAT_R32G32_SFLOAT , offsetof(GLTFVertex, uv0)};
+    attribsDesc[6] = { 6,vertexBufferBindingID,VK_FORMAT_R32G32_SFLOAT , offsetof(GLTFVertex, uv1)};
+    // Per-Instance attributes
+    attribsDesc[7] = { 7,instanceBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(InstanceData, P)};
+    attribsDesc[8] = { 8,instanceBufferBindingID,VK_FORMAT_R32G32B32A32_SFLOAT , offsetof(InstanceData, orient)};
+    attribsDesc[9] = { 9,instanceBufferBindingID,VK_FORMAT_R32_SFLOAT , offsetof(InstanceData, pscale)};
+
+    // binding desc
+    VkVertexInputBindingDescription vertexBinding{vertexBufferBindingID, sizeof(GLTFVertex), VK_VERTEX_INPUT_RATE_VERTEX};
+    VkVertexInputBindingDescription instanceBinding{instanceBufferBindingID, sizeof(InstanceData), VK_VERTEX_INPUT_RATE_INSTANCE};
+    std::array<VkVertexInputBindingDescription,2> bindingsDesc{vertexBinding, instanceBinding};
+    pipelinePSOs.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
+
     // layout
     const std::array sceneSetLayouts{uboDescSetLayout, textureDescSetLayout};
     VkPipelineLayoutCreateInfo sceneSetLayout_CIO = FnPipeline::layoutCreateInfo(sceneSetLayouts);
