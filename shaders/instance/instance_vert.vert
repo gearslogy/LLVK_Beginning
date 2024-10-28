@@ -10,7 +10,7 @@ layout(location=9) in float instance_scale;
 
 layout (set=0, binding = 0) uniform UBO
 {
-    mat4 projection;
+    mat4 proj;
     mat4 view;
     mat4 model; // all instance transform not nesscery! ignore it keep it simple
     mat4 lightSpace;
@@ -19,6 +19,9 @@ layout (set=0, binding = 0) uniform UBO
     float zFar;
 } ubo;
 
+vec3 instance_dir(vec3 dir, vec4 orient){
+    return normalize(rotateVectorByQuat(dir, orient) );
+}
 
 void main()
 {
@@ -37,8 +40,11 @@ void main()
 
     // var out
     fragN = nm * N;
+    fragN = instance_dir(fragN, instance_orient);
     fragTangent = nm * T;
+    fragTangent = instance_dir(fragTangent, instance_orient);
     fragBitangent = nm * B;
+    fragBitangent = instance_dir(fragBitangent, instance_orient);
     fragPosition = gl_Position.xyz; // World space position
     fragTexCoord = uv0;
 }

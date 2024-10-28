@@ -10,6 +10,8 @@
 #include "renderer/shadowmap/shadowmap.h"
 #include "renderer/shadowmap_v2/Shadowmap_v2.h"
 #include "renderer/instance/instance_v1/InstanceRenderer.h"
+#include "renderer/instance/instance_v2/InstanceRendererV2.h"
+
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -18,7 +20,8 @@ int main() {
     //LLVK::defer app;
     //LLVK::shadowmap app;
     //LLVK::Shadowmap_v2 app;
-    LLVK::InstanceRenderer app;
+    //LLVK::InstanceRenderer app;
+    LLVK::InstanceRendererV2 app;
     try {
         app.run();
     }

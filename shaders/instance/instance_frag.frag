@@ -1,6 +1,6 @@
 #version 460 core
 #include "gltf_layout_frag.glsl"
-
+#include "common.glsl"
 // opengl can do without the "location" keyword
 layout (location = 0) out vec4 outColor;
 
@@ -13,8 +13,9 @@ layout(set=1, binding = 2) uniform sampler2D rmop; // rough metal ao
 void main(){
     vec2 uv = fragTexCoord;
     vec4 albedo = texture(albedoTex, uv);
-    float alpha = albedo.r;
-    if(alpha < 0.1)
+    float alpha = albedo.a;
+    if(alpha < 0.01)
         discard;
-    outColor = vec4(1,0,0,1);
+    vec3 diff = gammaCorrect(albedo.rgb, 2.2);
+    outColor = vec4(diff,1);
 }

@@ -9,9 +9,10 @@
 #include "VulkanRenderer.h"
 #include "LLVK_GeomtryLoader.h"
 #include "LLVK_VmaBuffer.h"
-#include "TerrainPass.h"
+
 LLVK_NAMESPACE_BEGIN
-struct InstanceRenderer : public VulkanRenderer {
+class TerrainPass;
+struct InstanceRenderer :  VulkanRenderer {
     InstanceRenderer();
     ~InstanceRenderer() override;
     void cleanupObjects() override;

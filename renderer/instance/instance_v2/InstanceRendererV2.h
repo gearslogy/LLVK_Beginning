@@ -1,10 +1,8 @@
-//
+﻿//
 // Created by liuya on 8/16/2024.
 //
 
-#ifndef INSTANCE_H
-#define INSTANCE_H
-
+#pragma once
 
 #include "VulkanRenderer.h"
 #include "LLVK_GeomtryLoader.h"
@@ -12,12 +10,15 @@
 
 LLVK_NAMESPACE_BEGIN
 
+struct InstancePass;
+struct TerrainPassV2;
 struct Resources {
     void loading();
     void cleanup();
 
     VulkanRenderer *pRenderer{nullptr};
-
+    InstancePass *pInstancedObjectPass{nullptr};
+    TerrainPassV2 *pTerrainPass{nullptr};
     struct  {
         GLTFLoader terrain{};// only use part0
         GLTFLoader tree{};
@@ -45,13 +46,12 @@ private:
 
 
 
-class InstancedObjectPass;
-struct InstanceRendererV2 : public VulkanRenderer {
+
+struct InstanceRendererV2 final : VulkanRenderer {
     InstanceRendererV2();
     ~InstanceRendererV2() override;
     void cleanupObjects() override;
-    void loadTexture();
-    void loadModel();
+    void loadResources();
     void createDescriptorPool();
     void updateUniformBuffers();
     void recordCommandBuffer();
@@ -71,11 +71,10 @@ struct InstanceRendererV2 : public VulkanRenderer {
 
     // --- Geo & texture Resources ---
     VkDescriptorPool descPool{};
-    std::unique_ptr<InstancedObjectPass> instancePass;
+    std::unique_ptr<InstancePass> instancePass;
+    std::unique_ptr<TerrainPassV2> terrainPass;
 
 
 };
 LLVK_NAMESPACE_END
 
-
-#endif //INSTANCE_H

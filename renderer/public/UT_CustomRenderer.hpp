@@ -10,13 +10,27 @@
 
 LLVK_NAMESPACE_BEGIN
 
-constexpr void setRequiredObjectsByRenderer  (const auto *renderer, Concept::has_requiredObjects auto && ... ubo) {
+
+struct GetRendererPtr {
+    static auto * value(auto object) {
+        using T =std::remove_pointer_t< std::decay_t<decltype(object)>  >;
+
+        if constexpr(Concept::has_pRenderer<T>)
+            return object->pRenderer;
+        else
+            return object;
+    }
+};
+
+constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::has_requiredObjects auto && ... ubo) {
+    const auto *renderer = GetRendererPtr::value(renderer_or_object);
     ((ubo.requiredObjects.device = renderer->getMainDevice().logicalDevice),...);
     ((ubo.requiredObjects.physicalDevice = renderer->getMainDevice().physicalDevice),...);
     ((ubo.requiredObjects.commandPool = renderer->getGraphicsCommandPool()),...);
     ((ubo.requiredObjects.queue = renderer->getGraphicsQueue()),...);
     ((ubo.requiredObjects.allocator = renderer->getVmaAllocator()),...);
 };
+
 
 constexpr void setRequiredObjectsByRenderer  (const auto *renderer, Concept::is_range auto && range_ubo) {
     for(auto &o : range_ubo) {
@@ -27,6 +41,7 @@ constexpr void setRequiredObjectsByRenderer  (const auto *renderer, Concept::is_
         o.requiredObjects.allocator = renderer->getVmaAllocator();
     }
 };
+
 
 
 namespace UT_STR {

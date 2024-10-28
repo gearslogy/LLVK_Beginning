@@ -33,6 +33,11 @@ namespace Concept {
     concept has_requiredObjects = requires(T var)    {
         var.requiredObjects;
     };
+    template<typename T>
+    concept has_pRenderer = requires(T var){
+        var.pRenderer;
+    };
+
 }
 
 

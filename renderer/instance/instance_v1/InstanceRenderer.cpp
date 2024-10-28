@@ -5,6 +5,7 @@
 #include "InstanceRenderer.h"
 #include "LLVK_UT_VmaBuffer.hpp"
 #include "LLVK_Descriptor.hpp"
+#include "TerrainPass.h"
 LLVK_NAMESPACE_BEGIN
 InstanceRenderer::InstanceRenderer() {
     mainCamera.mPosition = {-411,59,523};

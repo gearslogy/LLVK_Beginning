@@ -5,7 +5,7 @@
 #include "ScenePass.h"
 #include "LLVK_Descriptor.hpp"
 #include "VulkanRenderer.h"
-#include "UT_ShadowMap.hpp"
+#include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
 
 void SceneGeometryContainer::buildSet() {
