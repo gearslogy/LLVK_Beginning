@@ -30,7 +30,7 @@ struct VulkanRendererWindowEvent {
 
 
 class VulkanRenderer {
-    friend class VulkanRendererWindowEvent;
+    friend struct VulkanRendererWindowEvent;
 public :
     VulkanRenderer();
     virtual ~VulkanRenderer() ;
@@ -57,11 +57,16 @@ public :
     [[nodiscard]] VkRenderPass getMainRenderPass() const { return simplePass.pass;}
     [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return activatedSwapChainFramebuffer;}
     [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return activatedFrameCommandBufferToSubmit;}
+    [[nodiscard]] auto getCurrentFrame() const{ return currentFrame;}
 protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;
     VkInstance instance{};
+#ifdef _DEBUG
     bool enableValidation{true};
+#else
+    bool enableValidation{true};
+#endif
     VkDebugReportCallbackEXT reportCallback;
 
     Device mainDevice;

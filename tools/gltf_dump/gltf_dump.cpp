@@ -163,6 +163,11 @@ void GLTFLoader::load(const std::string &path) {
             }
         } // end of primitive
     } // end of modelmesh
+
+    for(auto &&[k,v] : std::views::enumerate(parts)) {
+        std::cout << "    --part:"<< k << " vertices length:" << std::size(v.vertices) << std::endl;
+        std::cout << "    --part:"<< k << " indices length:" << std::size(v.indices) << std::endl;
+    }
 }
 LLVK_NAMESPACE_END
 

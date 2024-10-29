@@ -17,6 +17,8 @@ LLVK_NAMESPACE_BEGIN
     colorSampler = FnImage::createImageSampler(phyDevice, device);
     loadTree();
     loadTerrain();
+    loadGrass();
+    loadFlower();
 }
 
 void Resources::cleanup() {
@@ -29,6 +31,9 @@ void Resources::cleanup() {
     UT_Fn::cleanup_range_resources(treeTextures.leaves);
     UT_Fn::cleanup_range_resources(treeTextures.branch);
     UT_Fn::cleanup_range_resources(treeTextures.root);
+    UT_Fn::cleanup_range_resources(grassTextures);
+    UT_Fn::cleanup_range_resources(flowerTextures);
+
 }
 void Resources::loadTerrain() {
     setRequiredObjectsByRenderer(pRenderer,geos.geoBufferManager);
@@ -111,8 +116,48 @@ void Resources::loadTree() {
     pInstancedObjectPass->geoContainer.addRenderableGeometry(treeRoot, InstanceGeometryContainer::opaque);
 }
 
+void Resources::loadFlower() {
+    setRequiredObjectsByRenderer(this, geos.geoBufferManager);
+    geos.flower.load("content/scene/instance/gltf/flower.gltf");
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.flower, geos.geoBufferManager);
+    std::array<std::string,3> paths= {
+        "content/scene/instance/tree_flower_grass/flower/gpu_D.ktx2",
+        "content/scene/instance/tree_flower_grass/flower/gpu_N.ktx2",
+        "content/scene/instance/tree_flower_grass/flower/gpu_M.ktx2",
+    };
+    setRequiredObjectsByRenderer(pRenderer,flowerTextures);
+    for(auto &&[path,t]: std::views::zip(paths, flowerTextures))
+        t.create(path, colorSampler);
 
+    // loading instance points
+    auto [instanceBuffer,instanceCount] = pInstancedObjectPass->loadInstanceData("content/scene/instance/scene_json/flower.json");
+    InstanceGeometryContainer::RenderableObject flower;
+    flower.pGeometry = &geos.flower.parts[0];
+    flower.bindTextures(&flowerTextures[0],&flowerTextures[1],&flowerTextures[2]);
+    flower.instDesc = {instanceBuffer, instanceCount};
+    pInstancedObjectPass->geoContainer.addRenderableGeometry(flower, InstanceGeometryContainer::opacity);
+}
 
+void Resources::loadGrass() {
+    setRequiredObjectsByRenderer(this, geos.geoBufferManager);
+    geos.grass.load("content/scene/instance/gltf/grass.gltf");
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.grass, geos.geoBufferManager);
+    std::array<std::string,3> paths= {
+        "content/scene/instance/tree_flower_grass/grass/gpu_D.ktx2",
+        "content/scene/instance/tree_flower_grass/grass/gpu_N.ktx2",
+        "content/scene/instance/tree_flower_grass/grass/gpu_M.ktx2",
+    };
+    setRequiredObjectsByRenderer(pRenderer,grassTextures );
+    for(auto &&[path,t]: std::views::zip(paths, grassTextures))
+        t.create(path, colorSampler);
+    // loading instance points
+    auto [instanceBuffer,instanceCount] = pInstancedObjectPass->loadInstanceData("content/scene/instance/scene_json/grass.json");
+    InstanceGeometryContainer::RenderableObject grass;
+    grass.pGeometry = &geos.grass.parts[0];
+    grass.bindTextures(&grassTextures[0],&grassTextures[1],&grassTextures[2]);
+    grass.instDesc = {instanceBuffer, instanceCount};
+    pInstancedObjectPass->geoContainer.addRenderableGeometry(grass, InstanceGeometryContainer::opacity);
+}
 
 
 InstanceRendererV2::InstanceRendererV2() {
@@ -188,8 +233,9 @@ void InstanceRendererV2::recordCommandBuffer() {
     vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
-    terrainPass->recordCommandBuffer();
     instancePass->recordCommandBuffer();
+    terrainPass->recordCommandBuffer();
+
 
     vkCmdEndRenderPass(cmdBuf);
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );

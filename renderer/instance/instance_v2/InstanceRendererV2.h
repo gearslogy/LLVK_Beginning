@@ -22,6 +22,8 @@ struct Resources {
     struct  {
         GLTFLoader terrain{};// only use part0
         GLTFLoader tree{};
+        GLTFLoader flower{};
+        GLTFLoader grass{};
         VmaSimpleGeometryBufferManager geoBufferManager{};
     }geos;
 
@@ -38,10 +40,18 @@ struct Resources {
         std::array<VmaUBOKTX2Texture,3> branch; // albedo  &N  &mix
         std::array<VmaUBOKTX2Texture,3> root;   // albedo  &N  &mix
     }treeTextures;
+
+    std::array<VmaUBOKTX2Texture,3 > flowerTextures; // albedo N mix
+    std::array<VmaUBOKTX2Texture,3 > grassTextures; // albedo N mix
+
+
+
     VkSampler colorSampler{};
 private:
     void loadTerrain();
     void loadTree();
+    void loadFlower();
+    void loadGrass();
 };
 
 

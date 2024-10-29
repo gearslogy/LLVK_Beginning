@@ -108,8 +108,8 @@ private:
         float zNear{0.1};
         float zFar{1000.0};
     } uniformDataScene;
-    VmaUBOBuffer uboBuffer;
-
+    //std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboBuffer;
+    VmaUBOBuffer uboBuffer{};
     VkDescriptorSetLayout uboDescSetLayout{};
     VkDescriptorSetLayout textureDescSetLayout{};
     VkPipelineLayout pipelineLayout;

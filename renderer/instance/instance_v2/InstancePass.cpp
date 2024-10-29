@@ -92,9 +92,10 @@ void InstancePass::prepareUniformBuffers() {
     uboBuffer.createAndMapping(sizeof(uniformDataScene));
 }
 
-void InstancePass::updateUniformBuffers(const glm::mat4 &depthMVP, const glm::vec4 &lightPos) {
+void InstancePass::updateUniformBuffers( const glm::mat4 &depthMVP, const glm::vec4 &lightPos) {
     auto [width, height] =   pRenderer->getSwapChainExtent();
     auto &&mainCamera = const_cast<VulkanRenderer *>(pRenderer)->getMainCamera();
+    auto frame = pRenderer->getCurrentFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uniformDataScene.projection = mainCamera.projection();
     uniformDataScene.projection[1][1] *= -1;
@@ -215,12 +216,12 @@ void InstancePass::recordCommandBuffer() {
 
     // render opacity objs
     auto &&opacityObjs = geoContainer.getRenderableObjects(InstanceGeometryContainer::opacity);
-    vkCmdBindPipeline(sceneCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , opacityPipeline); // FIRST generate depth for opaque object
+    vkCmdBindPipeline(sceneCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , opacityPipeline);
     renderObjects(opacityObjs);
 
     // render opaque object
     auto &&opaqueObjs = geoContainer.getRenderableObjects(InstanceGeometryContainer::opaque);
-    vkCmdBindPipeline(sceneCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , opaquePipeline); // FIRST generate depth for opaque object
+    vkCmdBindPipeline(sceneCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS , opaquePipeline);
     renderObjects(opaqueObjs);
 
     //vkCmdEndRenderPass(sceneCommandBuffer);

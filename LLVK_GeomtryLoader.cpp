@@ -31,6 +31,7 @@ std::array<VkVertexInputAttributeDescription, 7> GLTFVertex::attribs() {
 }
 
 void GLTFLoader::load(const std::string &path) {
+    std::cout << "[[GLTFLoader::load]]:" << path << std::endl;
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;

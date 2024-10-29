@@ -3,6 +3,7 @@
 // Created by liuyangping on 2024/3/27.
 //
 #define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
 #include "VulkanRenderer.h"
 
 #include <stdexcept>
@@ -283,7 +284,7 @@ void VulkanRenderer::createInstance() {
             .pApplicationName = "TestEngineApp",
             .applicationVersion = VK_VERSION_1_3,
             .pEngineName = "TestEngine",
-            .engineVersion = VK_VERSION_1_3,
+            .engineVersion = VK_API_VERSION_1_3,
             .apiVersion = VK_API_VERSION_1_3,
     };
 
@@ -476,7 +477,6 @@ void VulkanRenderer::draw() {
         throw std::runtime_error{"failed to acquire swap chain image!"};
     }
     // here can push constant and update uniform
-
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
     activatedFrameCommandBufferToSubmit = commandBuffers[currentFrame];
     vkResetCommandBuffer(activatedFrameCommandBufferToSubmit, 0); //0: main command buffer reset

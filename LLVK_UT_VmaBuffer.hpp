@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by liuya on 8/25/2024.
 //
 
@@ -10,8 +10,8 @@
 LLVK_NAMESPACE_BEGIN
 
 namespace UT_VmaBuffer {
-    constexpr VkBufferUsageFlags vertex_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    constexpr VkBufferUsageFlags index_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    inline constexpr VkBufferUsageFlags vertex_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    inline constexpr VkBufferUsageFlags index_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
     inline constexpr auto getGLTFVerticesSize = [](const GLTFLoader &geom, int32_t partIdx, VkBufferUsageFlags usage) {
         if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) {

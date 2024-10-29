@@ -14,8 +14,11 @@ void main(){
     vec2 uv = fragTexCoord;
     vec4 albedo = texture(albedoTex, uv);
     float alpha = albedo.a;
-    if(alpha < 0.01)
+    if(alpha < 0.3)
         discard;
     vec3 diff = gammaCorrect(albedo.rgb, 2.2);
+    float top_light = dot(fragN, normalize(vec3(0,0.5,1)) );
+    top_light = clamp(top_light,.5,1);
+    diff *= top_light;
     outColor = vec4(diff,1);
 }

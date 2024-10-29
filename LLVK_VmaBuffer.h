@@ -6,13 +6,13 @@
 
 #include <vulkan/vulkan.h>
 #include "LLVK_SYS.hpp"
-#include "vma/vk_mem_alloc.h"
+#include <vma/vk_mem_alloc.h>
 #include "CommandManager.h"
 #include <ktxvulkan.h>
 #include <cassert>
+#include <libs/magic_enum.hpp>
 LLVK_NAMESPACE_BEGIN
-
-namespace FnVmaBuffer {
+    namespace FnVmaBuffer {
     inline VkResult createBuffer(
     VkDevice device,
     VmaAllocator allocator,
