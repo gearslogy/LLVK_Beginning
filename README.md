@@ -3,8 +3,11 @@ Learn Vulkan from scratch
 
 ## instance 
 ### updated renderer/instance/instance_v2
+
+
+![instancev2.png](screenshot/instance_v2_02.png)
 ![instancev2.png](screenshot/instance_v2.png)
-![instancev2.png](screenshot/instance_v2_01.png)
+
 
 
 

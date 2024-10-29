@@ -17,36 +17,41 @@ void InstanceGeometryContainer::buildSet() {
     const auto &pool = *requiredObjects.pPool;
     const auto &ubo_setLayout = *requiredObjects.pSetLayoutUBO;
     const auto &tex_setLayout = *requiredObjects.pSetLayoutTexture;
-    const auto &ubo = *requiredObjects.pUBO;
 
 
-    auto uboSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&ubo_setLayout, 1);
-    auto texSetAllocInfo = FnDescriptor::setAllocateInfo(pool,&tex_setLayout, 1);
-    auto allocateSetForObjects = [&](auto &objs) {
+    const std::vector ubo_layouts(MAX_FRAMES_IN_FLIGHT, ubo_setLayout);
+    const std::vector tex_layouts(MAX_FRAMES_IN_FLIGHT, tex_setLayout);
+
+    auto uboSetAllocInfo = FnDescriptor::setAllocateInfo(pool,ubo_layouts);
+    auto texSetAllocInfo = FnDescriptor::setAllocateInfo(pool,tex_layouts);
+
+    auto allocateSetForObjects = [&](std::vector<RenderableObject> &objs) {
         for(auto &geo : objs) {
-            UT_Fn::invoke_and_check("Error create terrain ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,&geo.setUBO);
-            UT_Fn::invoke_and_check("Error create terrain tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,&geo.setTexture);
+            UT_Fn::invoke_and_check("Error create instance pass ubo sets",vkAllocateDescriptorSets,device, &uboSetAllocInfo,geo.setUBOs.data());
+            UT_Fn::invoke_and_check("Error create instance pass tex sets",vkAllocateDescriptorSets,device, &texSetAllocInfo,geo.setTextures.data());
         }
     };
     allocateSetForObjects(opacityRenderableObjects);
     allocateSetForObjects(opaqueRenderableObjects);
 
-    auto updateWriteSets = [&,this](auto &&objs) {
-        for(const auto &geo: objs) {
-            const auto &ubo_set = geo.setUBO;
-            const auto &tex_set = geo.setTexture;
-            // UBO
-            std::vector<VkWriteDescriptorSet> writeSets;
-            writeSets.emplace_back(FnDescriptor::writeDescriptorSet(ubo_set,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &ubo.descBufferInfo));
-            // tex
-            for(auto &&[idx, tex] : UT_Fn::enumerate(geo.pTextures))
-                writeSets.emplace_back(FnDescriptor::writeDescriptorSet(tex_set,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,idx, &tex->descImageInfo));
-            vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
+    auto updateWriteSets = [&,this](std::vector<RenderableObject> &objs) {
+        for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+            const auto &ubo = *requiredObjects.pUBOs[i];
+            for(const auto &geo: objs) {
+                const auto &ubo_set = geo.setUBOs[i];
+                const auto &tex_set = geo.setTextures[i];
+                // UBO
+                std::vector<VkWriteDescriptorSet> writeSets;
+                writeSets.emplace_back(FnDescriptor::writeDescriptorSet(ubo_set,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &ubo.descBufferInfo));
+                // tex
+                for(auto &&[idx, tex] : UT_Fn::enumerate(geo.pTextures))
+                    writeSets.emplace_back(FnDescriptor::writeDescriptorSet(tex_set,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,idx, &tex->descImageInfo));
+                vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
+            }
         }
     };
     updateWriteSets(opacityRenderableObjects);
     updateWriteSets(opaqueRenderableObjects);
-
 }
 
 JsonPointsParser::JsonPointsParser(const std::string &path){
@@ -78,7 +83,7 @@ void InstancePass::cleanup() {
     UT_Fn::cleanup_pipeline(device, opacityPipeline, opaquePipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, textureDescSetLayout, uboDescSetLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
-    uboBuffer.cleanup(); // ubo buffer clean
+    UT_Fn::cleanup_range_resources(uboBuffers);
 }
 
 void InstancePass::prepare() {
@@ -88,14 +93,15 @@ void InstancePass::prepare() {
 }
 
 void InstancePass::prepareUniformBuffers() {
-    setRequiredObjectsByRenderer(pRenderer, uboBuffer);
-    uboBuffer.createAndMapping(sizeof(uniformDataScene));
+    setRequiredObjectsByRenderer(pRenderer, uboBuffers[0], uboBuffers[1]);
+    for(auto &ubo : uboBuffers)
+        ubo.createAndMapping(sizeof(uniformDataScene));
 }
 
 void InstancePass::updateUniformBuffers( const glm::mat4 &depthMVP, const glm::vec4 &lightPos) {
     auto [width, height] =   pRenderer->getSwapChainExtent();
     auto &&mainCamera = const_cast<VulkanRenderer *>(pRenderer)->getMainCamera();
-    auto frame = pRenderer->getCurrentFrame();
+    const auto frame = pRenderer->getCurrentFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uniformDataScene.projection = mainCamera.projection();
     uniformDataScene.projection[1][1] *= -1;
@@ -103,7 +109,7 @@ void InstancePass::updateUniformBuffers( const glm::mat4 &depthMVP, const glm::v
     uniformDataScene.model = glm::mat4(1.0f);
     uniformDataScene.depthBiasMVP = depthMVP;
     uniformDataScene.lightPos = lightPos;
-    memcpy(uboBuffer.mapped, &uniformDataScene, sizeof(uniformDataScene));
+    memcpy(uboBuffers[frame].mapped, &uniformDataScene, sizeof(uniformDataScene));
 }
 
 void InstancePass::prepareDescriptorSets() {
@@ -126,7 +132,7 @@ void InstancePass::prepareDescriptorSets() {
     InstanceGeometryContainer::RequiredObjects SCRequiredObjects{};
     SCRequiredObjects.pVulkanRenderer = pRenderer;
     SCRequiredObjects.pPool = pDescriptorPool;
-    SCRequiredObjects.pUBO = &uboBuffer;
+    SCRequiredObjects.pUBOs = {&uboBuffers[0], &uboBuffers[1]};
     SCRequiredObjects.pSetLayoutUBO = &uboDescSetLayout;
     SCRequiredObjects.pSetLayoutTexture = &textureDescSetLayout;
     geoContainer.setRequiredObjects(std::move(SCRequiredObjects));
@@ -201,14 +207,14 @@ void InstancePass::recordCommandBuffer() {
     VkDeviceSize offsets[1] = { 0 };
 
     // render funciton:
-    auto renderObjects = [&](auto &&objs) {
+    auto renderObjects = [&](const std::vector<InstanceGeometryContainer::RenderableObject> &objs) {
         for(const auto &geo : objs) {
             const GLTFLoader::Part *gltfPartGeo = geo.pGeometry;
 
             vkCmdBindVertexBuffers(sceneCommandBuffer, 0, 1, &gltfPartGeo->verticesBuffer, offsets);     // Binding point 0 : Mesh vertex buffer
             vkCmdBindVertexBuffers(sceneCommandBuffer, 1, 1, &geo.instDesc.buffer, offsets);             // Binding point 1 : Instance data buffer
             vkCmdBindIndexBuffer(sceneCommandBuffer,gltfPartGeo->indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-            std::array bindSets = {geo.setUBO, geo.setTexture};
+            std::array bindSets = {geo.setUBOs[pRenderer->getCurrentFrame()], geo.setTextures[pRenderer->getCurrentFrame()]};
             vkCmdBindDescriptorSets(sceneCommandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, bindSets.size(), bindSets.data(), 0, nullptr);
             vkCmdDrawIndexed(sceneCommandBuffer, gltfPartGeo->indices.size(), geo.instDesc.drawCount, 0, 0, 0);
         }

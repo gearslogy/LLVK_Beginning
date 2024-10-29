@@ -24,16 +24,15 @@ struct TerrainGeometryContainerV2 {
         //const VmaUBOKTX2Texture * pN;            // B
         //const VmaUBOKTX2Texture * pDepthTexture; // depth
         std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
-        VkDescriptorSet setUBO{VK_NULL_HANDLE};       // allocated set  set=0
-        VkDescriptorSet setTexture{VK_NULL_HANDLE};   // set=1
-
+        std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setUBOs;       // set=0
+        std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setTextures;   // set=1
         void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
     };
 
     struct RequiredObjects{
         const VulkanRenderer *pVulkanRenderer;
         const VkDescriptorPool *pPool;                     // ref:pool allocate sets
-        const VmaUBOBuffer *pUBO;                          // ref:UBO binding=0  sceneUBO
+        std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT >pUBOs;          // MAX FLIGHT
         const VkDescriptorSetLayout *pSetLayoutUBO;        // set=0
         const VkDescriptorSetLayout *pSetLayoutTexture;    // set=1
     };
@@ -86,8 +85,7 @@ private:
         float zFar{1000.0};
     } uniformDataScene;
 
-    VmaUBOBuffer uboBuffer;     // final rendering : opaque and opacity use same UBO
-
+    std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboBuffers;
 
     TerrainGeometryContainerV2 geoContainer{};
     UT_GraphicsPipelinePSOs pipelinePSOs{};
