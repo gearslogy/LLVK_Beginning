@@ -62,6 +62,21 @@ void Camera::updateCameraVectors() {
     mRight = glm::normalize(glm::cross(mFront, glm::vec3{0,1,0}));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
     mUp    = glm::normalize(glm::cross(mRight, mFront));
 }
+void Camera::setRotation(glm::vec3 rot) {
+    glm::vec3 rotation = rot;
+    rotation.y += -90;
+
+    glm::vec3 camFront;
+    camFront.x = -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x));
+    camFront.y = sin(glm::radians(rotation.x));
+    camFront.z = sin(glm::radians(rotation.y)) * cos(glm::radians(rotation.x));
+
+    mFront = glm::normalize(camFront);
+    // also re-calculate the Right and Up vector
+    mRight = glm::normalize(glm::cross(mFront, glm::vec3{0,1,0}));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
+    mUp    = glm::normalize(glm::cross(mRight, mFront));
+}
+
 
 
 void Camera::processMouseScroll(float yoffset){

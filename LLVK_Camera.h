@@ -22,6 +22,10 @@ struct Camera {
     Camera() {
         updateCameraVectors();
     }
+
+    // According to the algorithm verified by Houdini, the camera is assumed to be pointing in the negative z direction by default.
+    void setRotation(glm::vec3 rot) ;
+
     glm::vec3 mPosition{0,0,0};
     glm::vec3 mFront{0,0,-1};
     glm::vec3 mUp{0,1,0};
@@ -33,13 +37,13 @@ struct Camera {
     float mFar{1500.0};
 
     // euler Angles
-    float mYaw{-90};
-    float mPitch{0};
+    float mYaw{-90}; // Rotate Y
+    float mPitch{0}; // Rotate X
 
     float mMoveSpeed{2.5f};
     float mMouseSensitivity{0.1f};
     float mZoom{45};
-public:
+
     [[nodiscard]] glm::mat4 view() const ;
     [[nodiscard]] glm::mat4 projection() const;
     void processMouseMovement(float xoffset, float yoffset) ;
