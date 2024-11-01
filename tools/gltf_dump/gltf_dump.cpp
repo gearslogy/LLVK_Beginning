@@ -29,7 +29,7 @@ struct GLTFLoader {
 };
 
 void GLTFLoader::load(const std::string &path) {
-     tinygltf::Model model;
+    tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
     std::string warn;
@@ -44,6 +44,7 @@ void GLTFLoader::load(const std::string &path) {
         std::cerr << "Failed to load GLTF file" << std::endl;
     }
     filePath = path;
+    std::cout << "[[GLTF model meshes size]]:" << model.meshes.size() << std::endl;
     for (const auto &mesh: model.meshes) {
         parts.resize(mesh.primitives.size());
         for (auto &&[part_id,primitive]: UT_Fn::enumerate(mesh.primitives)) {
@@ -164,6 +165,7 @@ void GLTFLoader::load(const std::string &path) {
         } // end of primitive
     } // end of modelmesh
 
+    std::cout << "[[Rebuild parts size]]:" << parts.size() << std::endl;
     for(auto &&[k,v] : std::views::enumerate(parts)) {
         std::cout << "    --part:"<< k << " vertices length:" << std::size(v.vertices) << std::endl;
         std::cout << "    --part:"<< k << " indices length:" << std::size(v.indices) << std::endl;
