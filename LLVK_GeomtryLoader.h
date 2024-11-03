@@ -48,6 +48,7 @@ LLVK_NAMESPACE_BEGIN
 struct GLTFLoader {
     // every geometry has multi parts(at least one part) that has multi materials
     struct Part {
+        uint32_t firstIndex{0}; // usefully for vkCmdDrawIndexed VkDrawIndexedIndirectCommand ...
         std::vector<GLTFVertex> vertices;
         std::vector<unsigned int> indices;
         std::unordered_map<GLTFVertex, uint32_t> uniqueVertices;
@@ -64,29 +65,17 @@ struct GLTFLoader {
     void load(const std::string &path);
     std::vector<Part> parts;
     std::string filePath;
-
-    /*
-    struct RenderGLTFRequiredObjects {
-        const GLTFLoader *geo;
-        uint32_t part;
-        VkPipelineLayout layout;
-        VkCommandBuffer commandBuffer;
-    };
-
-
-    inline void render() {
-        const auto &cmdBuf = requiredData.commandBuffer;
-        const auto &geo = requiredData.geo;
-        //const auto &partVerticesBuffer =
-        VkDeviceSize offsets[1] = { 0 };
-        vkCmdBindVertexBuffers(cmdBuf, 0, 1, &gridGeo.parts[0].verticesBuffer, offsets);
-        vkCmdBindIndexBuffer(cmdBuf,gridGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-        //vkCmdBindDescriptorSets(cmdBuf,VK_PIPELINE_BIND_POINT_GRAPHICS, scenePipelineLayout, 0, 1, &sceneSets.opaque, 0, nullptr);
-        vkCmdDrawIndexed(cmdBuf, gridGeo.parts[0].indices.size(), 1, 0, 0, 0);
-    }*/
-
-
 };
 
+
+struct CombinedGLTFPart {
+    std::vector<GLTFLoader::Part*> parts{};
+    void computeCombinedData();
+
+    std::vector<GLTFVertex> vertices{};
+    std::vector<uint32_t> indices{};
+    size_t totalVertexCount = 0;
+    size_t totalIndexCount = 0;
+};
 
 LLVK_NAMESPACE_END

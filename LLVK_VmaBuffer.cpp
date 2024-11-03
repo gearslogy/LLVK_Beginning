@@ -29,10 +29,11 @@ void VmaUBOBuffer::cleanup() {
 
 
 void VmaSimpleGeometryBufferManager::cleanup() {
-    for(auto &vma : createVertexBuffers) {
+    for(auto &vma : createVertexBuffers)
         FnVmaBuffer::destroyBuffer(requiredObjects.allocator,vma.buffer, vma.allocation);
-    }
-    for(auto &vma : createIndexedBuffers) {
+    for(auto &vma : createIndexedBuffers)
+        FnVmaBuffer::destroyBuffer(requiredObjects.allocator,vma.buffer, vma.allocation);
+    for(auto &vma : createIndirectBuffers) {
         FnVmaBuffer::destroyBuffer(requiredObjects.allocator,vma.buffer, vma.allocation);
     }
 }

@@ -11,6 +11,7 @@
 #include "renderer/shadowmap_v2/Shadowmap_v2.h"
 #include "renderer/instance/instance_v1/InstanceRenderer.h"
 #include "renderer/instance/instance_v2/InstanceRendererV2.h"
+#include "renderer/indirectdraw/IndirectDrawRenderer.h"
 
 int main() {
     //BasicRenderer app;
@@ -21,7 +22,8 @@ int main() {
     //LLVK::shadowmap app;
     //LLVK::Shadowmap_v2 app;
     //LLVK::InstanceRenderer app;
-    LLVK::InstanceRendererV2 app;
+    //LLVK::InstanceRendererV2 app;
+    LLVK::IndirectRenderer app;
     try {
         app.run();
     }

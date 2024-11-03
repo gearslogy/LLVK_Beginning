@@ -12,8 +12,8 @@ struct GLTFLoader {
         std::vector<GLTFVertex> vertices;
         std::vector<unsigned int> indices;
         std::unordered_map<GLTFVertex, uint32_t> uniqueVertices;
-        VkBuffer verticesBuffer;
-        VkBuffer indicesBuffer;
+        VkBuffer verticesBuffer{};
+        VkBuffer indicesBuffer{};
     };
     template<typename T>
     auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
@@ -92,30 +92,24 @@ void GLTFLoader::load(const std::string &path) {
                     const auto *indexData = reinterpret_cast<const uint16_t *>(&indexBuffer.data[
                         indexBufferView.byteOffset + indexAccessor.byteOffset]);
                     for (size_t i = 0; i < indexAccessor.count; ++i) {
-                        //std::cout << static_cast<uint32_t>(indexData[i]) << " ";
                         prim_indices[i] = indexData[i];
                     }
-                    //std::cout << "\n";
                     break;
                 }
                 case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
                     const auto *indexData = reinterpret_cast<const uint32_t *>(&indexBuffer.data[
                         indexBufferView.byteOffset + indexAccessor.byteOffset]);
                     for (size_t i = 0; i < indexAccessor.count; ++i) {
-                        //std::cout << static_cast<uint32_t>(indexData[i]) << " ";.
                         prim_indices[i] = indexData[i];
                     }
-                    //std::cout << "\n";
                     break;
                 }
                 case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: {
                     const auto *indexData = reinterpret_cast<const uint8_t *>(&indexBuffer.data[
                         indexBufferView.byteOffset + indexAccessor.byteOffset]);
                     for (size_t i = 0; i < indexAccessor.count; ++i) {
-                        std::cout << static_cast<uint32_t>(indexData[i]) << " ";
                         prim_indices[i] = indexData[i];
                     }
-                    std::cout << "\n";
                     break;
                 }
                 default: {
@@ -123,6 +117,11 @@ void GLTFLoader::load(const std::string &path) {
                     break;
                 }
             } // end swith index component type
+            std::cout << "gltf part indices size: " << prim_indices.size() << std::endl;
+            for (const auto &index: prim_indices) {
+                std::cout << index << " ";
+            }
+            std::cout << std::endl;
 
             for (auto index: prim_indices) {
                 GLTFVertex vertex;
@@ -165,10 +164,15 @@ void GLTFLoader::load(const std::string &path) {
         } // end of primitive
     } // end of modelmesh
 
-    std::cout << "[[Rebuild parts size]]:" << parts.size() << std::endl;
+    std::cout << "\n[[DUMP Rebuild parts size]]:" << parts.size() << std::endl;
     for(auto &&[k,v] : std::views::enumerate(parts)) {
         std::cout << "    --part:"<< k << " vertices length:" << std::size(v.vertices) << std::endl;
         std::cout << "    --part:"<< k << " indices length:" << std::size(v.indices) << std::endl;
+        std::cout << "    --index :" << std::endl;
+        for(auto index: v.indices) {
+            std::cout << "    " <<index  << " ";
+        }
+        std::cout << "\n";
     }
 }
 LLVK_NAMESPACE_END

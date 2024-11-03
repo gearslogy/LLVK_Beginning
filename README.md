@@ -1,7 +1,17 @@
 # LLVK_Beginning
 Learn Vulkan from scratch
 
-## instance 
+## IndirectDraw 
+![instancev2.png](screenshot/indirectDraw_rd.png)
+![instancev2.png](screenshot/indirectDraw.png)
+
+indirect_draw vs instance 😊:
+* indirect_draw with all 4K map: 80fps
+* instance with all 2k map: 80fps
+
+
+
+## Instance 
 ### updated renderer/instance/instance_v2
 
 

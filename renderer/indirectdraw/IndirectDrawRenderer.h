@@ -10,20 +10,20 @@
 
 LLVK_NAMESPACE_BEGIN
 
-struct InstancePass;
+struct IndirectDrawPass;
 struct TerrainPassV2;
-struct Resources {
+struct IndirectResources {
     void loading();
     void cleanup();
 
     VulkanRenderer *pRenderer{nullptr};
-    InstancePass *pInstancedObjectPass{nullptr};
+    IndirectDrawPass *pIndirectDrawPass{nullptr};
     TerrainPassV2 *pTerrainPass{nullptr};
     struct  {
         GLTFLoader terrain{};// only use part0
-        GLTFLoader tree{};
-        GLTFLoader flower{};
         GLTFLoader grass{};
+        GLTFLoader flower{};
+        GLTFLoader tree{}; // include grass/
         VmaSimpleGeometryBufferManager geoBufferManager{};
     }geos;
 
@@ -35,31 +35,28 @@ struct Resources {
         VmaUBOKTX2Texture mask{};
     }terrainTextures;
 
+    VmaUBOKTX2Texture foliageD_array;                    // albedo: grass flower tree_leaves tree_branch tree_root
+    VmaUBOKTX2Texture foliageN_array;                    // N: grass flower tree_leaves tree_branch tree_root
+    VmaUBOKTX2Texture foliageM_Array;                    // M:grass flower tree_leaves tree_branch tree_root ( R:roughness G:metalness B:AO A:unknown )
+
+
     struct {
-        std::array<VmaUBOKTX2Texture,3> leaves; // albedo  &N  &mix
-        std::array<VmaUBOKTX2Texture,3> branch; // albedo  &N  &mix
-        std::array<VmaUBOKTX2Texture,3> root;   // albedo  &N  &mix
-    }treeTextures;
-
-    std::array<VmaUBOKTX2Texture,3 > flowerTextures; // albedo N mix
-    std::array<VmaUBOKTX2Texture,3 > grassTextures; // albedo N mix
-
+        CombinedGLTFPart combinedGeometry;
+        VmaSimpleGeometryBufferManager bufferManager{};
+    }combinedObject;
 
 
     VkSampler colorSampler{};
 private:
     void loadTerrain();
-    void loadTree();
-    void loadFlower();
-    void loadGrass();
+    void loadFoliage();
 };
 
 
 
-
-struct InstanceRendererV2 final : VulkanRenderer {
-    InstanceRendererV2();
-    ~InstanceRendererV2() override;
+struct IndirectRenderer final : VulkanRenderer {
+    IndirectRenderer();
+    ~IndirectRenderer() override;
     void cleanupObjects() override;
     void loadResources();
     void createDescriptorPool();
@@ -76,12 +73,12 @@ struct InstanceRendererV2 final : VulkanRenderer {
 
     // --- Geo & texture Resources ---
     glm::vec3 lightPos{-739.189,708.448,708.448};
-    Resources resources{};
+    IndirectResources resources{};
 
 
     // --- Geo & texture Resources ---
     VkDescriptorPool descPool{};
-    std::unique_ptr<InstancePass> instancePass;
+    std::unique_ptr<IndirectDrawPass> indirectDrawPass;
     std::unique_ptr<TerrainPassV2> terrainPass;
 
 
