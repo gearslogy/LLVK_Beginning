@@ -3,13 +3,24 @@
 //
 
 #include "CSMPass.h"
+
+#include <LLVK_Descriptor.hpp>
+
 #include "LLVK_Image.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "VulkanRenderer.h"
 LLVK_NAMESPACE_BEGIN
+
+
+CSMPass::CSMPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool):pRenderer(renderer),pDescriptorPool(descPool){
+}
+
 void CSMPass::prepare() {
     prepareDepthResources();
-    prepareDepthRendePass();
+    prepareDepthRenderPass();
+    prepareDescriptorSets();
+    preparePipelines();
+    prepareUniformBuffers();
 }
 
 void CSMPass::cleanup() {
@@ -18,6 +29,10 @@ void CSMPass::cleanup() {
     UT_Fn::cleanup_sampler(device, depthSampler);
     vkDestroyRenderPass(device, depthRenderPass, nullptr);
     vkDestroyFramebuffer(device, depthFramebuffer, nullptr);
+    UT_Fn::cleanup_range_resources(uboBuffers);
+    UT_Fn::cleanup_pipeline_layout(device, depthPOGeneric.pipelineLayout);
+    UT_Fn::cleanup_pipeline(device, depthPOGeneric.pipeline);
+    UT_Fn::cleanup_descriptor_set_layout(device, depthPOGeneric.setLayout);
 }
 
 void CSMPass::prepareDepthResources() {
@@ -27,7 +42,7 @@ void CSMPass::prepareDepthResources() {
     depthAttachment.create2dArrayDepth32(width,width, cascade_count, depthSampler);
 }
 
-void CSMPass::prepareDepthRendePass() {
+void CSMPass::prepareDepthRenderPass() {
     VkAttachmentDescription attachmentDescription{};
     attachmentDescription.format = depthAttachment.format;
     std::cout << "[[CSMPass::prepareDepthRendePass]]:depth attachment format: " << magic_enum::enum_name(depthAttachment.format) << std::endl;
@@ -90,8 +105,49 @@ void CSMPass::prepareDepthRendePass() {
     UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &shadowFramebuffer.framebuffer);
 
 }
+void CSMPass::prepareDescriptorSets() {
+    // only set=0. binding =0 UBO, binding=1 albedoTex
+    const auto &mainDevice = pRenderer->getMainDevice();
+    const auto &device = mainDevice.logicalDevice;
+    const auto &physicalDevice = mainDevice.physicalDevice;
+
+    auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);           // ubo
+    auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK_SHADER_STAGE_FRAGMENT_BIT); // albedo
+    const std::array set0_bindings = {set0_ubo_binding0, set0_ubo_binding1};
+
+    const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(set0_bindings);
+    UT_Fn::invoke_and_check("Error create uboDescSetLayout set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &depthPOGeneric.setLayout);
+
+}
+void CSMPass::preparePipelines() {
+    const auto &device = pRenderer->getMainDevice().logicalDevice;
+    {
+        const auto vertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_vert.spv",  device);
+        const auto geomModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_geom.spv",  device);
+        const auto fragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_frag.spv",  device);
+        VkPipelineShaderStageCreateInfo vertSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertModule);
+        VkPipelineShaderStageCreateInfo geomSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, geomModule);
+        VkPipelineShaderStageCreateInfo fragSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragModule);
+        depthPOGeneric.pipelinePSOs.setShaderStages(vertSSCIO, geomSSCIO, fragSSCIO);
+
+        // layout
+        const std::array sceneSetLayouts{depthPOGeneric.setLayout};
+        VkPipelineLayoutCreateInfo sceneSetLayout_CIO = FnPipeline::layoutCreateInfo(sceneSetLayouts);
+        UT_Fn::invoke_and_check("ERROR create scene pipeline layout",vkCreatePipelineLayout,device, &sceneSetLayout_CIO,nullptr, &depthPOGeneric.pipelineLayout );
+        depthPOGeneric.pipelinePSOs.setPipelineLayout(depthPOGeneric.pipelineLayout);
+        depthPOGeneric.pipelinePSOs.setRenderPass(pRenderer->getMainRenderPass());
+        UT_GraphicsPipelinePSOs::createPipeline(device, depthPOGeneric.pipelinePSOs, pRenderer->getPipelineCache(), depthPOGeneric.pipeline);
+        UT_Fn::cleanup_shader_module(device,vertModule, geomModule, fragModule);
+    }
+
+}
 
 
+void CSMPass::prepareUniformBuffers() {
+    setRequiredObjectsByRenderer(pRenderer, uboBuffers[0], uboBuffers[1]);
+    for(auto &ubo : uboBuffers)
+        ubo.createAndMapping(sizeof(uboData));
+}
 
 
 
@@ -99,6 +155,10 @@ void CSMPass::recordCommandBuffer() {
 
 }
 
+
+void CSMPass::updateCascade() {
+
+}
 
 
 
