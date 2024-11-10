@@ -195,6 +195,7 @@ struct VmaAttachment : IVmaUBOTexture {
         const VkImageUsageFlags &usage);
     //only create as depth attachment
     void createDepth32(uint32_t width, uint32_t height,const VkSampler & sampler);
+    void create2dArrayDepth32(uint32_t width, uint32_t height, uint32_t layerCount, const VkSampler & sampler);
     void cleanup();
     VmaBufferRequiredObjects requiredObjects{};
 

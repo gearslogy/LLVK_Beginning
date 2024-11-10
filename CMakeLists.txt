@@ -27,6 +27,7 @@ set(compile_shader_folder ${CMAKE_SOURCE_DIR}/build/bin/shaders)
 file(MAKE_DIRECTORY ${compile_shader_folder}) # 确保输出目录存在
 file(GLOB_RECURSE shader_sources
         shaders/*.frag
+        shaders/*.geom
         shaders/*.vert
         shaders/dynamicsUBO/*.frag
         shaders/dynamicsUBO/*.vert

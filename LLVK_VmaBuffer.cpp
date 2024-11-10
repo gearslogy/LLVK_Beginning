@@ -126,6 +126,30 @@ void VmaAttachment::createDepth32(uint32_t width, uint32_t height,
     descImageInfo.imageView = view;
 }
 
+void VmaAttachment::create2dArrayDepth32(uint32_t width, uint32_t height, uint32_t layerCount,
+        const VkSampler & sampler) {
+    format = VK_FORMAT_D32_SFLOAT;// d32只用这个够了。
+    VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_DEPTH_BIT; // 这个很关键 imageview要用。如果要stencil，必须还得一个imageview
+    FnVmaImage::createImageAndAllocation(requiredObjects, width, height, 1, layerCount,
+                                         format,
+                                         VK_IMAGE_TILING_OPTIMAL,
+                                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                         false,
+                                         image,
+                                         imageAllocation);
+    // 4. create image view
+    auto imageViewCIO = FnImage::imageViewCreateInfo(image, format);
+    imageViewCIO.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    imageViewCIO.subresourceRange.aspectMask = aspect;
+    imageViewCIO.subresourceRange.layerCount = layerCount;
+    FnImage::createImageView(requiredObjects.device, imageViewCIO, view);
+    //FnImage::createImageView(requiredObjects.device, image, format,aspect,1, 1, view);
+    descImageInfo.sampler = sampler;
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    descImageInfo.imageView = view;
+}
+
+
 void VmaDepthStencilAttachment::create(uint32_t width, uint32_t height, const VkSampler &sampler) {
     FnVmaImage::createImageAndAllocation(requiredObjects, width, height, 1, 1,
      format,
