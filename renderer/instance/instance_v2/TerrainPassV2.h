@@ -48,9 +48,7 @@ struct TerrainGeometryContainerV2 {
         return std::forward<Self>(self).opaqueRenderableObjects;
     }
 private:
-
     RequiredObjects requiredObjects{};
-
     std::vector<RenderableObject> opaqueRenderableObjects{};
 public:
     void buildSet();

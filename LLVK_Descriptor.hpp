@@ -34,7 +34,7 @@ inline void alignedFree(void* data)
 
 namespace FnDescriptor {
     // (VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT, arrayCount);
-    inline VkDescriptorSetLayoutBinding setLayoutBinding(VkDescriptorType type, uint32_t binding,VkShaderStageFlagBits stageBit, uint32_t arrayCount= 1) {
+    inline VkDescriptorSetLayoutBinding setLayoutBinding(VkDescriptorType type, uint32_t binding,VkShaderStageFlags stageBit, uint32_t arrayCount= 1) {
         VkDescriptorSetLayoutBinding ret{};
         ret.binding = binding;
         ret.descriptorCount = arrayCount; // descriptorCount specifies the number of values in the array

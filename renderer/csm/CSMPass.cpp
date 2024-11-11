@@ -45,7 +45,7 @@ void CSMPass::prepareDepthResources() {
 void CSMPass::prepareDepthRenderPass() {
     VkAttachmentDescription attachmentDescription{};
     attachmentDescription.format = depthAttachment.format;
-    std::cout << "[[CSMPass::prepareDepthRendePass]]:depth attachment format: " << magic_enum::enum_name(depthAttachment.format) << std::endl;
+    std::cout << "[[CSMPass::prepareDepthRenderPass]]:depth attachment format: " << magic_enum::enum_name(depthAttachment.format) << std::endl;
     attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
     attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear depth at beginning of the render pass
     attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// We will read from depth, so it's important to store the depth attachment results
@@ -102,7 +102,7 @@ void CSMPass::prepareDepthRenderPass() {
     framebufferInfo.width = width;           // FIXED shadow map size;
     framebufferInfo.height = width;         // FIXED shadow map size;
     framebufferInfo.layers = 1;
-    UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &shadowFramebuffer.framebuffer);
+    UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &depthFramebuffer);
 
 }
 void CSMPass::prepareDescriptorSets() {
@@ -111,7 +111,7 @@ void CSMPass::prepareDescriptorSets() {
     const auto &device = mainDevice.logicalDevice;
     const auto &physicalDevice = mainDevice.physicalDevice;
 
-    auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);           // ubo
+    auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_GEOMETRY_BIT);           // ubo
     auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK_SHADER_STAGE_FRAGMENT_BIT); // albedo
     const std::array set0_bindings = {set0_ubo_binding0, set0_ubo_binding1};
 
