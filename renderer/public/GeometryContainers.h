@@ -13,13 +13,14 @@
 LLVK_NAMESPACE_BEGIN
 
 class VulkanRenderer;
-/* at future !
-enum class SetNumType {
-    UBO_NONE_TEXTURE_NONE,
-    SET0_UBO_BINDING_0_N,
-    SET0_UBO_BINDING_0_TEXTURE_BINDING_1_N,
-    SET0_UBO_BINDING_0_AND_SET1_TEXTURE_BINDING_0_N
-};
+struct SetID0{};
+struct SetID1{};
+struct WriteSetDstBinding_BD_0{};
+struct WriteSetDstBinding_BD_0_N{};
+struct WriteSetDstBinding_BD_1_N{};
+
+
+/*
 template<SetNumType SetNumType>
 struct RenderDelegate;
 
@@ -64,8 +65,8 @@ struct RenderContainerTwoSet {
     struct RenderDelegate {
         const GLTFLoader::Part *pGeometry;
         std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
-        std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setUBOs;       // set=0
-        std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setTextures;   // set=1
+        std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setUBOs;       // set=0 for ubo
+        std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setTextures;   // set=1 for tex
         void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
     };
 
@@ -73,8 +74,8 @@ struct RenderContainerTwoSet {
         const VulkanRenderer *pVulkanRenderer;
         const VkDescriptorPool *pPool;                     // ref:pool allocate sets
         std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT >pUBOs;          // MAX FLIGHT
-        const VkDescriptorSetLayout *pSetLayoutUBO;        // set=0
-        const VkDescriptorSetLayout *pSetLayoutTexture;    // set=1
+        const VkDescriptorSetLayout *pSetLayoutUBO;        // set=0 for ubo
+        const VkDescriptorSetLayout *pSetLayoutTexture;    // set=1 for tex
     };
     void setRequiredObjects( RequiredObjects &&rRequiredObjects) { requiredObjects = rRequiredObjects;}
     void buildSet();
@@ -87,8 +88,7 @@ struct RenderContainerOneSet {
     struct RenderDelegate {
         const GLTFLoader::Part *pGeometry;
         std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
-        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> setUBOs;       // shared set=0
-        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> setTextures;   // shared set=0
+        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> sets;       // one set
         void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
     };
     struct RequiredObjects{
@@ -98,6 +98,7 @@ struct RenderContainerOneSet {
         const VkDescriptorSetLayout *pSetLayout;        // set=0
     };
     void setRequiredObjects( RequiredObjects &&rRequiredObjects) { requiredObjects = rRequiredObjects;}
+    void cmdBindDescriptorSets();
     void buildSet();
 private:
     RequiredObjects requiredObjects{};

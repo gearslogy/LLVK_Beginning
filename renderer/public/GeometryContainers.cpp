@@ -7,6 +7,7 @@
 #include "../../VulkanRenderer.h"
 LLVK_NAMESPACE_BEGIN
 
+
 template<typename T>
 inline void updateWriteSets(const auto &requiredObjects , const std::vector<T> &renderDelegates, uint32_t texBindingIdOffset) {
     const auto &device = requiredObjects.pVulkanRenderer->getMainDevice().logicalDevice;
@@ -25,6 +26,8 @@ inline void updateWriteSets(const auto &requiredObjects , const std::vector<T> &
         }
     }
 }
+
+
 
 
 void RenderContainerTwoSet::buildSet() {
@@ -60,6 +63,9 @@ void RenderContainerOneSet::buildSet() {
         UT_Fn::invoke_and_check("Error create RenderContainerOneSet::texSets", vkAllocateDescriptorSets, device, &setAllocInfo, geo.setTextures.data());
     }
     updateWriteSets(requiredObjects, renderDelegates, 1U);
+}
+void RenderContainerOneSet::cmdBindDescriptorSets() {
+    requiredObjects.pVulkanRenderer->getCurrentFrame();
 }
 
 
