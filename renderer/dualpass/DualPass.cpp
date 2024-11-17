@@ -3,3 +3,8 @@
 //
 
 #include "DualPass.h"
+
+#include <LLVK_SYS.hpp>
+LLVK_NAMESPACE_BEGIN
+
+LLVK_NAMESPACE_END

@@ -94,7 +94,7 @@ namespace FnDescriptor {
     }
 
 
-    inline VkWriteDescriptorSet writeDescriptorSet(VkDescriptorSet dstSet,
+    inline VkWriteDescriptorSet writeDescriptorSet(const VkDescriptorSet &dstSet,
         VkDescriptorType type,
         uint32_t binding,
         const VkDescriptorBufferInfo* bufferInfo,
@@ -110,7 +110,7 @@ namespace FnDescriptor {
     }
 
     inline VkWriteDescriptorSet writeDescriptorSet(
-        VkDescriptorSet dstSet,
+        const VkDescriptorSet &dstSet,
         VkDescriptorType type,
         uint32_t binding,
         const VkDescriptorImageInfo *imageInfo,

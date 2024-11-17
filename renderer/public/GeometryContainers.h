@@ -13,54 +13,27 @@
 LLVK_NAMESPACE_BEGIN
 
 class VulkanRenderer;
-struct SetID0{};
-struct SetID1{};
-struct WriteSetDstBinding_BD_0{};
-struct WriteSetDstBinding_BD_0_N{};
-struct WriteSetDstBinding_BD_1_N{};
 
+namespace UT_GeometryContainer{
+    template<typename T>
+    concept is_gltf_part = std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<T>>, GLTFLoader::Part>;
 
-/*
-template<SetNumType SetNumType>
-struct RenderDelegate;
+    inline void renderPart(VkCommandBuffer cmdBuf, const GLTFLoader::Part * part) {
+        VkDeviceSize offsets[1] = {0};
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, &part->verticesBuffer, offsets);
+        vkCmdBindIndexBuffer(cmdBuf,part->indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmdBuf, part->indices.size(), 1, 0, 0, 0);
+    }
 
-template<>
-struct RenderDelegate<SetNumType::SET0_UBO_BINDING_0_N> {
-    const GLTFLoader::Part *pGeometry;
-    std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT> setUBOs;
+}
+
+struct GeometryContainers {
+    using Array_pTextures_t = std::vector<const VmaUBOTexture *>;
+    using Array_pRenderDelegates_t = std::vector<const GLTFLoader::Part *>;
 };
 
-template<>
-struct RenderDelegate<SetNumType::SET0_UBO_BINDING_0_TEXTURE_BINDING_1_N> {
-    const GLTFLoader::Part *pGeometry;
-    std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
-    std::array<VkDescriptorSet,MAX_FRAMES_IN_FLIGHT* 2 > sets; // ubo tex | ubo tex |
-    void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
-};
 
-// Required object interface
-template<SetNumType SetNumType>
-struct RequiredObjects;
-
-template<>
-struct RequiredObjects<SetNumType::SET0_UBO_BINDING_0_N> {
-    const VulkanRenderer *pVulkanRenderer;
-    const VkDescriptorPool *pPool;                     // ref:pool allocate sets
-    std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT >pUBOs;          // MAX FLIGHT
-    const VkDescriptorSetLayout *pSetLayoutUBO;        // set=0
-};
-
-template<>
-struct RequiredObjects<SetNumType::SET0_UBO_BINDING_0_TEXTURE_BINDING_1_N> {
-    const VulkanRenderer *pVulkanRenderer;
-    const VkDescriptorPool *pPool;                     // ref:pool allocate sets
-    std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT >pUBOs;          // MAX FLIGHT
-    const VkDescriptorSetLayout *pSetLayout;        // set=0
-};
-*/
-
-
-
+// two set, one ubo, multi textures
 struct RenderContainerTwoSet {
     struct RenderDelegate {
         const GLTFLoader::Part *pGeometry;
@@ -71,7 +44,7 @@ struct RenderContainerTwoSet {
     };
 
     struct RequiredObjects{
-        const VulkanRenderer *pVulkanRenderer;
+        const VulkanRenderer *pRenderer;
         const VkDescriptorPool *pPool;                     // ref:pool allocate sets
         std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT >pUBOs;          // MAX FLIGHT
         const VkDescriptorSetLayout *pSetLayoutUBO;        // set=0 for ubo
@@ -79,34 +52,75 @@ struct RenderContainerTwoSet {
     };
     void setRequiredObjects( RequiredObjects &&rRequiredObjects) { requiredObjects = rRequiredObjects;}
     void buildSet();
-private:
+    void draw(const VkCommandBuffer &cmdBuf, const VkPipelineLayout &pipelineLayout);
+
     RequiredObjects requiredObjects{};
     std::vector<RenderDelegate> renderDelegates{};
 };
 
+
+// one set, one ubo, multi textures
 struct RenderContainerOneSet {
     struct RenderDelegate {
-        const GLTFLoader::Part *pGeometry;
-        std::vector<const IVmaUBOTexture *> pTextures; // use this to support multi textures
-        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> sets;       // one set
+        friend struct RenderContainerOneSet;
+        void bindGeometry(const GLTFLoader::Part *pGeo){ pGeometry = pGeo;}
         void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
+        template<class Self>
+        auto&& getSet(this Self& self,uint32_t flightFrame) {return std::forward<Self>(self).descSets[flightFrame];}
+    private:
+        const GLTFLoader::Part *pGeometry{};
+        std::vector<const IVmaUBOTexture *> pTextures{}; // use this to support multi textures
+        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> descSets{};       // created sets
     };
     struct RequiredObjects{
-        const VulkanRenderer *pVulkanRenderer;
+        const VulkanRenderer *pRenderer;
         const VkDescriptorPool *pPool;                     // ref:pool allocate sets
         std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT >pUBOs;          // MAX FLIGHT
         const VkDescriptorSetLayout *pSetLayout;        // set=0
     };
     void setRequiredObjects( RequiredObjects &&rRequiredObjects) { requiredObjects = rRequiredObjects;}
-    void cmdBindDescriptorSets();
+    void draw(const VkCommandBuffer &cmdBuf,const VkPipelineLayout &pipelineLayout);
     void buildSet();
-private:
+
     RequiredObjects requiredObjects{};
     std::vector<RenderDelegate> renderDelegates{};
 };
 
 
+// one set, one ubo, multi textures
+struct RenderContainerOneSharedSet {
+    struct RequiredObjects{
+        const VulkanRenderer *pRenderer;
+        const VkDescriptorPool *pPool;                     // ref:pool allocate sets
+    };
 
+    void setRequiredObjects( RequiredObjects &&rRequiredObjects) { requiredObjects = rRequiredObjects;}
+    void draw(const VkCommandBuffer &cmdBuf,const VkPipelineLayout &pipelineLayout);
+
+    // call on descriptor set building
+    void buildSets(const VkDescriptorSetLayout *pSetLayout);
+
+    // resource bind
+    void bindGeometries(Concept::is_range auto rangeGeos) {
+        using vec_t = std::remove_cvref_t<decltype(rangeGeos)>;
+        if constexpr (std::is_same_v<vec_t, GeometryContainers::Array_pRenderDelegates_t>)
+            renderGeos = std::move(rangeGeos);
+        else
+            renderGeos.assign(rangeGeos.begin(), rangeGeos.end());
+    }
+    void bindGeometries(const UT_GeometryContainer::is_gltf_part auto *... geos) { (renderGeos.emplace_back(geos) , ... );}
+    void bindTextures(auto && ... textures) {(pTextures.emplace_back(textures), ... );}
+
+private:
+    template<class Self>
+    auto&& getSet(this Self& self,uint32_t flightFrame) {  return std::forward<Self>(self).descSets[flightFrame]; }
+
+    GeometryContainers::Array_pRenderDelegates_t renderGeos{};
+    GeometryContainers::Array_pTextures_t pTextures{}; // use this to support multi textures
+    std::array<const VmaUBOBuffer *,MAX_FRAMES_IN_FLIGHT > pUBOs{};          // MAX FLIGHT
+    std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> descSets{};    // created sets
+    RequiredObjects requiredObjects{};
+};
 
 
 LLVK_NAMESPACE_END
