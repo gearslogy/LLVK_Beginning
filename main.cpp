@@ -12,6 +12,8 @@
 #include "renderer/instance/instance_v1/InstanceRenderer.h"
 #include "renderer/instance/instance_v2/InstanceRendererV2.h"
 #include "renderer/indirectdraw/IndirectDrawRenderer.h"
+#include "renderer/dualpass/DualPass.h"
+#include "renderer/dualpass/DualPassRenderer.h"
 
 int main() {
     //BasicRenderer app;
@@ -23,7 +25,8 @@ int main() {
     //LLVK::Shadowmap_v2 app;
     //LLVK::InstanceRenderer app;
     //LLVK::InstanceRendererV2 app;
-    LLVK::IndirectRenderer app;
+    //LLVK::IndirectRenderer app;
+    LLVK::DualPassRenderer app;
     try {
         app.run();
     }
