@@ -14,10 +14,11 @@
 
 LLVK_NAMESPACE_BEGIN
 struct DualPassRenderer : public VulkanRenderer{
+    DualPassRenderer();
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
-    void swapChainResize() override;
+
     struct {
         glm::mat4 proj;
         glm::mat4 view;
@@ -35,40 +36,15 @@ private:
     GLTFLoader hairLoader{};
     VmaUBOKTX2Texture tex{};
     VkSampler colorSampler{};
-    VkSampler depthSampler{};
     VmaSimpleGeometryBufferManager geometryManager{};
-    VkFramebuffer dualFrameBuffer{};
-    VmaAttachment dualColorAttachment{};
-    VmaAttachment dualDepthAttachment{};
 
-    UT_GraphicsPipelinePSOs dualPso{};
-    VkPipeline frontPipeline{};
-    VkPipeline backPipeline{};
-    VkPipelineLayout dualPipelineLayout{};  // 需要提前创建
-
-
-    VkCommandBuffer mrtCommandBuffers[MAX_FRAMES_IN_FLIGHT]{};
-    VkSemaphore mrtSemaphores[MAX_FRAMES_IN_FLIGHT]{};
-    void createDualCommandBuffers();
     void createDualPipelines();
-    void createDualRenderPass();
-    void createDualAttachment();
-    void createDualFrameBuffer();
-    void cleanupDualAttachment();
-    VkRenderPass dualRenderPass{};
     void recordCommandDual();
-
-// FOR Composition
-private:
-    void prepareComp();
-    void cleanupComp();
-    void recordCommandComp();
-    VkDescriptorSetLayout compDescSetLayout{};// one set. bind dualColorAttachment
-    VkPipelineLayout compPipelineLayout{};
-    VkPipeline compPipeline{};
-    std::array<VkDescriptorSet,2> compDescSets{};
-    UT_GraphicsPipelinePSOs compPso{};
-
+    VkPipeline hairPipeline1{};
+    VkPipeline hairPipeline2{};
+    UT_GraphicsPipelinePSOs dualPso{};
+    UT_GraphicsPipelinePSOs dualPso1{};
+    VkPipelineLayout dualPipelineLayout{};
 };
 
 

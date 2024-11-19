@@ -80,7 +80,7 @@ void Camera::setRotation(glm::vec3 rot) {
 
 
 void Camera::processMouseScroll(float yoffset){
-    mMoveSpeed += yoffset; // only change movement speed
+    mMoveSpeed += yoffset*0.2; // only change movement speed
 }
 
 

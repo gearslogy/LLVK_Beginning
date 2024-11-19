@@ -67,6 +67,7 @@ struct UT_GraphicsPipelinePSOs{
     };
 
     void setShaderStages(auto && ... stage) {
+        shaderStageCIOs.clear();
         pipelineCIO.stageCount = sizeof...(stage);
         (shaderStageCIOs.emplace_back(stage), ...);
         pipelineCIO.pStages = shaderStageCIOs.data();
