@@ -9,6 +9,8 @@ void main() {
     // 采样纹理
     vec4 color = texture(diffuseMap, inTexCoord);
     // Alpha测试
-    //color = gammaCorrect(color,2.2);
-    outColor = vec4(color.rgb* color.a, color.a);  // alpha 设为 1
+    color = gammaCorrect(color,2.2);
+    if (color.a < 0.5)
+        discard;
+    outColor = vec4(vec3(0), 0);  // alpha 设为 1
 }

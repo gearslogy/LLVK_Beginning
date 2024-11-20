@@ -27,21 +27,34 @@ struct DualPassRenderer : public VulkanRenderer{
 
     std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboBuffers;
     VkDescriptorPool descPool{};
-    VkDescriptorSetLayout descSetLayout{};
-    std::array<VkDescriptorSet,2> dualDescSets{};
+    VkDescriptorSetLayout hairDescSetLayout{};
+    std::array<VkDescriptorSet,2> hairDescSets{};
+    std::array<VkDescriptorSet,2> gridSets{};
     void updateDualUBOs();
 private:
     // Resources
     GLTFLoader headLoader{};
     GLTFLoader hairLoader{};
-    VmaUBOKTX2Texture tex{};
+    GLTFLoader gridLoader{};
+    VmaUBOKTX2Texture hairTex{};
+    VmaUBOKTX2Texture gridTex{};
     VkSampler colorSampler{};
     VkSampler depthSampler{};
     VmaSimpleGeometryBufferManager geometryManager{};
 
+
+    // render normal scene pipeline
+    struct {
+        VkPipeline pipeline{};
+        UT_GraphicsPipelinePSOs pso{};
+    }sceneRendering;
+    void prepareSceneRendering();
+    void recordScene();
+
     void twoPassRender();
     void cmdRenderHair();
     void recordPass1();
+    void recordPass1DepthOnly();
     void recordPass2();
 
     struct {
@@ -61,6 +74,18 @@ private:
     VkPipelineLayout dualPipelineLayout{};
     VkRenderPass renderpass1{};
     VkRenderPass renderpass2{};
+
+
+    // comp resources
+    void prepareComp();
+    void cleanupComp();
+    void recordComp();
+    std::array<VkDescriptorSet,2> compSets;
+    VkDescriptorSetLayout compSetLayout{};
+    VkPipeline compPipeline{};
+    VkPipelineLayout compPipelineLayout{};
+    UT_GraphicsPipelinePSOs compPso{};
+
 };
 
 

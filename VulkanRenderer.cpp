@@ -177,7 +177,7 @@ void VulkanRenderer::initWindow() {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    window = glfwCreateWindow(800, 600, "Vulkan", nullptr, nullptr);
+    window = glfwCreateWindow(1920, 1080, "Vulkan", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height ) {
         auto app = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));

@@ -8,6 +8,6 @@ layout (location = 0) out vec4 outColor;
 void main() {
     vec4 color = texture(diffuseMap, inTexCoord);
     // Alpha测试
-    //color = gammaCorrect(color,2.2);
-    outColor = vec4(color.rgb , color.a);  // 保持原始 alpha
+    color = gammaCorrect(color,2.2);
+    outColor = vec4(color.rgb , color.a );
 }

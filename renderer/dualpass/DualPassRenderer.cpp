@@ -9,17 +9,17 @@
 #include "UT_DualVkRenderPass.hpp"
 LLVK_NAMESPACE_BEGIN
 DualPassRenderer::DualPassRenderer() {
-    mainCamera.setRotation({-13,16,2.6});
-    mainCamera.mPosition = {0.475032,2.13,2.40};
+    mainCamera.setRotation({-5,12,1.3});
+    mainCamera.mPosition = {0.2,1.5,0.59};
     mainCamera.mMoveSpeed = 0.01;
 }
 
 void DualPassRenderer::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
-    UT_Fn::cleanup_resources(geometryManager, tex);
+    UT_Fn::cleanup_resources(geometryManager, hairTex, gridTex);
     UT_Fn::cleanup_sampler(mainDevice.logicalDevice, colorSampler, depthSampler);
     vkDestroyDescriptorPool(device, descPool, VK_NULL_HANDLE);
-    UT_Fn::cleanup_descriptor_set_layout(device, descSetLayout);
+    UT_Fn::cleanup_descriptor_set_layout(device, hairDescSetLayout);
     UT_Fn::cleanup_pipeline(device, hairPipeline1, hairPipeline2);
     UT_Fn::cleanup_pipeline_layout(device, dualPipelineLayout);
     UT_Fn::cleanup_range_resources(uboBuffers);
@@ -51,7 +51,7 @@ void DualPassRenderer::prepare() {
         FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT),
     };
     const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(setLayoutBindings);
-    UT_Fn::invoke_and_check("Error create desc set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &descSetLayout);
+    UT_Fn::invoke_and_check("Error create desc set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &hairDescSetLayout);
 
     // 4. model resource loading
     colorSampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
@@ -59,20 +59,28 @@ void DualPassRenderer::prepare() {
     setRequiredObjectsByRenderer(this, geometryManager);
     headLoader.load("content/scene/dualpass/head.gltf");
     hairLoader.load("content/scene/dualpass/hair.gltf");
+    gridLoader.load("content/scene/dualpass/grid.gltf");
     UT_VmaBuffer::addGeometryToSimpleBufferManager(headLoader, geometryManager); // GPU buffer allocation
     UT_VmaBuffer::addGeometryToSimpleBufferManager(hairLoader, geometryManager); // GPU buffer allocation
-    setRequiredObjectsByRenderer(this, tex);
-    tex.create("content/scene/dualpass/gpu_D.ktx2", colorSampler);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(gridLoader, geometryManager); // GPU buffer allocation
+    setRequiredObjectsByRenderer(this, hairTex, gridTex);
+    hairTex.create("content/scene/dualpass/gpu_D.ktx2", colorSampler);
+    gridTex.create("content/scene/dualpass/gpu_grid_D.ktx2", colorSampler);
 
     // 5 create desc sets
-    const std::array<VkDescriptorSetLayout,2> setLayouts({descSetLayout,descSetLayout});
+    const std::array<VkDescriptorSetLayout,2> setLayouts({hairDescSetLayout,hairDescSetLayout});
     auto setAllocInfo = FnDescriptor::setAllocateInfo(descPool,setLayouts);
-    UT_Fn::invoke_and_check("Error create RenderContainerOneSet::uboSets", vkAllocateDescriptorSets, device, &setAllocInfo, dualDescSets.data());
+    UT_Fn::invoke_and_check("Error create RenderContainerOneSet::uboSets", vkAllocateDescriptorSets, device, &setAllocInfo, hairDescSets.data());
+    UT_Fn::invoke_and_check("Error create RenderContainerOneSet::uboSets", vkAllocateDescriptorSets, device, &setAllocInfo, gridSets.data());
 
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
-        std::array<VkWriteDescriptorSet,2> writeSets {
-            FnDescriptor::writeDescriptorSet(dualDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[currentFrame].descBufferInfo),
-            FnDescriptor::writeDescriptorSet(dualDescSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &tex.descImageInfo)
+        std::array<VkWriteDescriptorSet,4> writeSets {
+            // hair
+            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[currentFrame].descBufferInfo),
+            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &hairTex.descImageInfo),
+            // grid
+            FnDescriptor::writeDescriptorSet(gridSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[currentFrame].descBufferInfo),
+            FnDescriptor::writeDescriptorSet(gridSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &gridTex.descImageInfo)
         };
         vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
     }
@@ -80,14 +88,47 @@ void DualPassRenderer::prepare() {
     // attachments render target
     createRenderTargets();
     // create renderpass
-    renderpass1 = UT_DualRenderPass::pass1(device);
+    renderpass1 = UT_DualRenderPass::depthOnlyPass(device);
     renderpass2 = UT_DualRenderPass::pass2(device);
     // create pipelines
-    UT_DualRenderPass::createPipelines(device, renderpass1, renderpass2, descSetLayout, getPipelineCache(),
+    UT_DualRenderPass::createPipelines(device, renderpass1, renderpass2, hairDescSetLayout, getPipelineCache(),
         dualPipelineLayout, hairPipeline1, hairPipeline2);
     createFramebuffers();
 
+    prepareSceneRendering();
 }
+void DualPassRenderer::prepareSceneRendering() { // for rendering grid
+    auto device = mainDevice.logicalDevice;
+    //shader modules
+    const auto sceneVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_grid_vert.spv",  device);
+    const auto sceneFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_grid_frag.spv",  device);
+    //shader stages
+    VkPipelineShaderStageCreateInfo sceneVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, sceneVertMoudule);
+    VkPipelineShaderStageCreateInfo sceneFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, sceneFragModule);
+
+    // back data to pso
+    sceneRendering.pso.setShaderStages(sceneVertShaderStageCreateInfo, sceneFragShaderStageCreateInfo);
+    sceneRendering.pso.setPipelineLayout(dualPipelineLayout);
+    sceneRendering.pso.setRenderPass(getMainRenderPass());
+    // create pipeline
+    UT_GraphicsPipelinePSOs::createPipeline(device, sceneRendering.pso, getPipelineCache(), sceneRendering.pipeline);
+    UT_Fn::cleanup_shader_module(device, sceneFragModule, sceneVertMoudule);
+}
+void DualPassRenderer::recordScene() {
+    /*
+    const auto sceneRenderPassBeginInfo = FnCommand::renderPassBeginInfo(frameBuffers.FBPass1, sceneRenderPass, sceneRenderExtent,sceneClearValues);
+    vkCmdBeginRenderPass(sceneCommandBuffer, &sceneRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    auto [vs_width , vs_height] = sceneRenderExtent;
+    auto viewport = FnCommand::viewport(vs_width,vs_height );
+    auto scissor = FnCommand::scissor(vs_width, vs_height);
+    vkCmdSetViewport(sceneCommandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(sceneCommandBuffer,0, 1, &scissor);
+    VkDeviceSize offsets[1] = { 0 };*/
+}
+
+
+
+
 void DualPassRenderer::createRenderTargets() {
     setRequiredObjectsByRenderer(this, renderTargets.colorAttachment, renderTargets.depthAttachment);
     auto [width, height] = simpleSwapchain.swapChainExtent;
@@ -98,8 +139,8 @@ void DualPassRenderer::createRenderTargets() {
 void DualPassRenderer::createFramebuffers() {
     const auto &device = mainDevice.logicalDevice;
     auto [width, height] = simpleSwapchain.swapChainExtent;
-    frameBuffers.FBPass1 = UT_DualRenderPass::createFramebuffer(device, renderpass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
-    frameBuffers.FBPass2 = UT_DualRenderPass::createFramebuffer(device, renderpass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
+    frameBuffers.FBPass1 = UT_DualRenderPass::createDepthFramebuffer(device, renderpass1, renderTargets.depthAttachment.view, width, height);
+    frameBuffers.FBPass2 = UT_DualRenderPass::createFramebuffer(device, renderpass2,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
 }
 
 void DualPassRenderer::updateDualUBOs() {
@@ -123,12 +164,12 @@ void DualPassRenderer::render() {
 }
 
 void DualPassRenderer::twoPassRender() {
-
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
-    recordPass1();
-    //recordPass2();
+    //recordPass1();
+    recordPass1DepthOnly();
+    recordPass2();
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
 
@@ -151,12 +192,30 @@ void DualPassRenderer::recordPass1() {
     renderPassBeginInfo.clearValueCount = 2;
     renderPassBeginInfo.pClearValues =clearValues.data();
 
-    vkCmdBeginRenderPass(getMainCommandBuffer(), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(getMainCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
+    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
     cmdRenderHair();
-    vkCmdEndRenderPass(getMainCommandBuffer());
-
+    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
 }
+void DualPassRenderer::recordPass1DepthOnly() {
+    auto [width, height]= simpleSwapchain.swapChainExtent;
+    VkClearValue cleaValue;
+    cleaValue.depthStencil = { 1.0f, 0 };
+    VkRenderPassBeginInfo renderPassBeginInfo {};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = renderpass1;
+    renderPassBeginInfo.framebuffer = frameBuffers.FBPass1;
+    renderPassBeginInfo.renderArea.extent.width = width;
+    renderPassBeginInfo.renderArea.extent.height = height;
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &cleaValue;
+    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
+    cmdRenderHair();
+    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
+}
+
+
 
 void DualPassRenderer::recordPass2() {
     std::vector<VkClearValue> clearValues{};
@@ -172,12 +231,12 @@ void DualPassRenderer::recordPass2() {
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 2;
-    renderPassBeginInfo.pClearValues =clearValues.data();
+    renderPassBeginInfo.pClearValues = clearValues.data();
 
-    vkCmdBeginRenderPass(getMainCommandBuffer(), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(getMainCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
+    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
     cmdRenderHair();
-    vkCmdEndRenderPass(getMainCommandBuffer());
+    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
 
 }
 
@@ -185,15 +244,77 @@ void DualPassRenderer::cmdRenderHair() {
     VkDeviceSize offsets[1] = { 0 };
     const auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     const auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    vkCmdSetViewport(getMainCommandBuffer(), 0, 1, &viewport);
-    vkCmdSetScissor(getMainCommandBuffer(),0, 1, &scissor);
+    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
+    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
     vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
-0, 1, &dualDescSets[currentFrame], 0, nullptr);
-    vkCmdBindVertexBuffers(getMainCommandBuffer(), 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(getMainCommandBuffer(),hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(getMainCommandBuffer(), hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
+0, 1, &hairDescSets[currentFrame], 0, nullptr);
+    vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit, 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit,hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
 
 }
+
+void DualPassRenderer::prepareComp() {
+    //desc sets
+    const auto device = mainDevice.logicalDevice;
+    const std::array setLayoutBindings = {
+        FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK_SHADER_STAGE_FRAGMENT_BIT),
+    };
+    const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(setLayoutBindings);
+    UT_Fn::invoke_and_check("Error create desc set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &compSetLayout);
+    //desc sets
+    const std::array<VkDescriptorSetLayout,2> setLayouts({compSetLayout,compSetLayout});
+    auto setAllocInfo = FnDescriptor::setAllocateInfo(descPool,setLayouts);
+    UT_Fn::invoke_and_check("Error create comp sets", vkAllocateDescriptorSets, device, &setAllocInfo, compSets.data());
+
+    for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+        std::vector<VkWriteDescriptorSet> writeSets;
+        writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &renderTargets.colorAttachment.descImageInfo));
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
+    }
+
+
+    // pipeline
+    const auto deferredVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_comp_vert.spv",  device);
+    const auto deferredFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_comp_frag.spv",  device);
+
+    const std::array deferredLayouts{compSetLayout};
+    VkPipelineLayoutCreateInfo deferredLayout_CIO = FnPipeline::layoutCreateInfo(deferredLayouts);
+    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &deferredLayout_CIO,nullptr, &compPipelineLayout );
+    compPso.setPipelineLayout(compPipelineLayout);
+    compPso.rasterizerStateCIO.cullMode = VK_CULL_MODE_FRONT_BIT;
+
+
+}
+void DualPassRenderer::cleanupComp() {
+
+}
+
+
+void DualPassRenderer::recordComp() {
+    std::vector<VkClearValue> clearValues(2);
+    clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
+    clearValues[1].depthStencil = {1.0f, 0};
+    const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+    auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
+        simplePass.pass,
+        &simpleSwapchain.swapChainExtent,clearValues);
+    auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
+    if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
+    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , compPipeline);
+    auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
+    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
+
+    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS,compPipelineLayout,
+         0, 1, &compSets[currentFrame], 0, nullptr);
+    vkCmdDraw(activatedFrameCommandBufferToSubmit, 3, 1, 0, 0);
+    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
+    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,activatedFrameCommandBufferToSubmit );
+}
+
 
 
 LLVK_NAMESPACE_END

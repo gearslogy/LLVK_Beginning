@@ -36,58 +36,61 @@ namespace UT_DualRenderPass {
     }
 
 
-    inline VkRenderPass pass1(VkDevice device ) {
-        // 1. 深度附件描述
-        auto colorAttachment = createColorDescription();
-        auto depthAttachment = createDepthDescription();
-        std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+    inline VkRenderPass depthOnlyPass(VkDevice device ) {
+        VkAttachmentDescription attachmentDescription{};
+        attachmentDescription.format = VK_FORMAT_D32_SFLOAT;
+        attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+        attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear depth at beginning of the render pass
+        attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// We will read from depth, so it's important to store the depth attachment results
+        attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// We don't care about initial layout of the attachment
+        attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;// Attachment will be transitioned to shader read at render pass end
 
-        VkAttachmentReference colorAttachmentRef = {};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference depthAttachmentRef = {};
-        depthAttachmentRef.attachment = 1;
-        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        VkAttachmentReference depthReference = {};
+        depthReference.attachment = 0;
+        depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;			// Attachment will be used as depth/stencil during render pass
 
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-        subpass.pDepthStencilAttachment = &depthAttachmentRef;
+        subpass.colorAttachmentCount = 0;													// No color attachments
+        subpass.pColorAttachments = nullptr;
+        subpass.pDepthStencilAttachment = &depthReference;									// Reference to our depth attachment
 
-        // 4. Subpass依赖
+        // Use subpass dependencies for layout transitions
         std::array<VkSubpassDependency, 2> dependencies;
+
 
         dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
         dependencies[1].srcSubpass = 0;
         dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 
-        // 5. 创建RenderPass
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 2;
-        renderPassInfo.pAttachments =  attachments.data();
-        renderPassInfo.subpassCount =1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = dependencies.size();
-        renderPassInfo.pDependencies = dependencies.data();
+
+        VkRenderPassCreateInfo renderPassCreateInfo{};
+        renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassCreateInfo.attachmentCount = 1;
+        renderPassCreateInfo.pAttachments = &attachmentDescription;
+        renderPassCreateInfo.subpassCount = 1;
+        renderPassCreateInfo.pSubpasses = &subpass;
+        renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+        renderPassCreateInfo.pDependencies = dependencies.data();
 
         VkRenderPass depthPrePass;
-        if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &depthPrePass) != VK_SUCCESS) {
+        if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &depthPrePass) != VK_SUCCESS) {
             throw std::runtime_error("failed to create depth pre-pass render pass!");
         }
         return depthPrePass;
@@ -150,6 +153,28 @@ namespace UT_DualRenderPass {
         return renderPass;
     }
 
+    VkFramebuffer createDepthFramebuffer( VkDevice device, VkRenderPass mainPass,
+     VkImageView depthImageView,
+     uint32_t width,
+     uint32_t height) {
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = mainPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = &depthImageView;
+        framebufferInfo.width = width;
+        framebufferInfo.height = height;
+        framebufferInfo.layers = 1;
+
+        VkFramebuffer framebuffer;
+        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create main pass framebuffer!");
+        }
+        return framebuffer;
+    }
+
+
     VkFramebuffer createFramebuffer( VkDevice device, VkRenderPass mainPass,
         VkImageView colorImageView,
         VkImageView depthImageView,
@@ -199,36 +224,15 @@ namespace UT_DualRenderPass {
         dualPso.setShaderStages(front_vsCIO, front_fsCIO);
         dualPso.setPipelineLayout(dualPipelineLayout);
         dualPso.setRenderPass(pass1);
-        dualPso.rasterizerStateCIO.cullMode = VK_CULL_MODE_FRONT_BIT;
+        dualPso.rasterizerStateCIO.cullMode = VK_CULL_MODE_NONE;
         dualPso.rasterizerStateCIO.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        /*
-        VkPipelineColorBlendAttachmentState blend_attachment{};
-        blend_attachment.colorWriteMask = 0;  // 禁用所有颜色通道的写入
-        blend_attachment.blendEnable = VK_FALSE;
 
-        VkPipelineColorBlendStateCreateInfo colorBlending{};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &colorBlendAttachment;
-        */
-        VkPipelineColorBlendAttachmentState colorBlendAttachmentPass1 = {};
-        colorBlendAttachmentPass1.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                             VK_COLOR_COMPONENT_G_BIT |
-                                             VK_COLOR_COMPONENT_B_BIT |
-                                             VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachmentPass1.blendEnable = VK_TRUE;
-        // 设置混合因子
-        colorBlendAttachmentPass1.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; // 源颜色使用源Alpha作为因子
-        colorBlendAttachmentPass1.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; // 目标颜色使用1-源Alpha作为因子
-        colorBlendAttachmentPass1.colorBlendOp = VK_BLEND_OP_ADD;
-        // alpha 混合设置
-        colorBlendAttachmentPass1.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        colorBlendAttachmentPass1.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachmentPass1.alphaBlendOp = VK_BLEND_OP_ADD;
 
-        std::array colorBlendAttachmentsPass1{colorBlendAttachmentPass1};
+
+
+        std::array colorBlendAttachmentsPass1{FnPipeline::simpleColorBlendAttacmentState()};
         VkPipelineColorBlendStateCreateInfo colorBlendStateCIO1 = FnPipeline::colorBlendStateCreateInfo(colorBlendAttachmentsPass1);
+
         dualPso.pipelineCIO.pColorBlendState = &colorBlendStateCIO1;
         UT_GraphicsPipelinePSOs::createPipeline(device, dualPso, pipelineCache, pipe1);
         std::cout << "created front pipeline\n";
@@ -256,15 +260,23 @@ namespace UT_DualRenderPass {
 
         // alpha 混合设置
         colorBlendAttachmentPass2.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        colorBlendAttachmentPass2.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachmentPass2.alphaBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachmentPass2.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachmentPass2.alphaBlendOp = VK_BLEND_OP_MAX;
 
         std::array colorBlendAttachmentsPass2{colorBlendAttachmentPass2};
         VkPipelineColorBlendStateCreateInfo colorBlendStateCIO2 = FnPipeline::colorBlendStateCreateInfo(colorBlendAttachmentsPass2);
+        colorBlendStateCIO2.blendConstants[0] = VK_BLEND_FACTOR_ZERO;
+        colorBlendStateCIO2.blendConstants[1] = VK_BLEND_FACTOR_ZERO;
+        colorBlendStateCIO2.blendConstants[2] = VK_BLEND_FACTOR_ONE;
+        colorBlendStateCIO2.blendConstants[3] = VK_BLEND_FACTOR_ZERO;
+
+
         dualPso1.pipelineCIO.pColorBlendState = &colorBlendStateCIO2;
-        dualPso1.rasterizerStateCIO.cullMode = VK_CULL_MODE_BACK_BIT;  // 第二个Pass剔除背面
+        dualPso1.rasterizerStateCIO.cullMode = VK_CULL_MODE_NONE;  // 第二个Pass剔除背面
+        dualPso1.depthStencilStateCIO.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
         dualPso1.depthStencilStateCIO.depthTestEnable = VK_TRUE;
         dualPso1.depthStencilStateCIO.depthWriteEnable = VK_FALSE;
+
         const auto vs1MD = FnPipeline::createShaderModuleFromSpvFile("shaders/hair_vert.spv",  device);
         const auto fs1MD = FnPipeline::createShaderModuleFromSpvFile("shaders/back_frag.spv",  device);
         VkPipelineShaderStageCreateInfo pass2_vsCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vs1MD);
