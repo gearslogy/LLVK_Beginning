@@ -36,15 +36,31 @@ private:
     GLTFLoader hairLoader{};
     VmaUBOKTX2Texture tex{};
     VkSampler colorSampler{};
+    VkSampler depthSampler{};
     VmaSimpleGeometryBufferManager geometryManager{};
 
-    void createDualPipelines();
-    void recordCommandDual();
+    void twoPassRender();
+    void cmdRenderHair();
+    void recordPass1();
+    void recordPass2();
+
+    struct {
+        VmaAttachment colorAttachment;
+        VmaAttachment depthAttachment;
+    }renderTargets;
+    struct {
+        VkFramebuffer FBPass1;
+        VkFramebuffer FBPass2;
+    }frameBuffers;
+
+
+    void createRenderTargets();
+    void createFramebuffers();
     VkPipeline hairPipeline1{};
     VkPipeline hairPipeline2{};
-    UT_GraphicsPipelinePSOs dualPso{};
-    UT_GraphicsPipelinePSOs dualPso1{};
     VkPipelineLayout dualPipelineLayout{};
+    VkRenderPass renderpass1{};
+    VkRenderPass renderpass2{};
 };
 
 

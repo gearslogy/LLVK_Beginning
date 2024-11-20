@@ -6,7 +6,7 @@
 #include <LLVK_UT_VmaBuffer.hpp>
 #include "DualpassRenderer.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
-
+#include "UT_DualVkRenderPass.hpp"
 LLVK_NAMESPACE_BEGIN
 DualPassRenderer::DualPassRenderer() {
     mainCamera.setRotation({-13,16,2.6});
@@ -17,12 +17,15 @@ DualPassRenderer::DualPassRenderer() {
 void DualPassRenderer::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
     UT_Fn::cleanup_resources(geometryManager, tex);
-    UT_Fn::cleanup_sampler(mainDevice.logicalDevice, colorSampler);
+    UT_Fn::cleanup_sampler(mainDevice.logicalDevice, colorSampler, depthSampler);
     vkDestroyDescriptorPool(device, descPool, VK_NULL_HANDLE);
     UT_Fn::cleanup_descriptor_set_layout(device, descSetLayout);
     UT_Fn::cleanup_pipeline(device, hairPipeline1, hairPipeline2);
     UT_Fn::cleanup_pipeline_layout(device, dualPipelineLayout);
     UT_Fn::cleanup_range_resources(uboBuffers);
+    UT_Fn::cleanup_render_pass(device, renderpass1, renderpass2);
+    UT_Fn::cleanup_resources(renderTargets.colorAttachment, renderTargets.depthAttachment);
+    UT_Fn::cleanup_framebuffer(device, frameBuffers.FBPass1, frameBuffers.FBPass2);
 }
 
 
@@ -52,6 +55,7 @@ void DualPassRenderer::prepare() {
 
     // 4. model resource loading
     colorSampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
+    depthSampler = FnImage::createDepthSampler(mainDevice.logicalDevice);
     setRequiredObjectsByRenderer(this, geometryManager);
     headLoader.load("content/scene/dualpass/head.gltf");
     hairLoader.load("content/scene/dualpass/hair.gltf");
@@ -73,8 +77,29 @@ void DualPassRenderer::prepare() {
         vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
     }
 
+    // attachments render target
+    createRenderTargets();
+    // create renderpass
+    renderpass1 = UT_DualRenderPass::pass1(device);
+    renderpass2 = UT_DualRenderPass::pass2(device);
+    // create pipelines
+    UT_DualRenderPass::createPipelines(device, renderpass1, renderpass2, descSetLayout, getPipelineCache(),
+        dualPipelineLayout, hairPipeline1, hairPipeline2);
+    createFramebuffers();
 
-    createDualPipelines();
+}
+void DualPassRenderer::createRenderTargets() {
+    setRequiredObjectsByRenderer(this, renderTargets.colorAttachment, renderTargets.depthAttachment);
+    auto [width, height] = simpleSwapchain.swapChainExtent;
+    VkImageUsageFlagBits colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    renderTargets.colorAttachment.create(width, height, VK_FORMAT_R8G8B8A8_UNORM, colorSampler, colorUsage);
+    renderTargets.depthAttachment.create(width,height, VK_FORMAT_D32_SFLOAT, depthSampler, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+void DualPassRenderer::createFramebuffers() {
+    const auto &device = mainDevice.logicalDevice;
+    auto [width, height] = simpleSwapchain.swapChainExtent;
+    frameBuffers.FBPass1 = UT_DualRenderPass::createFramebuffer(device, renderpass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
+    frameBuffers.FBPass2 = UT_DualRenderPass::createFramebuffer(device, renderpass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
 }
 
 void DualPassRenderer::updateDualUBOs() {
@@ -90,176 +115,84 @@ void DualPassRenderer::updateDualUBOs() {
 }
 
 
-
 void DualPassRenderer::render() {
     updateDualUBOs();
-    recordCommandDual();
+    twoPassRender();
     submitMainCommandBuffer();
     presentMainCommandBufferFrame();
 }
 
+void DualPassRenderer::twoPassRender() {
 
-
-void DualPassRenderer::createDualPipelines() {
-
-    // create BACK PIPELINE
-    // 颜色混合状态
-
-
-
-    const auto &device = mainDevice.logicalDevice;
-    const std::array sceneSetLayouts{descSetLayout};
-    VkPipelineLayoutCreateInfo sceneSetLayout_CIO = FnPipeline::layoutCreateInfo(sceneSetLayouts);
-    UT_Fn::invoke_and_check("ERROR create scene pipeline layout",vkCreatePipelineLayout,device, &sceneSetLayout_CIO,nullptr, &dualPipelineLayout );
-
-    //shader modules
-    const auto vs0MD = FnPipeline::createShaderModuleFromSpvFile("shaders/hair_vert.spv",  device);
-    const auto fs0MD = FnPipeline::createShaderModuleFromSpvFile("shaders/front_frag.spv",  device);
-    //shader stages
-    VkPipelineShaderStageCreateInfo front_vsCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vs0MD);
-    VkPipelineShaderStageCreateInfo front_fsCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fs0MD);
-    dualPso.requiredObjects.device = device;
-    dualPso.setShaderStages(front_vsCIO, front_fsCIO);
-    dualPso.setPipelineLayout(dualPipelineLayout);
-    dualPso.setRenderPass(getMainRenderPass());
-    dualPso.rasterizerStateCIO.cullMode = VK_CULL_MODE_FRONT_BIT;
-    dualPso.rasterizerStateCIO.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    /*
-    VkPipelineColorBlendAttachmentState blend_attachment{};
-    blend_attachment.colorWriteMask = 0;  // 禁用所有颜色通道的写入
-    blend_attachment.blendEnable = VK_FALSE;
-
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
-    */
-    VkPipelineColorBlendAttachmentState colorBlendAttachmentPass1 = {};
-    colorBlendAttachmentPass1.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                         VK_COLOR_COMPONENT_G_BIT |
-                                         VK_COLOR_COMPONENT_B_BIT |
-                                         VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachmentPass1.blendEnable = VK_TRUE;
-    // 设置混合因子
-    colorBlendAttachmentPass1.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; // 源颜色使用源Alpha作为因子
-    colorBlendAttachmentPass1.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; // 目标颜色使用1-源Alpha作为因子
-    colorBlendAttachmentPass1.colorBlendOp = VK_BLEND_OP_ADD;
-    // alpha 混合设置
-    colorBlendAttachmentPass1.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachmentPass1.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachmentPass1.alphaBlendOp = VK_BLEND_OP_ADD;
-
-    std::array colorBlendAttachmentsPass1{colorBlendAttachmentPass1};
-    VkPipelineColorBlendStateCreateInfo colorBlendStateCIO1 = FnPipeline::colorBlendStateCreateInfo(colorBlendAttachmentsPass1);
-    dualPso.pipelineCIO.pColorBlendState = &colorBlendStateCIO1;
-    UT_GraphicsPipelinePSOs::createPipeline(device, dualPso, getPipelineCache(), hairPipeline1);
-    std::cout << "created front pipeline\n";
-
-
-
-    /*
-    *
-    *finalColor.rgb = srcColor.rgb * srcAlpha + dstColor.rgb * (1 - srcAlpha)
-finalColor.a = srcColor.a * 1 + dstColor.a * 0
-     *
-     */
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachmentPass2 = {};
-    colorBlendAttachmentPass2.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                         VK_COLOR_COMPONENT_G_BIT |
-                                         VK_COLOR_COMPONENT_B_BIT |
-                                         VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachmentPass2.blendEnable = VK_TRUE;
-    // 设置混合因子
-    colorBlendAttachmentPass2.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; // 源颜色使用源Alpha作为因子
-    colorBlendAttachmentPass2.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; // 目标颜色使用1-源Alpha作为因子
-    colorBlendAttachmentPass2.colorBlendOp = VK_BLEND_OP_ADD;
-
-
-    // alpha 混合设置
-    colorBlendAttachmentPass2.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachmentPass2.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachmentPass2.alphaBlendOp = VK_BLEND_OP_ADD;
-
-    std::array colorBlendAttachmentsPass2{colorBlendAttachmentPass2};
-    VkPipelineColorBlendStateCreateInfo colorBlendStateCIO2 = FnPipeline::colorBlendStateCreateInfo(colorBlendAttachmentsPass2);
-    dualPso1.pipelineCIO.pColorBlendState = &colorBlendStateCIO2;
-    dualPso1.rasterizerStateCIO.cullMode = VK_CULL_MODE_BACK_BIT;  // 第二个Pass剔除背面
-    dualPso1.depthStencilStateCIO.depthTestEnable = VK_TRUE;
-    dualPso1.depthStencilStateCIO.depthWriteEnable = VK_FALSE;
-    const auto vs1MD = FnPipeline::createShaderModuleFromSpvFile("shaders/hair_vert.spv",  device);
-    const auto fs1MD = FnPipeline::createShaderModuleFromSpvFile("shaders/back_frag.spv",  device);
-    VkPipelineShaderStageCreateInfo pass2_vsCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vs1MD);
-    VkPipelineShaderStageCreateInfo pass2_fsCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fs1MD);
-    dualPso1.setShaderStages(pass2_vsCIO, pass2_fsCIO);
-    dualPso1.setPipelineLayout(dualPipelineLayout);
-    dualPso1.setRenderPass(getMainRenderPass());
-    UT_GraphicsPipelinePSOs::createPipeline(device, dualPso1, getPipelineCache(), hairPipeline2);
-
-    UT_Fn::cleanup_shader_module(device,vs0MD, fs0MD, vs1MD,fs1MD);
-    std::cout << "created back pipeline\n";
+    auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
+    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
+    recordPass1();
+    //recordPass2();
+    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
 
-void DualPassRenderer::recordCommandDual() {
+
+
+void DualPassRenderer::recordPass1() {
      // Clear values for all attachments written in the fragment shader
     std::vector<VkClearValue> clearValues{};
     clearValues.resize(2);
-    // position, normal, albedo, roughness, displace;
-    clearValues[0].color = { { 0.5f, 0.5f, 0.5f, 0.6f } };
+    clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
     clearValues[1].depthStencil = { 1.0f, 0 };
 
+    auto [width, height]= simpleSwapchain.swapChainExtent;
+    VkRenderPassBeginInfo renderPassBeginInfo {};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = renderpass1;
+    renderPassBeginInfo.framebuffer = frameBuffers.FBPass1;
+    renderPassBeginInfo.renderArea.extent.width = width;
+    renderPassBeginInfo.renderArea.extent.height = height;
+    renderPassBeginInfo.clearValueCount = 2;
+    renderPassBeginInfo.pClearValues =clearValues.data();
 
-    vkResetCommandBuffer(getMainCommandBuffer(),/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
-
-
-    auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(getMainFramebuffer(),
-      getMainRenderPass(),&simpleSwapchain.swapChainExtent,clearValues);
-
-    auto result = vkBeginCommandBuffer(getMainCommandBuffer(), &cmdBufferBeginInfo);
-    if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-    vkCmdBeginRenderPass(getMainCommandBuffer(), &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-
-    VkDeviceSize offsets[1] = { 0 };
-    auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-
-    // -----------draw front-----------
-    /*
-    // 1-draw head
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
-       0, 1, &dualDescSets[currentFrame], 0, nullptr);
-    vkCmdBindVertexBuffers(getMainCommandBuffer(), 0, 1, &headLoader.parts[0].verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(getMainCommandBuffer(),headLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(getMainCommandBuffer(), headLoader.parts[0].indices.size(), 1, 0, 0, 0);*/
-
-
-    // 2-draw hair
-
-    vkCmdBindPipeline(getMainCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
-    vkCmdSetViewport(getMainCommandBuffer(), 0, 1, &viewport);
-    vkCmdSetScissor(getMainCommandBuffer(),0, 1, &scissor);
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
- 0, 1, &dualDescSets[currentFrame], 0, nullptr);
-    vkCmdBindVertexBuffers(getMainCommandBuffer(), 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(getMainCommandBuffer(),hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(getMainCommandBuffer(), hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
-
-    // -------------draw back-----------------
-
+    vkCmdBeginRenderPass(getMainCommandBuffer(), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(getMainCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
+    cmdRenderHair();
+    vkCmdEndRenderPass(getMainCommandBuffer());
+
+}
+
+void DualPassRenderer::recordPass2() {
+    std::vector<VkClearValue> clearValues{};
+    clearValues.resize(2);
+    clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
+    auto [width, height]= simpleSwapchain.swapChainExtent;
+    VkRenderPassBeginInfo renderPassBeginInfo {};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = renderpass2;
+    renderPassBeginInfo.framebuffer = frameBuffers.FBPass2;
+    renderPassBeginInfo.renderArea.extent.width = width;
+    renderPassBeginInfo.renderArea.extent.height = height;
+    renderPassBeginInfo.clearValueCount = 2;
+    renderPassBeginInfo.pClearValues =clearValues.data();
+
+    vkCmdBeginRenderPass(getMainCommandBuffer(), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(getMainCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
+    cmdRenderHair();
+    vkCmdEndRenderPass(getMainCommandBuffer());
+
+}
+
+void DualPassRenderer::cmdRenderHair() {
+    VkDeviceSize offsets[1] = { 0 };
+    const auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
+    const auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     vkCmdSetViewport(getMainCommandBuffer(), 0, 1, &viewport);
     vkCmdSetScissor(getMainCommandBuffer(),0, 1, &scissor);
     vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
- 0, 1, &dualDescSets[currentFrame], 0, nullptr);
+0, 1, &dualDescSets[currentFrame], 0, nullptr);
     vkCmdBindVertexBuffers(getMainCommandBuffer(), 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
     vkCmdBindIndexBuffer(getMainCommandBuffer(),hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(getMainCommandBuffer(), hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
 
-
-    vkCmdEndRenderPass(getMainCommandBuffer());
-    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,getMainCommandBuffer() );
 }
 
 

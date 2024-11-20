@@ -56,7 +56,9 @@ namespace UT_Fn {
     constexpr auto cleanup_render_pass(VkDevice device, auto ... pass) {
         (vkDestroyRenderPass(device,pass,nullptr),...);
     }
-
+    constexpr auto cleanup_framebuffer(VkDevice device, auto ... buf) {
+        (vkDestroyFramebuffer(device,buf,nullptr),...);
+    }
 
     void invoke_and_check(const char *msg, auto func, auto && ... args) {
         if (func( std::forward<decltype(args)>(args)...  ) != VK_SUCCESS)
