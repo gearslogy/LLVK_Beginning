@@ -1,5 +1,8 @@
 # LLVK_Beginning
 Learn Vulkan from scratch
+## license of assets
+* None of the assets can be used commercially
+* Except houdini works commercially
 
 ## IndirectDraw 
 ![instancev2.png](screenshot/indirectDraw_rd.png)
