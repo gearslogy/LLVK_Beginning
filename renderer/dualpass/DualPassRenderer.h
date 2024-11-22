@@ -64,16 +64,16 @@ private:
     struct {
         VkFramebuffer FBPass1;
         VkFramebuffer FBPass2;
-    }frameBuffers;
+    }frameBuffersHairs;
 
 
     void createRenderTargets();
-    void createFramebuffers();
+    void createHairFramebuffers();
     VkPipeline hairPipeline1{};
     VkPipeline hairPipeline2{};
     VkPipelineLayout dualPipelineLayout{};
-    VkRenderPass renderpass1{};
-    VkRenderPass renderpass2{};
+    VkRenderPass hairRenderpass1{};
+    VkRenderPass hairRenderpass2{};
 
 
     // comp resources

@@ -34,7 +34,7 @@ inline void alignedFree(void* data)
 
 namespace FnDescriptor {
     // (VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT, arrayCount);
-    inline VkDescriptorSetLayoutBinding setLayoutBinding(VkDescriptorType type, uint32_t binding,VkShaderStageFlags stageBit, uint32_t arrayCount= 1) {
+    inline constexpr VkDescriptorSetLayoutBinding setLayoutBinding(VkDescriptorType type, uint32_t binding,VkShaderStageFlags stageBit, uint32_t arrayCount= 1) {
         VkDescriptorSetLayoutBinding ret{};
         ret.binding = binding;
         ret.descriptorCount = arrayCount; // descriptorCount specifies the number of values in the array
@@ -190,7 +190,98 @@ struct UBOTexture { // this interface should be dropped. because vma texture is 
 
 };
 
+namespace MetaDesc {
+    // types
+    struct UBO {}; // ubo
+    struct CIS {}; // combined image sampler
+    struct UBO_DYNAMIC {};
+    struct SAMPLER{};
+    // concept checking
+    template<typename T>
+    concept is_desc_ubo = std::is_same_v<T, UBO> ;
+    template<typename T>
+    concept is_desc_cis = std::is_same_v<T, CIS> ;
+    template<typename T>
+    concept is_ubo_dynamic = std::is_same_v<T, UBO_DYNAMIC> ;
+    template<typename T>
+    concept is_sampler = std::is_same_v<T, SAMPLER> ;
+    // check all interface
+    template<typename T>
+    concept is_desc_type = is_desc_ubo<T> or is_desc_cis<T> or is_ubo_dynamic<T> or is_sampler<T>;
 
+    template<typename binding_type_t, uint32_t binding_position, uint32_t usage>
+    consteval auto getBinding() {
+        static_assert(is_desc_type<binding_type_t>, "type not supported");;
+        if constexpr (is_desc_ubo<binding_type_t>)
+            return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, binding_position, usage);
+        if constexpr (is_desc_cis<binding_type_t> )
+            return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, binding_position, usage);
+        if constexpr (is_sampler<binding_type_t>)
+            return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLER, binding_position, usage);
+        if constexpr (is_ubo_dynamic<binding_type_t>)
+            return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, binding_position, usage);
+    }
+
+    // type: of binding types
+    template<is_desc_type ... >
+    struct desc_types_t {};
+    // type: of binding position
+    template<size_t ... >
+    struct desc_binding_position_t{};
+    // type: of binding usage
+    template<size_t ... >
+    struct desc_binding_usage_t{};
+
+
+    // binding_types checking
+    template<typename T>
+    struct is_binding_types : std::false_type {};
+    template<is_desc_type ... T>
+    struct is_binding_types<desc_types_t<T...>> : std::true_type {};
+
+    // binding_position checking
+    template<typename T>
+    struct is_binding_position : std::false_type {};
+    template<size_t... positions>
+    struct is_binding_position<desc_binding_position_t<positions...>> : std::true_type {};
+    // binding_usage checking
+    template<typename T>
+    struct is_binding_usage : std::false_type {};
+    template<size_t... usages>
+    struct is_binding_usage<desc_binding_usage_t<usages...>> : std::true_type {};
+    // ------ concept interface-----
+    template<typename T>
+    concept is_desc_types_t = is_binding_types<T>::value;
+    template<typename T>
+    concept is_binding_position_t = is_binding_position<T>::value;
+    template<typename T>
+    concept is_binding_usage_t = is_binding_usage<T>::value;
+
+    // interface IMPL
+    template<typename types_t, typename positions_t, typename usages_t >
+    struct GenerateSetLayoutBindingsImpl;
+
+    //partial specialization
+    template<template<typename...> typename desc_types_pack, typename ... types_t,
+             std::size_t... BindingPos, std::size_t... Usages>
+    struct GenerateSetLayoutBindingsImpl<
+        desc_types_pack<types_t...>,
+        desc_binding_position_t<BindingPos...>,
+        desc_binding_usage_t<Usages...>>
+    {
+        static consteval auto generate() {
+            constexpr size_t type_count = sizeof...(types_t);
+            std::array<VkDescriptorSetLayoutBinding, type_count> bindings = {
+                getBinding<types_t, BindingPos, Usages>()...
+            };
+            return bindings;
+        }
+    };
+    template<is_desc_types_t Types, is_binding_position_t BindingPos, is_binding_usage_t Usages>
+    consteval auto generateSetLayoutBindings() {
+        return GenerateSetLayoutBindingsImpl<Types, BindingPos, Usages>::generate();
+    }
+}
 
 
 LLVK_NAMESPACE_END

@@ -23,9 +23,9 @@ void DualPassRenderer::cleanupObjects() {
     UT_Fn::cleanup_pipeline(device, hairPipeline1, hairPipeline2);
     UT_Fn::cleanup_pipeline_layout(device, dualPipelineLayout);
     UT_Fn::cleanup_range_resources(uboBuffers);
-    UT_Fn::cleanup_render_pass(device, renderpass1, renderpass2);
+    UT_Fn::cleanup_render_pass(device, hairRenderpass1, hairRenderpass2);
     UT_Fn::cleanup_resources(renderTargets.colorAttachment, renderTargets.depthAttachment);
-    UT_Fn::cleanup_framebuffer(device, frameBuffers.FBPass1, frameBuffers.FBPass2);
+    UT_Fn::cleanup_framebuffer(device, frameBuffersHairs.FBPass1, frameBuffersHairs.FBPass2);
 }
 
 
@@ -46,10 +46,16 @@ void DualPassRenderer::prepare() {
         ubo.createAndMapping(sizeof(uboData));
 
     // 3 descSetLayout
+    /*
     const std::array setLayoutBindings = {
         FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT),
         FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT),
-    };
+    };*/
+    using desc_types = MetaDesc::desc_types_t<MetaDesc::UBO,MetaDesc::CIS>;
+    using binding_positions_t = MetaDesc::desc_binding_position_t<0,1>; // 0 1
+    using binding_usages_t =  MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    constexpr std::array setLayoutBindings= MetaDesc::generateSetLayoutBindings<desc_types, binding_positions_t, binding_usages_t>();
+
     const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(setLayoutBindings);
     UT_Fn::invoke_and_check("Error create desc set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &hairDescSetLayout);
 
@@ -88,12 +94,12 @@ void DualPassRenderer::prepare() {
     // attachments render target
     createRenderTargets();
     // create renderpass
-    renderpass1 = UT_DualRenderPass::depthOnlyPass(device);
-    renderpass2 = UT_DualRenderPass::pass2(device);
+    hairRenderpass1 = UT_DualRenderPass::pass1(device);
+    hairRenderpass2 = UT_DualRenderPass::pass2(device);
     // create pipelines
-    UT_DualRenderPass::createPipelines(device, renderpass1, renderpass2, hairDescSetLayout, getPipelineCache(),
+    UT_DualRenderPass::createPipelines(device, hairRenderpass1, hairRenderpass2, hairDescSetLayout, getPipelineCache(),
         dualPipelineLayout, hairPipeline1, hairPipeline2);
-    createFramebuffers();
+    createHairFramebuffers();
 
     prepareSceneRendering();
 }
@@ -136,11 +142,11 @@ void DualPassRenderer::createRenderTargets() {
     renderTargets.colorAttachment.create(width, height, VK_FORMAT_R8G8B8A8_UNORM, colorSampler, colorUsage);
     renderTargets.depthAttachment.create(width,height, VK_FORMAT_D32_SFLOAT, depthSampler, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
-void DualPassRenderer::createFramebuffers() {
+void DualPassRenderer::createHairFramebuffers() {
     const auto &device = mainDevice.logicalDevice;
     auto [width, height] = simpleSwapchain.swapChainExtent;
-    frameBuffers.FBPass1 = UT_DualRenderPass::createDepthFramebuffer(device, renderpass1, renderTargets.depthAttachment.view, width, height);
-    frameBuffers.FBPass2 = UT_DualRenderPass::createFramebuffer(device, renderpass2,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
+    frameBuffersHairs.FBPass1 =  UT_DualRenderPass::createFramebuffer(device, hairRenderpass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
+    frameBuffersHairs.FBPass2 = UT_DualRenderPass::createFramebuffer(device, hairRenderpass2,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
 }
 
 void DualPassRenderer::updateDualUBOs() {
@@ -167,8 +173,8 @@ void DualPassRenderer::twoPassRender() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
-    //recordPass1();
-    recordPass1DepthOnly();
+    recordPass1();
+    //recordPass1DepthOnly();
     recordPass2();
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
@@ -185,8 +191,8 @@ void DualPassRenderer::recordPass1() {
     auto [width, height]= simpleSwapchain.swapChainExtent;
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = renderpass1;
-    renderPassBeginInfo.framebuffer = frameBuffers.FBPass1;
+    renderPassBeginInfo.renderPass = hairRenderpass1;
+    renderPassBeginInfo.framebuffer = frameBuffersHairs.FBPass1;
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 2;
@@ -203,8 +209,8 @@ void DualPassRenderer::recordPass1DepthOnly() {
     cleaValue.depthStencil = { 1.0f, 0 };
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = renderpass1;
-    renderPassBeginInfo.framebuffer = frameBuffers.FBPass1;
+    renderPassBeginInfo.renderPass = hairRenderpass1;
+    renderPassBeginInfo.framebuffer = frameBuffersHairs.FBPass1;
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 1;
@@ -226,8 +232,8 @@ void DualPassRenderer::recordPass2() {
     auto [width, height]= simpleSwapchain.swapChainExtent;
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = renderpass2;
-    renderPassBeginInfo.framebuffer = frameBuffers.FBPass2;
+    renderPassBeginInfo.renderPass = hairRenderpass2;
+    renderPassBeginInfo.framebuffer = frameBuffersHairs.FBPass2;
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 2;
