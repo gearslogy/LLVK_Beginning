@@ -1,6 +1,6 @@
 ﻿//
 // Created by liuya on 11/11/2024.
-//
+//o
 
 #ifndef DUALPASSRENDERER_H
 #define DUALPASSRENDERER_H
@@ -18,7 +18,9 @@ struct DualPassRenderer : public VulkanRenderer{
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
-
+    void swapChainResize() override;
+    friend struct OpaqueScenePass;
+public:
     struct {
         glm::mat4 proj;
         glm::mat4 view;
@@ -66,14 +68,18 @@ private:
         VkFramebuffer FBPass2;
     }frameBuffersHairs;
 
-
+    // system attachments COLOR + DEPTH
     void createRenderTargets();
+    void cleanupRenderTargets();
+    // hair fbs
     void createHairFramebuffers();
+    void cleanupHairFramebuffers();
+
     VkPipeline hairPipeline1{};
     VkPipeline hairPipeline2{};
     VkPipelineLayout dualPipelineLayout{};
-    VkRenderPass hairRenderpass1{};
-    VkRenderPass hairRenderpass2{};
+    VkRenderPass hairRenderPass1{};
+    VkRenderPass hairRenderPass2{};
 
 
     // comp resources

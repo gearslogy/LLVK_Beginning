@@ -23,9 +23,23 @@ void DualPassRenderer::cleanupObjects() {
     UT_Fn::cleanup_pipeline(device, hairPipeline1, hairPipeline2);
     UT_Fn::cleanup_pipeline_layout(device, dualPipelineLayout);
     UT_Fn::cleanup_range_resources(uboBuffers);
-    UT_Fn::cleanup_render_pass(device, hairRenderpass1, hairRenderpass2);
+    UT_Fn::cleanup_render_pass(device, hairRenderPass1, hairRenderPass2);
+    cleanupRenderTargets(); // this renderer will use COLOR + Depth target
+    cleanupHairFramebuffers();
+}
+void DualPassRenderer::cleanupRenderTargets() {
     UT_Fn::cleanup_resources(renderTargets.colorAttachment, renderTargets.depthAttachment);
+}
+void DualPassRenderer::cleanupHairFramebuffers() {
+    const auto &device = mainDevice.logicalDevice;
     UT_Fn::cleanup_framebuffer(device, frameBuffersHairs.FBPass1, frameBuffersHairs.FBPass2);
+}
+void DualPassRenderer::swapChainResize() {
+    cleanupRenderTargets();
+    createRenderTargets(); // attachments rebuild
+    cleanupHairFramebuffers();
+    createHairFramebuffers(); // pass1 pass2 framebuffer rebuild
+    // bind attachments to comp rendering ...  writeSets;
 }
 
 
@@ -94,10 +108,10 @@ void DualPassRenderer::prepare() {
     // attachments render target
     createRenderTargets();
     // create renderpass
-    hairRenderpass1 = UT_DualRenderPass::pass1(device);
-    hairRenderpass2 = UT_DualRenderPass::pass2(device);
+    hairRenderPass1 = UT_DualRenderPass::pass1(device);
+    hairRenderPass2 = UT_DualRenderPass::pass2(device);
     // create pipelines
-    UT_DualRenderPass::createPipelines(device, hairRenderpass1, hairRenderpass2, hairDescSetLayout, getPipelineCache(),
+    UT_DualRenderPass::createPipelines(device, hairRenderPass1, hairRenderPass2, hairDescSetLayout, getPipelineCache(),
         dualPipelineLayout, hairPipeline1, hairPipeline2);
     createHairFramebuffers();
 
@@ -145,8 +159,8 @@ void DualPassRenderer::createRenderTargets() {
 void DualPassRenderer::createHairFramebuffers() {
     const auto &device = mainDevice.logicalDevice;
     auto [width, height] = simpleSwapchain.swapChainExtent;
-    frameBuffersHairs.FBPass1 =  UT_DualRenderPass::createFramebuffer(device, hairRenderpass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
-    frameBuffersHairs.FBPass2 = UT_DualRenderPass::createFramebuffer(device, hairRenderpass2,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
+    frameBuffersHairs.FBPass1 =  UT_DualRenderPass::createFramebuffer(device, hairRenderPass1,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
+    frameBuffersHairs.FBPass2 = UT_DualRenderPass::createFramebuffer(device, hairRenderPass2,  renderTargets.colorAttachment.view, renderTargets.depthAttachment.view, width, height);
 }
 
 void DualPassRenderer::updateDualUBOs() {
@@ -191,7 +205,7 @@ void DualPassRenderer::recordPass1() {
     auto [width, height]= simpleSwapchain.swapChainExtent;
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = hairRenderpass1;
+    renderPassBeginInfo.renderPass = hairRenderPass1;
     renderPassBeginInfo.framebuffer = frameBuffersHairs.FBPass1;
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
@@ -209,7 +223,7 @@ void DualPassRenderer::recordPass1DepthOnly() {
     cleaValue.depthStencil = { 1.0f, 0 };
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = hairRenderpass1;
+    renderPassBeginInfo.renderPass = hairRenderPass1;
     renderPassBeginInfo.framebuffer = frameBuffersHairs.FBPass1;
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
@@ -232,7 +246,7 @@ void DualPassRenderer::recordPass2() {
     auto [width, height]= simpleSwapchain.swapChainExtent;
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = hairRenderpass2;
+    renderPassBeginInfo.renderPass = hairRenderPass2;
     renderPassBeginInfo.framebuffer = frameBuffersHairs.FBPass2;
     renderPassBeginInfo.renderArea.extent.width = width;
     renderPassBeginInfo.renderArea.extent.height = height;
