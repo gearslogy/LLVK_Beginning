@@ -74,9 +74,9 @@ void GLTFLoader::load(const std::string &path) {
         if (hasTangent)
             T = getAttribPointer<float>(model, primitive, "TANGENT");
         if (hasUV0)
-            uv0 = getAttribPointer<float>(model, primitive, "TEXCOORD_0");
+            uv0 = getAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
         if (hasUV1)
-            uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1");
+            uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
         if (hasCd0)
             Cd = getAttribPointer<float>(model, primitive, "COLOR_0");
 
