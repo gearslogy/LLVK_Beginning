@@ -99,15 +99,15 @@ namespace UT_DualRenderPass {
     inline VkRenderPass pass1(VkDevice device ) {
         VkRenderPass renderPass{};
         auto colorAttachment = createColorDescription();
-        colorAttachment.initialLayout= VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.initialLayout= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
         auto depthAttachment = createDepthDescription();
-        depthAttachment.initialLayout= VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.initialLayout= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         depthAttachment.finalLayout= VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
         std::array attachments = {colorAttachment, depthAttachment};
@@ -211,7 +211,7 @@ namespace UT_DualRenderPass {
         return renderPass;
     }
 
-    VkFramebuffer createDepthFramebuffer( VkDevice device, VkRenderPass mainPass,
+    inline VkFramebuffer createDepthFramebuffer( VkDevice device, VkRenderPass mainPass,
      VkImageView depthImageView,
      uint32_t width,
      uint32_t height) {
@@ -233,7 +233,7 @@ namespace UT_DualRenderPass {
     }
 
 
-    VkFramebuffer createFramebuffer( VkDevice device, VkRenderPass mainPass,
+    inline VkFramebuffer createFramebuffer( VkDevice device, VkRenderPass mainPass,
         VkImageView colorImageView,
         VkImageView depthImageView,
         uint32_t width,

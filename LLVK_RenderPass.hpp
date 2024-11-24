@@ -9,7 +9,7 @@
 LLVK_NAMESPACE_BEGIN
 namespace FnRenderPass {
 
-    constexpr VkAttachmentDescription colorAttachmentDescription(VkFormat format) {
+     inline VkAttachmentDescription colorAttachmentDescription(VkFormat format) {
         VkAttachmentDescription colorAttachment = {};
         colorAttachment.format = format;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -22,7 +22,7 @@ namespace FnRenderPass {
         return colorAttachment;
     }
     //
-    constexpr VkAttachmentDescription depthAttachmentDescription(VkFormat format) {
+    inline VkAttachmentDescription depthAttachmentDescription(VkFormat format) {
         VkAttachmentDescription depthAttachment = {};
         depthAttachment.format = format;
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -68,14 +68,6 @@ namespace FnRenderPass {
     }
     constexpr auto subpassDescription( const Concept::is_range auto &colorAttachmentRefs,
         const VkAttachmentReference &depthRef) {
-        auto subpass = subPassDescription();
-        subpass.colorAttachmentCount = colorAttachmentRefs.size();
-        subpass.pColorAttachments = colorAttachmentRefs.data();
-        subpass.pDepthStencilAttachment = &depthRef;
-        return subpass;
-    }
-    constexpr auto subpassDescription( const Concept::is_range auto &colorAttachmentRefs,
-      const VkAttachmentReference &depthRef) {
         auto subpass = subPassDescription();
         subpass.colorAttachmentCount = colorAttachmentRefs.size();
         subpass.pColorAttachments = colorAttachmentRefs.data();

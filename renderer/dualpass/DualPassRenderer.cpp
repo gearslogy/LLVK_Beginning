@@ -4,19 +4,26 @@
 
 #include <LLVK_Descriptor.hpp>
 #include <LLVK_UT_VmaBuffer.hpp>
+
+#include "DualPassGlobal.hpp"
 #include "DualpassRenderer.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "UT_DualVkRenderPass.hpp"
+#include "DualPass.h"
+
 LLVK_NAMESPACE_BEGIN
 DualPassRenderer::DualPassRenderer() {
-    mainCamera.setRotation({-5,12,1.3});
-    mainCamera.mPosition = {0.2,1.5,0.59};
+    mainCamera.setRotation({-5.31,11.92,1.3});
+    mainCamera.mPosition = {0.22,1.6,0.68};
     mainCamera.mMoveSpeed = 0.01;
+    opaqueScenePass = std::make_unique<OpaqueScenePass>(this);
 }
+DualPassRenderer::~DualPassRenderer() = default;
+
 
 void DualPassRenderer::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
-    UT_Fn::cleanup_resources(geometryManager, hairTex, gridTex);
+    UT_Fn::cleanup_resources(geometryManager, hairTex, gridTex, headTex);
     UT_Fn::cleanup_sampler(mainDevice.logicalDevice, colorSampler, depthSampler);
     vkDestroyDescriptorPool(device, descPool, VK_NULL_HANDLE);
     UT_Fn::cleanup_descriptor_set_layout(device, hairDescSetLayout);
@@ -26,6 +33,7 @@ void DualPassRenderer::cleanupObjects() {
     UT_Fn::cleanup_render_pass(device, hairRenderPass1, hairRenderPass2);
     cleanupRenderTargets(); // this renderer will use COLOR + Depth target
     cleanupHairFramebuffers();
+    opaqueScenePass->cleanup();
 }
 void DualPassRenderer::cleanupRenderTargets() {
     UT_Fn::cleanup_resources(renderTargets.colorAttachment, renderTargets.depthAttachment);
@@ -40,6 +48,7 @@ void DualPassRenderer::swapChainResize() {
     cleanupHairFramebuffers();
     createHairFramebuffers(); // pass1 pass2 framebuffer rebuild
     // bind attachments to comp rendering ...  writeSets;
+    opaqueScenePass->onSwapChainResize();
 }
 
 
@@ -83,9 +92,10 @@ void DualPassRenderer::prepare() {
     UT_VmaBuffer::addGeometryToSimpleBufferManager(headLoader, geometryManager); // GPU buffer allocation
     UT_VmaBuffer::addGeometryToSimpleBufferManager(hairLoader, geometryManager); // GPU buffer allocation
     UT_VmaBuffer::addGeometryToSimpleBufferManager(gridLoader, geometryManager); // GPU buffer allocation
-    setRequiredObjectsByRenderer(this, hairTex, gridTex);
-    hairTex.create("content/scene/dualpass/gpu_D.ktx2", colorSampler);
+    setRequiredObjectsByRenderer(this, hairTex, gridTex, headTex);
+    hairTex.create("content/scene/dualpass/gpu_hair_D.ktx2", colorSampler);
     gridTex.create("content/scene/dualpass/gpu_grid_D.ktx2", colorSampler);
+    headTex.create("content/scene/dualpass/gpu_head_D.ktx2", colorSampler);
 
     // 5 create desc sets
     const std::array<VkDescriptorSetLayout,2> setLayouts({hairDescSetLayout,hairDescSetLayout});
@@ -107,7 +117,7 @@ void DualPassRenderer::prepare() {
 
     // attachments render target
     createRenderTargets();
-    // create renderpass
+    // prepare 1: hair rendering resources
     hairRenderPass1 = UT_DualRenderPass::pass1(device);
     hairRenderPass2 = UT_DualRenderPass::pass2(device);
     // create pipelines
@@ -115,37 +125,10 @@ void DualPassRenderer::prepare() {
         dualPipelineLayout, hairPipeline1, hairPipeline2);
     createHairFramebuffers();
 
-    prepareSceneRendering();
-}
-void DualPassRenderer::prepareSceneRendering() { // for rendering grid
-    auto device = mainDevice.logicalDevice;
-    //shader modules
-    const auto sceneVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_grid_vert.spv",  device);
-    const auto sceneFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_grid_frag.spv",  device);
-    //shader stages
-    VkPipelineShaderStageCreateInfo sceneVertShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, sceneVertMoudule);
-    VkPipelineShaderStageCreateInfo sceneFragShaderStageCreateInfo = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, sceneFragModule);
+    // prepare 2: opaque scene pass
+    opaqueScenePass->prepare();
 
-    // back data to pso
-    sceneRendering.pso.setShaderStages(sceneVertShaderStageCreateInfo, sceneFragShaderStageCreateInfo);
-    sceneRendering.pso.setPipelineLayout(dualPipelineLayout);
-    sceneRendering.pso.setRenderPass(getMainRenderPass());
-    // create pipeline
-    UT_GraphicsPipelinePSOs::createPipeline(device, sceneRendering.pso, getPipelineCache(), sceneRendering.pipeline);
-    UT_Fn::cleanup_shader_module(device, sceneFragModule, sceneVertMoudule);
 }
-void DualPassRenderer::recordScene() {
-    /*
-    const auto sceneRenderPassBeginInfo = FnCommand::renderPassBeginInfo(frameBuffers.FBPass1, sceneRenderPass, sceneRenderExtent,sceneClearValues);
-    vkCmdBeginRenderPass(sceneCommandBuffer, &sceneRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    auto [vs_width , vs_height] = sceneRenderExtent;
-    auto viewport = FnCommand::viewport(vs_width,vs_height );
-    auto scissor = FnCommand::scissor(vs_width, vs_height);
-    vkCmdSetViewport(sceneCommandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(sceneCommandBuffer,0, 1, &scissor);
-    VkDeviceSize offsets[1] = { 0 };*/
-}
-
 
 
 
@@ -178,24 +161,24 @@ void DualPassRenderer::updateDualUBOs() {
 
 void DualPassRenderer::render() {
     updateDualUBOs();
-    twoPassRender();
+    recordAll();
     submitMainCommandBuffer();
     presentMainCommandBufferFrame();
 }
 
-void DualPassRenderer::twoPassRender() {
+void DualPassRenderer::recordAll() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
-    recordPass1();
-    //recordPass1DepthOnly();
-    recordPass2();
+    opaqueScenePass->recordCommandBuffer();
+    recordHairPass1();
+    recordHairPass2();
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
 
 
 
-void DualPassRenderer::recordPass1() {
+void DualPassRenderer::recordHairPass1() {
      // Clear values for all attachments written in the fragment shader
     std::vector<VkClearValue> clearValues{};
     clearValues.resize(2);
@@ -237,7 +220,7 @@ void DualPassRenderer::recordPass1DepthOnly() {
 
 
 
-void DualPassRenderer::recordPass2() {
+void DualPassRenderer::recordHairPass2() {
     std::vector<VkClearValue> clearValues{};
     clearValues.resize(2);
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };

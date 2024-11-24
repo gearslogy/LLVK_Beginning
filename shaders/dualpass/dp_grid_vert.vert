@@ -12,4 +12,5 @@ void main(){
     vec4 worldPos = ubo.model * vec4(P,1.0);
     gl_Position = ubo.proj * ubo.view * worldPos;
     fragTexCoord = uv0;
+    fragN = N;
 }

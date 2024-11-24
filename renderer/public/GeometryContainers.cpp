@@ -79,7 +79,6 @@ void RenderContainerOneSet::buildSet() {
 }
 
 void RenderContainerOneSet::draw(const VkCommandBuffer &cmdBuf, const VkPipelineLayout &pipelineLayout) {
-    VkDeviceSize offsets[1] = { 0 };
     for(const auto &geo : renderDelegates) {
         const auto &descSet = geo.descSets[requiredObjects.pRenderer->getCurrentFrame()];
         vkCmdBindDescriptorSets(cmdBuf,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);

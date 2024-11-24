@@ -412,7 +412,7 @@ void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
     std::cout << "[[VmaUBOKTX2Texture::create]] read:" << file << std::endl;
     const auto &[device,physicalDevice,commandPool, queue, allocator] = requiredObjects;
 
-
+    assert(device != VK_NULL_HANDLE && physicalDevice!=VK_NULL_HANDLE && commandPool!=VK_NULL_HANDLE);
     ktxTexture* kTexture;
     ktxTexture2* kTexture2{nullptr};
     KTX_error_code result;
@@ -441,7 +441,7 @@ void VmaUBOKTX2Texture::create(const std::string &file, VkSampler sampler) {
         // Using VkGetPhysicalDeviceFeatures or GL_COMPRESSED_TEXTURE_FORMATS or
         // extension queries, determine what compressed texture formats are
         // supported and pick a format. For example
-        VkPhysicalDeviceFeatures deviceFeatures;
+        VkPhysicalDeviceFeatures deviceFeatures{};
         vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 
         khr_df_model_e colorModel = ktxTexture2_GetColorModel_e(kTexture2);

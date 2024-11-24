@@ -13,9 +13,11 @@
 LLVK_NAMESPACE_BEGIN
 
 struct DualPassRenderer;
-// our first render pass
+struct RenderContainerOneSet;
+// our first render pass that rendering head and grid
 struct OpaqueScenePass {
-    OpaqueScenePass(DualPassRenderer *renderer);
+    explicit OpaqueScenePass(DualPassRenderer *renderer);
+    ~OpaqueScenePass();
     void prepare();
     void recordCommandBuffer();
     void cleanup();
@@ -27,11 +29,14 @@ private:
     void createFramebuffer();
     void createPipeline();
     DualPassRenderer *pRenderer;
-    VkRenderPass renderPass{};
-    VkFramebuffer framebuffer{};
-    VkPipeline pipeline{};
+    VkRenderPass opaqueRenderPass{};
+    VkFramebuffer opaqueFB{};
+    VkPipeline opaquePipeline{};
     UT_GraphicsPipelinePSOs pso{};
-    VkDescriptorSet sets[2]{};
+
+    std::unique_ptr<RenderContainerOneSet> renderContainer;
+
+
 };
 
 

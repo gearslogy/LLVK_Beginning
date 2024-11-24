@@ -13,8 +13,10 @@
 #include "LLVK_VmaBuffer.h"
 
 LLVK_NAMESPACE_BEGIN
+struct OpaqueScenePass;
 struct DualPassRenderer : public VulkanRenderer{
     DualPassRenderer();
+    ~DualPassRenderer();
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
@@ -38,6 +40,7 @@ private:
     GLTFLoader headLoader{};
     GLTFLoader hairLoader{};
     GLTFLoader gridLoader{};
+    VmaUBOKTX2Texture headTex{};
     VmaUBOKTX2Texture hairTex{};
     VmaUBOKTX2Texture gridTex{};
     VkSampler colorSampler{};
@@ -46,19 +49,13 @@ private:
 
 
     // render normal scene pipeline
-    struct {
-        VkPipeline pipeline{};
-        UT_GraphicsPipelinePSOs pso{};
-    }sceneRendering;
-    void prepareSceneRendering();
-    void recordScene();
 
-    void twoPassRender();
+    void recordAll();
+    void recordHairPass1();
+    void recordPass1DepthOnly();// for test. dropped
+    void recordHairPass2();
+
     void cmdRenderHair();
-    void recordPass1();
-    void recordPass1DepthOnly();
-    void recordPass2();
-
     struct {
         VmaAttachment colorAttachment;
         VmaAttachment depthAttachment;
@@ -81,6 +78,8 @@ private:
     VkRenderPass hairRenderPass1{};
     VkRenderPass hairRenderPass2{};
 
+    // for rendering opaque
+    std::unique_ptr<OpaqueScenePass> opaqueScenePass;
 
     // comp resources
     void prepareComp();
