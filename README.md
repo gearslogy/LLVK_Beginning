@@ -4,6 +4,14 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
+## DualPass RenderHair
+![dual.png](screenshot/dualpass.png)
+![dual.png](screenshot/dualpass_rdc.png)
+I rewrote a bake system for baking hair occ:
+![dual.png](screenshot/dualpass_occ.png)
+![dual.png](screenshot/dualpass_realtime_bk.png)
+
+
 ## IndirectDraw 
 ![instancev2.png](screenshot/indirectDraw_rd.png)
 ![instancev2.png](screenshot/indirectDraw.png)

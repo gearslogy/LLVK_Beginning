@@ -12,7 +12,7 @@
 #include "renderer/instance/instance_v1/InstanceRenderer.h"
 #include "renderer/instance/instance_v2/InstanceRendererV2.h"
 #include "renderer/indirectdraw/IndirectDrawRenderer.h"
-#include "renderer/dualpass/DualPass.h"
+#include "renderer/dualpass/ScenePass.h"
 #include "renderer/dualpass/DualPassRenderer.h"
 
 int main() {

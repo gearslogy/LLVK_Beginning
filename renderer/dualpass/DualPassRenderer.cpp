@@ -9,7 +9,7 @@
 #include "DualpassRenderer.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "UT_DualVkRenderPass.hpp"
-#include "DualPass.h"
+#include "ScenePass.h"
 
 LLVK_NAMESPACE_BEGIN
 DualPassRenderer::DualPassRenderer() {
@@ -17,6 +17,7 @@ DualPassRenderer::DualPassRenderer() {
     mainCamera.mPosition = {0.22,1.6,0.68};
     mainCamera.mMoveSpeed = 0.01;
     opaqueScenePass = std::make_unique<OpaqueScenePass>(this);
+    compPass = std::make_unique<CompPass>(this);
 }
 DualPassRenderer::~DualPassRenderer() = default;
 
@@ -34,6 +35,7 @@ void DualPassRenderer::cleanupObjects() {
     cleanupRenderTargets(); // this renderer will use COLOR + Depth target
     cleanupHairFramebuffers();
     opaqueScenePass->cleanup();
+    compPass->cleanup();
 }
 void DualPassRenderer::cleanupRenderTargets() {
     UT_Fn::cleanup_resources(renderTargets.colorAttachment, renderTargets.depthAttachment);
@@ -49,6 +51,7 @@ void DualPassRenderer::swapChainResize() {
     createHairFramebuffers(); // pass1 pass2 framebuffer rebuild
     // bind attachments to comp rendering ...  writeSets;
     opaqueScenePass->onSwapChainResize();
+    compPass->onSwapChainResize();
 }
 
 
@@ -101,16 +104,12 @@ void DualPassRenderer::prepare() {
     const std::array<VkDescriptorSetLayout,2> setLayouts({hairDescSetLayout,hairDescSetLayout});
     auto setAllocInfo = FnDescriptor::setAllocateInfo(descPool,setLayouts);
     UT_Fn::invoke_and_check("Error create RenderContainerOneSet::uboSets", vkAllocateDescriptorSets, device, &setAllocInfo, hairDescSets.data());
-    UT_Fn::invoke_and_check("Error create RenderContainerOneSet::uboSets", vkAllocateDescriptorSets, device, &setAllocInfo, gridSets.data());
 
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
-        std::array<VkWriteDescriptorSet,4> writeSets {
+        std::array<VkWriteDescriptorSet,2> writeSets {
             // hair
             FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[currentFrame].descBufferInfo),
             FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &hairTex.descImageInfo),
-            // grid
-            FnDescriptor::writeDescriptorSet(gridSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[currentFrame].descBufferInfo),
-            FnDescriptor::writeDescriptorSet(gridSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &gridTex.descImageInfo)
         };
         vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
     }
@@ -127,6 +126,7 @@ void DualPassRenderer::prepare() {
 
     // prepare 2: opaque scene pass
     opaqueScenePass->prepare();
+    compPass->prepare();
 
 }
 
@@ -169,13 +169,13 @@ void DualPassRenderer::render() {
 void DualPassRenderer::recordAll() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
-    UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
+    UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     opaqueScenePass->recordCommandBuffer();
     recordHairPass1();
     recordHairPass2();
+    compPass->recordCommandBuffer();
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
-
 
 
 void DualPassRenderer::recordHairPass1() {
@@ -256,68 +256,5 @@ void DualPassRenderer::cmdRenderHair() {
     vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
 
 }
-
-void DualPassRenderer::prepareComp() {
-    //desc sets
-    const auto device = mainDevice.logicalDevice;
-    const std::array setLayoutBindings = {
-        FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK_SHADER_STAGE_FRAGMENT_BIT),
-    };
-    const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(setLayoutBindings);
-    UT_Fn::invoke_and_check("Error create desc set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &compSetLayout);
-    //desc sets
-    const std::array<VkDescriptorSetLayout,2> setLayouts({compSetLayout,compSetLayout});
-    auto setAllocInfo = FnDescriptor::setAllocateInfo(descPool,setLayouts);
-    UT_Fn::invoke_and_check("Error create comp sets", vkAllocateDescriptorSets, device, &setAllocInfo, compSets.data());
-
-    for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
-        std::vector<VkWriteDescriptorSet> writeSets;
-        writeSets.emplace_back(FnDescriptor::writeDescriptorSet(compSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &renderTargets.colorAttachment.descImageInfo));
-        vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeSets.size()), writeSets.data(), 0, nullptr);
-    }
-
-
-    // pipeline
-    const auto deferredVertMoudule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_comp_vert.spv",  device);
-    const auto deferredFragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_comp_frag.spv",  device);
-
-    const std::array deferredLayouts{compSetLayout};
-    VkPipelineLayoutCreateInfo deferredLayout_CIO = FnPipeline::layoutCreateInfo(deferredLayouts);
-    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &deferredLayout_CIO,nullptr, &compPipelineLayout );
-    compPso.setPipelineLayout(compPipelineLayout);
-    compPso.rasterizerStateCIO.cullMode = VK_CULL_MODE_FRONT_BIT;
-
-
-}
-void DualPassRenderer::cleanupComp() {
-
-}
-
-
-void DualPassRenderer::recordComp() {
-    std::vector<VkClearValue> clearValues(2);
-    clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
-    clearValues[1].depthStencil = {1.0f, 0};
-    const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
-    auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
-        simplePass.pass,
-        &simpleSwapchain.swapChainExtent,clearValues);
-    auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
-    if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , compPipeline);
-    auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
-    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
-
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS,compPipelineLayout,
-         0, 1, &compSets[currentFrame], 0, nullptr);
-    vkCmdDraw(activatedFrameCommandBufferToSubmit, 3, 1, 0, 0);
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
-    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,activatedFrameCommandBufferToSubmit );
-}
-
-
 
 LLVK_NAMESPACE_END

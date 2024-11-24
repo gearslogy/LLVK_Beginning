@@ -2,7 +2,7 @@
 // Created by liuya on 11/11/2024.
 //
 
-#include "DualPass.h"
+#include "ScenePass.h"
 #include <LLVK_SYS.hpp>
 #include "LLVK_Descriptor.hpp"
 #include "LLVK_RenderPass.hpp"
@@ -134,7 +134,96 @@ void OpaqueScenePass::createPipeline() {
     UT_Fn::cleanup_shader_module(device,vsMD,fsMD);
 }
 
+CompPass::CompPass(DualPassRenderer *renderer) :pRenderer(renderer){}
 
+CompPass::~CompPass()  = default;
+
+void CompPass::prepare() {
+    const auto device = pRenderer->getMainDevice().logicalDevice;
+    // ready set
+    using descBindingTypes = MetaDesc::desc_types_t<MetaDesc::CIS>;
+    using descBindingPos = MetaDesc::desc_binding_position_t<0>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT>;
+    constexpr auto setLayoutBindings = MetaDesc::generateSetLayoutBindings<descBindingTypes, descBindingPos, descBindingUsage>();
+    // create set layout
+    const auto setLayoutCIO = FnDescriptor::setLayoutCreateInfo(setLayoutBindings);
+    UT_Fn::invoke_and_check("Error create comp desc set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &setLayout);
+    // create sets
+    const std::array<VkDescriptorSetLayout,2> setLayouts({setLayout,setLayout});
+    auto setAllocInfo = FnDescriptor::setAllocateInfo(pRenderer->descPool,setLayouts);
+    UT_Fn::invoke_and_check("Error create RenderContainerOneSet::uboSets", vkAllocateDescriptorSets, device, &setAllocInfo, sets);
+
+    for(int frame=0; frame<MAX_FRAMES_IN_FLIGHT;frame++) {
+        std::array writeSets {
+            FnDescriptor::writeDescriptorSet(sets[frame],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &pRenderer->renderTargets.colorAttachment.descImageInfo),
+        };
+        vkUpdateDescriptorSets(device,writeSets.size(),writeSets.data(),0, nullptr);
+    }
+
+
+    // pipeline
+    const std::array deferredLayouts{setLayout};
+    VkPipelineLayoutCreateInfo deferredLayout_CIO = FnPipeline::layoutCreateInfo(deferredLayouts);
+    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &deferredLayout_CIO,nullptr, &pipelineLayout );
+
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_comp_vert.spv",  device);
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/dp_comp_frag.spv",  device);
+    VkPipelineShaderStageCreateInfo vsSS_CIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);
+    VkPipelineShaderStageCreateInfo fsSS_CIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
+    auto emptyVertexInput_ST_CIO =  FnPipeline::vertexInputStateCreateInfo();
+    pso.pipelineCIO.pVertexInputState = &emptyVertexInput_ST_CIO;
+    pso.setShaderStages(vsSS_CIO, fsSS_CIO);
+    pso.setPipelineLayout(pipelineLayout);
+    pso.setRenderPass(pRenderer->getMainRenderPass());
+    pso.rasterizerStateCIO.cullMode = VK_CULL_MODE_FRONT_BIT;
+    UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), pipeline);
+    UT_Fn::cleanup_shader_module(device, vsMD, fsMD);
+}
+
+void CompPass::onSwapChainResize() {
+    const auto device = pRenderer->getMainDevice().logicalDevice;
+
+    for(int frame=0; frame<MAX_FRAMES_IN_FLIGHT;frame++) {
+        std::array writeSets {
+            FnDescriptor::writeDescriptorSet(sets[frame],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &pRenderer->renderTargets.colorAttachment.descImageInfo),
+        };
+        vkUpdateDescriptorSets(device,writeSets.size(),writeSets.data(),0, nullptr);
+    }
+
+}
+
+
+void CompPass::recordCommandBuffer() {
+    std::vector<VkClearValue> clearValues(2);
+    clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
+    clearValues[1].depthStencil = {1.0f, 0};
+    const VkFramebuffer &framebuffer = pRenderer->getMainFramebuffer();
+    auto cmdBuf  = pRenderer->getMainCommandBuffer();
+    auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
+        pRenderer->simplePass.pass,
+        &pRenderer->simpleSwapchain.swapChainExtent,clearValues);
+    const auto [width , height]= pRenderer->getSwapChainExtent();
+
+    vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipeline);
+    auto viewport = FnCommand::viewport(width, height );
+    auto scissor = FnCommand::scissor(width, height );
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
+
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+         0, 1, &sets[pRenderer->getCurrentFrame()] , 0, nullptr);
+    vkCmdDraw(cmdBuf, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cmdBuf);
+
+}
+
+void CompPass::cleanup() {
+    const auto device = pRenderer->getMainDevice().logicalDevice;
+    UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
+    UT_Fn::cleanup_pipeline(device, pipeline);
+    UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
+}
 
 
 

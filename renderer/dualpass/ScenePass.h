@@ -33,11 +33,27 @@ private:
     VkFramebuffer opaqueFB{};
     VkPipeline opaquePipeline{};
     UT_GraphicsPipelinePSOs pso{};
-
     std::unique_ptr<RenderContainerOneSet> renderContainer;
-
-
 };
+
+// one color attachment. NO UBO buffer
+struct CompPass {
+    explicit CompPass(DualPassRenderer *renderer);
+    ~CompPass();
+    void prepare();
+    void recordCommandBuffer();
+    void cleanup();
+    void onSwapChainResize();
+private:
+    DualPassRenderer *pRenderer;
+    VkDescriptorSetLayout setLayout{};
+    VkDescriptorSet sets[2];
+    UT_GraphicsPipelinePSOs pso{};
+    VkPipeline pipeline{};
+    VkPipelineLayout pipelineLayout{};
+};
+
+
 
 
 LLVK_NAMESPACE_END

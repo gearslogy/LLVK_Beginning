@@ -14,6 +14,7 @@
 
 LLVK_NAMESPACE_BEGIN
 struct OpaqueScenePass;
+struct CompPass;
 struct DualPassRenderer : public VulkanRenderer{
     DualPassRenderer();
     ~DualPassRenderer();
@@ -22,6 +23,7 @@ struct DualPassRenderer : public VulkanRenderer{
     void render() override;
     void swapChainResize() override;
     friend struct OpaqueScenePass;
+    friend struct CompPass;
 public:
     struct {
         glm::mat4 proj;
@@ -33,7 +35,6 @@ public:
     VkDescriptorPool descPool{};
     VkDescriptorSetLayout hairDescSetLayout{};
     std::array<VkDescriptorSet,2> hairDescSets{};
-    std::array<VkDescriptorSet,2> gridSets{};
     void updateDualUBOs();
 private:
     // Resources
@@ -80,16 +81,8 @@ private:
 
     // for rendering opaque
     std::unique_ptr<OpaqueScenePass> opaqueScenePass;
-
-    // comp resources
-    void prepareComp();
-    void cleanupComp();
-    void recordComp();
-    std::array<VkDescriptorSet,2> compSets;
-    VkDescriptorSetLayout compSetLayout{};
-    VkPipeline compPipeline{};
-    VkPipelineLayout compPipelineLayout{};
-    UT_GraphicsPipelinePSOs compPso{};
+    // for comp
+    std::unique_ptr<CompPass> compPass;
 
 };
 
