@@ -13,10 +13,11 @@ LLVK_NAMESPACE_BEGIN
 struct CSMPass;
 class CSMRenderer : public VulkanRenderer {
 public:
+    // RAII
     struct ResourceManager {
-        VulkanRenderer *pRenderer{};
+        CSMRenderer *pRenderer{};
+        ~ResourceManager();
 
-        void cleanup();
         void loading();
         struct {
             GLTFLoader ground;
@@ -34,7 +35,7 @@ public:
             VmaUBOKTX2Texture d_tex_39;
             VmaUBOKTX2Texture d_ground;
         }textures;
-
+        VkSampler colorSampler{};
     };
 private:
 
