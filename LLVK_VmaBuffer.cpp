@@ -122,7 +122,7 @@ void VmaAttachment::createDepth32(uint32_t width, uint32_t height,
 
 
     descImageInfo.sampler = sampler;
-    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // finally need transition to this layout
     descImageInfo.imageView = view;
 }
 
@@ -145,7 +145,7 @@ void VmaAttachment::create2dArrayDepth32(uint32_t width, uint32_t height, uint32
     FnImage::createImageView(requiredObjects.device, imageViewCIO, view);
     //FnImage::createImageView(requiredObjects.device, image, format,aspect,1, 1, view);
     descImageInfo.sampler = sampler;
-    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // finally need transition to this layout
     descImageInfo.imageView = view;
 }
 

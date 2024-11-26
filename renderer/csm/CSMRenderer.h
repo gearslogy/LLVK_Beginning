@@ -12,6 +12,8 @@ LLVK_NAMESPACE_BEGIN
 
 struct CSMPass;
 class CSMRenderer : public VulkanRenderer {
+    static constexpr int32_t CASCADE_COUNT{4};
+    static constexpr int32_t shadow_map_size{2048};
 public:
     // RAII
     struct ResourceManager {
@@ -36,8 +38,22 @@ public:
             VmaUBOKTX2Texture d_ground;
         }textures;
         VkSampler colorSampler{};
+
     };
+    void prepare() override;
+    void render() override;
+    void cleanupObjects() override;
+
 private:
+    ResourceManager resourceManager{};
+    // depth relative objs
+    void prepareOffscreenDepth();
+    void prepareDepthRenderPass();
+    void prepareFramebuffer();
+    VkRenderPass depthRenderPass{};
+    VkSampler depthSampler{};
+    VmaAttachment depthAttachment{};
+    VkFramebuffer depthFramebuffer{};
 
 
 };

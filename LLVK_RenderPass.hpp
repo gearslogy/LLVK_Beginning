@@ -53,7 +53,7 @@ namespace FnRenderPass {
     constexpr VkAttachmentReference attachmentReference(uint32_t attachmentPosition , VkImageLayout imageLayout) {
         return {attachmentPosition, imageLayout};
     }
-    constexpr auto subPassDescription( const Concept::is_range auto &colorAttachmentRefs) {
+    constexpr auto subpassDescription( const Concept::is_range auto &colorAttachmentRefs) {
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = colorAttachmentRefs.size();
@@ -61,14 +61,14 @@ namespace FnRenderPass {
         subpass.pDepthStencilAttachment = nullptr;
         return subpass;
     }
-    constexpr auto subPassDescription() {
+    constexpr auto subpassDescription() {
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         return subpass;
     }
     constexpr auto subpassDescription( const Concept::is_range auto &colorAttachmentRefs,
         const VkAttachmentReference &depthRef) {
-        auto subpass = subPassDescription();
+        auto subpass = subpassDescription();
         subpass.colorAttachmentCount = colorAttachmentRefs.size();
         subpass.pColorAttachments = colorAttachmentRefs.data();
         subpass.pDepthStencilAttachment = &depthRef;
@@ -76,7 +76,7 @@ namespace FnRenderPass {
     }
     constexpr auto subpassDescription( const VkAttachmentReference &colorRef,
       const VkAttachmentReference &depthRef) {
-        auto subpass = subPassDescription();
+        auto subpass = subpassDescription();
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorRef;
         subpass.pDepthStencilAttachment = &depthRef;
