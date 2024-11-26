@@ -8,9 +8,9 @@
 #include "LLVK_GeomtryLoader.h"
 #include "LLVK_SYS.hpp"
 #include "VulkanRenderer.h"
+#include "renderer/public/GeometryContainers.h"
 LLVK_NAMESPACE_BEGIN
-
-struct CSMPass;
+    struct CSMPass;
 class CSMRenderer : public VulkanRenderer {
     static constexpr int32_t CASCADE_COUNT{4};
     static constexpr int32_t shadow_map_size{2048};
@@ -55,7 +55,18 @@ private:
     VmaAttachment depthAttachment{};
     VkFramebuffer depthFramebuffer{};
 
+    void drawObjects();
 
+    struct {
+        glm::mat4 proj;
+        glm::mat4 view;
+        glm::mat4 model;
+    }uboData;
+
+
+
+    VkDescriptorPool descPool{};
+    RenderContainerOneSet geoContainer{};
 };
 LLVK_NAMESPACE_END
 
