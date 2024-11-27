@@ -8,7 +8,7 @@
 #include "LLVK_GeomtryLoader.h"
 #include "LLVK_SYS.hpp"
 #include "VulkanRenderer.h"
-#include "renderer/public/GeometryContainers.h"
+
 LLVK_NAMESPACE_BEGIN
     struct CSMPass;
 class CSMRenderer : public VulkanRenderer {
@@ -55,18 +55,30 @@ private:
     VmaAttachment depthAttachment{};
     VkFramebuffer depthFramebuffer{};
 
-    void drawObjects();
+    void prepareUBOAndDesc();
 
     struct {
         glm::mat4 proj;
         glm::mat4 view;
         glm::mat4 model;
-    }uboData;
+    }uboData{};
 
+    struct UBOFramedBuffers{
+        std::array<VmaUBOBuffer, MAX_FRAMES_IN_FLIGHT> buffers;
+    };
+
+    UBOFramedBuffers uboGround{};
+    UBOFramedBuffers ubo29_01{};
+    UBOFramedBuffers ubo29_02{};
+    UBOFramedBuffers ubo29_03{};
+    UBOFramedBuffers ubo29_04{};
+    UBOFramedBuffers ubo35{};
+    UBOFramedBuffers ubo36{};
+    UBOFramedBuffers ubo39{};
 
 
     VkDescriptorPool descPool{};
-    RenderContainerOneSet geoContainer{};
+
 };
 LLVK_NAMESPACE_END
 

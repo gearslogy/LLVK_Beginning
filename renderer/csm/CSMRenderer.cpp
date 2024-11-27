@@ -99,8 +99,7 @@ void CSMRenderer::prepareFramebuffer() {
 
 }
 
-void CSMRenderer::drawObjects() {
-
+void CSMRenderer::prepareUBOAndDesc() {
     const auto &device = mainDevice.logicalDevice;
     std::array<VkDescriptorPoolSize, 2> poolSizes  = {{
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT},
@@ -109,12 +108,46 @@ void CSMRenderer::drawObjects() {
     VkDescriptorPoolCreateInfo createInfo = FnDescriptor::poolCreateInfo(poolSizes, 20 * MAX_FRAMES_IN_FLIGHT); //
     createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; // allow use free single/multi set: vkFreeDescriptorSets()
     auto result = vkCreateDescriptorPool(device, &createInfo, nullptr, &descPool);
+    if (result != VK_SUCCESS) throw std::runtime_error{"ERROR"};
 
-    geoContainer.setRequiredObjects({
-        this,  &descPool, {
+    // UBO create
+    auto createFramedUBO = [this](UBOFramedBuffers &ubo) {
+        for (auto &bf : ubo.buffers) {
+            setRequiredObjectsByRenderer(this, bf);
+            bf.createAndMapping(sizeof(uboData));
+        }
+    };
+    auto createFramedUBOs = [createFramedUBO](auto & ... ubo) { (createFramedUBO(ubo), ...);};
+    createFramedUBOs(uboGround, ubo29_01, ubo29_02, ubo29_03, ubo29_04, ubo35, ubo36, ubo39);
 
-        };
-    });
+    // update buffer. we do not update per every frame
+    constexpr auto identity = glm::mat4(1.0f);
+    auto [width, height] =  getSwapChainExtent();
+    auto &&mainCamera = getMainCamera();
+    const auto frame = getCurrentFrame();
+    mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
+    uboData.proj = mainCamera.projection();
+    uboData.proj[1][1] *= -1;
+    uboData.view = mainCamera.view();
+    uboData.model = glm::mat4(1.0f);
+
+    auto copyDataToFramedBuffer = [](UBOFramedBuffers &ubo, auto &data) {
+        for (auto &bf : ubo.buffers) {
+            memcpy(bf.mapped, &data, sizeof(uboData));
+        }
+    };
+    copyDataToFramedBuffer(uboGround,uboData);
+    //36: -3.59108 0 -0.8984 | 0 180 0
+    uboData.model = glm::mat4(1.0f) * glm::translate(identity,{-3.5108f, 0.0f , -0.8984f}) * glm::rotate(identity, {0.0f,-28.6f, 0.0f }) ;;
+
+
+    //39: 24 0 1.5 | 0 -28.6 0
+    //35: (7.066614747047424, 0.0, -47.99501860141754) | (0.0, 0.0, 0.0)
+    //29_0 (-2.7002276182174683, 0.0, 16.88442873954773)
+    //29_1 (22.42972767353058, 0.0, 16.88442873954773)
+    //29_2 (22.42972767353058, 0.0, -17.458569765090942)
+    //29_3 (-4.5874022245407104, 0.0, -17.458569765090942)
+
 }
 
 
