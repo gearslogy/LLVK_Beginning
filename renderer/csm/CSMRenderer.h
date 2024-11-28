@@ -10,7 +10,7 @@
 #include "VulkanRenderer.h"
 
 LLVK_NAMESPACE_BEGIN
-    struct CSMPass;
+struct CSMPass;
 class CSMRenderer : public VulkanRenderer {
     static constexpr int32_t CASCADE_COUNT{4};
     static constexpr int32_t shadow_map_size{2048};
@@ -61,23 +61,32 @@ private:
         glm::mat4 proj;
         glm::mat4 view;
         glm::mat4 model;
+        glm::vec4 instancesPositions[4]; //29-buildings instance position
     }uboData{};
 
     struct UBOFramedBuffers{
         std::array<VmaUBOBuffer, MAX_FRAMES_IN_FLIGHT> buffers;
     };
+    struct SetsFramed {
+        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> sets;
+    };
 
     UBOFramedBuffers uboGround{};
-    UBOFramedBuffers ubo29_01{};
-    UBOFramedBuffers ubo29_02{};
-    UBOFramedBuffers ubo29_03{};
-    UBOFramedBuffers ubo29_04{};
+    UBOFramedBuffers ubo29{};
     UBOFramedBuffers ubo35{};
     UBOFramedBuffers ubo36{};
     UBOFramedBuffers ubo39{};
+    SetsFramed setGround{};
+    SetsFramed set29{};
+    SetsFramed set35{};
+    SetsFramed set36{};
+    SetsFramed set39{};
+    VkDescriptorSetLayout sceneDescLayout{};
 
+    //depth sets
 
     VkDescriptorPool descPool{};
+    bool enableInstance{false};
 
 };
 LLVK_NAMESPACE_END

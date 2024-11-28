@@ -108,7 +108,7 @@ void DualPassRenderer::prepare() {
     for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
         std::array<VkWriteDescriptorSet,2> writeSets {
             // hair
-            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[currentFrame].descBufferInfo),
+            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
             FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &hairTex.descImageInfo),
         };
         vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);

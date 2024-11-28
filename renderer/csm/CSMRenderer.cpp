@@ -110,7 +110,7 @@ void CSMRenderer::prepareUBOAndDesc() {
     auto result = vkCreateDescriptorPool(device, &createInfo, nullptr, &descPool);
     if (result != VK_SUCCESS) throw std::runtime_error{"ERROR"};
 
-    // UBO create
+    // ---- UBO create
     auto createFramedUBO = [this](UBOFramedBuffers &ubo) {
         for (auto &bf : ubo.buffers) {
             setRequiredObjectsByRenderer(this, bf);
@@ -118,9 +118,9 @@ void CSMRenderer::prepareUBOAndDesc() {
         }
     };
     auto createFramedUBOs = [createFramedUBO](auto & ... ubo) { (createFramedUBO(ubo), ...);};
-    createFramedUBOs(uboGround, ubo29_01, ubo29_02, ubo29_03, ubo29_04, ubo35, ubo36, ubo39);
+    createFramedUBOs(uboGround, ubo29, ubo35, ubo36, ubo39);
 
-    // update buffer. we do not update per every frame
+    // ----update buffer. we do not update per every frame
     constexpr auto identity = glm::mat4(1.0f);
     auto [width, height] =  getSwapChainExtent();
     auto &&mainCamera = getMainCamera();
@@ -136,18 +136,44 @@ void CSMRenderer::prepareUBOAndDesc() {
             memcpy(bf.mapped, &data, sizeof(uboData));
         }
     };
-    copyDataToFramedBuffer(uboGround,uboData);
-    //36: -3.59108 0 -0.8984 | 0 180 0
-    uboData.model = glm::mat4(1.0f) * glm::translate(identity,{-3.5108f, 0.0f , -0.8984f}) * glm::rotate(identity, {0.0f,-28.6f, 0.0f }) ;;
+    copyDataToFramedBuffer(uboGround,uboData); // direct to ground
+    uboData.model = glm::translate(identity,{-3.5108f, 0.0f , -0.8984f}) * glm::rotate(identity,-180.6f, {0,1,0}) ;
+    copyDataToFramedBuffer(ubo36,uboData);
+    uboData.model = glm::translate(identity,{-24.0f, 0.0f , 1.5f}) * glm::rotate(identity,-28.6f, {0,1,0}) ;
+    copyDataToFramedBuffer(ubo39,uboData);
+    uboData.model = glm::translate(identity,{7.066614747047424, 0.0, -47.99501860141754}) ;
+    copyDataToFramedBuffer(ubo35,uboData);
+    // instanced 29
+    uboData.model = identity;
+    uboData.instancesPositions[0] = {-2.7002276182174683, 0.0, 16.88442873954773,1.0f};
+    uboData.instancesPositions[1] ={22.42972767353058, 0.0, 16.88442873954773,1.0f};
+    uboData.instancesPositions[2] ={22.42972767353058, 0.0, -17.458569765090942,1.0f};
+    uboData.instancesPositions[3] = {-4.5874022245407104, 0.0, -17.458569765090942,1.0f};
+    copyDataToFramedBuffer(ubo29,uboData);
 
+    // --- setlayout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS>;
+    using descPos = MetaDesc::desc_binding_position_t<0,1>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
+    const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
+    if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&sceneDescLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
 
-    //39: 24 0 1.5 | 0 -28.6 0
-    //35: (7.066614747047424, 0.0, -47.99501860141754) | (0.0, 0.0, 0.0)
-    //29_0 (-2.7002276182174683, 0.0, 16.88442873954773)
-    //29_1 (22.42972767353058, 0.0, 16.88442873954773)
-    //29_2 (22.42972767353058, 0.0, -17.458569765090942)
-    //29_3 (-4.5874022245407104, 0.0, -17.458569765090942)
+    std::array<VkDescriptorSetLayout,2> layouts = {sceneDescLayout, sceneDescLayout};
+    auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, setGround.sets.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set29.sets.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set35.sets.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set36.sets.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set39.sets.data());
 
+    // update sets
+    for (int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+        std::array<VkWriteDescriptorSet,2> writes = {
+            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboGround.buffers[i].descBufferInfo),
+            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &hairTex.descImageInfo),
+        };
+    }
 }
 
 

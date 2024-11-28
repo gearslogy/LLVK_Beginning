@@ -22,7 +22,6 @@ struct CSMPass {
     void prepare();
     void cleanup();
 
-
     void recordCommandBuffer();
     struct {
         glm::mat4 lightViewProj[cascade_count];
