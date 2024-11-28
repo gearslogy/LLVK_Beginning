@@ -15,6 +15,7 @@ class CSMRenderer : public VulkanRenderer {
     static constexpr int32_t CASCADE_COUNT{4};
     static constexpr int32_t shadow_map_size{2048};
 public:
+    friend struct CSMScenePass;
     // RAII
     struct ResourceManager {
         CSMRenderer *pRenderer{};
@@ -64,12 +65,8 @@ private:
         glm::vec4 instancesPositions[4]; //29-buildings instance position
     }uboData{};
 
-    struct UBOFramedBuffers{
-        std::array<VmaUBOBuffer, MAX_FRAMES_IN_FLIGHT> buffers;
-    };
-    struct SetsFramed {
-        std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> sets;
-    };
+    using UBOFramedBuffers = std::array<VmaUBOBuffer, MAX_FRAMES_IN_FLIGHT>;
+    using SetsFramed = std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT>;
 
     UBOFramedBuffers uboGround{};
     UBOFramedBuffers ubo29{};

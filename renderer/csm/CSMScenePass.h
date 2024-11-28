@@ -5,6 +5,8 @@
 #ifndef CSMSCENEPASS_H
 #define CSMSCENEPASS_H
 
+#include <LLVK_UT_Pipeline.hpp>
+
 #include "LLVK_SYS.hpp"
 
 LLVK_NAMESPACE_BEGIN
@@ -14,8 +16,14 @@ struct CSMScenePass {
     void prepare();
     void cleanup();
     void recordCommandBuffer();
-    CSMRenderer* pRenderer;
 
+
+private:
+    CSMRenderer* pRenderer;
+    VkPipelineLayout pipelineLayout{};
+    VkPipeline instancePipeline{};
+    VkPipeline normalPipeline{};
+    UT_GraphicsPipelinePSOs pso;
 
 };
 

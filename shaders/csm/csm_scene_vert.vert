@@ -12,19 +12,19 @@ layout ( set=0, binding=0) uniform UBOData {
 
 
 void main(){
-    if(enableInstance){
+    if(enableInstance == 1){
         vec3 instance_pos   = ubo.instancePos[gl_InstanceIndex].xyz;
         vec3 finalPosition = P + instance_pos;
         vec4 worldPos = vec4(finalPosition, 1);
         gl_Position = ubo.proj * ubo.view * ubo.model * worldPos;
-        fragPosition = worldPos;
+        fragPosition = worldPos.xyz;
         fragN = normalize(N);
         fragTexCoord = uv0;
     }
     else{
-        vector worldPos =  ubo.proj * ubo.view * ubo.model * vec4(P, 1);
+        vec4 worldPos =  ubo.proj * ubo.view * ubo.model * vec4(P, 1);
         gl_Position = worldPos;
-        fragPosition = worldPos;
+        fragPosition = worldPos.xyz;
         fragN = normalize(N);
         fragTexCoord = uv0;
     }

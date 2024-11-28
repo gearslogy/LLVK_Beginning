@@ -51,7 +51,11 @@ void CSMRenderer::cleanupObjects() {
     depthAttachment.cleanup();
     UT_Fn::cleanup_render_pass(device, depthRenderPass);
     UT_Fn::cleanup_framebuffer(device,depthFramebuffer);
-
+    auto cleanFramedUBOs = [](auto &&... framedUBO) {
+        (UT_Fn::cleanup_range_resources(framedUBO), ...);
+    };
+    cleanFramedUBOs(uboGround, ubo29,ubo35,ubo36,ubo39);
+    vkDestroyDescriptorPool(device, descPool, nullptr);
 }
 void CSMRenderer::prepareOffscreenDepth() {
     const auto &device = getMainDevice().logicalDevice;
@@ -91,7 +95,7 @@ void CSMRenderer::prepareDepthRenderPass() {
 void CSMRenderer::prepareFramebuffer() {
     const auto &device = getMainDevice().logicalDevice;
     std::array<VkImageView, 1> attachments{
-        depthAttachment.view()
+        depthAttachment.view
     };
     auto fbCIO  = FnRenderPass::framebufferCreateInfo(shadow_map_size,shadow_map_size, depthRenderPass,attachments);
     fbCIO.layers = CASCADE_COUNT;
@@ -111,8 +115,8 @@ void CSMRenderer::prepareUBOAndDesc() {
     if (result != VK_SUCCESS) throw std::runtime_error{"ERROR"};
 
     // ---- UBO create
-    auto createFramedUBO = [this](UBOFramedBuffers &ubo) {
-        for (auto &bf : ubo.buffers) {
+    auto createFramedUBO = [this](UBOFramedBuffers &fbs) {
+        for (auto &bf : fbs) {
             setRequiredObjectsByRenderer(this, bf);
             bf.createAndMapping(sizeof(uboData));
         }
@@ -131,8 +135,8 @@ void CSMRenderer::prepareUBOAndDesc() {
     uboData.view = mainCamera.view();
     uboData.model = glm::mat4(1.0f);
 
-    auto copyDataToFramedBuffer = [](UBOFramedBuffers &ubo, auto &data) {
-        for (auto &bf : ubo.buffers) {
+    auto copyDataToFramedBuffer = [](UBOFramedBuffers &fbs, auto &data) {
+        for (auto &bf : fbs) {
             memcpy(bf.mapped, &data, sizeof(uboData));
         }
     };
@@ -151,29 +155,40 @@ void CSMRenderer::prepareUBOAndDesc() {
     uboData.instancesPositions[3] = {-4.5874022245407104, 0.0, -17.458569765090942,1.0f};
     copyDataToFramedBuffer(ubo29,uboData);
 
-    // --- setlayout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
-    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS>;
-    using descPos = MetaDesc::desc_binding_position_t<0,1>;
-    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    // --- set layout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>;
+    using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
     if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&sceneDescLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
 
     std::array<VkDescriptorSetLayout,2> layouts = {sceneDescLayout, sceneDescLayout};
     auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
-    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, setGround.sets.data());
-    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set29.sets.data());
-    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set35.sets.data());
-    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set36.sets.data());
-    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set39.sets.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, setGround.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set29.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set35.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set36.data());
+    UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set39.data());
 
     // update sets
-    for (int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
-        std::array<VkWriteDescriptorSet,2> writes = {
-            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboGround.buffers[i].descBufferInfo),
-            FnDescriptor::writeDescriptorSet(hairDescSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &hairTex.descImageInfo),
-        };
-    }
+    auto updateSets= [&device](const UBOFramedBuffers &framedUbo, const SetsFramed&framedSet, const auto &... textures) {
+        [&]<std::size_t... I>(std::index_sequence<I...>) {
+            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                std::array<VkWriteDescriptorSet, 1 + sizeof...(textures)> writes = {
+                    FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &framedUbo[i].descBufferInfo),
+                    FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        I + 1, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
+                };
+                vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+            }
+        }(std::make_index_sequence<sizeof...(textures)>{});
+    };
+    updateSets(uboGround, setGround, resourceManager.textures.d_ground, depthAttachment);
+    updateSets(ubo29, set29, resourceManager.textures.d_tex_29,depthAttachment);
+    updateSets(ubo35, set35, resourceManager.textures.d_tex_35,depthAttachment);
+    updateSets(ubo36, set36, resourceManager.textures.d_tex_36,depthAttachment);
+    updateSets(ubo39, set39, resourceManager.textures.d_tex_39,depthAttachment);
 }
 
 
