@@ -6,6 +6,7 @@
 
 #include <LLVK_Descriptor.hpp>
 #include <LLVK_RenderPass.hpp>
+#include <LLVK_UT_VmaBuffer.hpp>
 
 #include "CSMDepthPass.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
@@ -22,7 +23,14 @@ void CSMRenderer::ResourceManager::loading() {
     geos.geo_29.load("content/scene/csm/resources/gpu_models/29_WatchTower.gltf");
     geos.geo_35.load("content/scene/csm/resources/gpu_models/35_MedBuilding.gltf");
     geos.geo_36.load("content/scene/csm/resources/gpu_models/36_MedBuilding.gltf");
-    geos.geo_36.load("content/scene/csm/resources/gpu_models/39_MedBuilding.gltf");
+    geos.geo_39.load("content/scene/csm/resources/gpu_models/39_MedBuilding.gltf");
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.ground, geos.geometryBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.geo_29, geos.geometryBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.geo_35, geos.geometryBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.geo_36, geos.geometryBufferManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(geos.geo_39, geos.geometryBufferManager);
+
+
     colorSampler =  FnImage::createImageSampler(phyDevice, device);
     textures.d_ground.create("content/scene/csm/resources/gpu_textures/ground_gpu_D.ktx2",colorSampler);
     textures.d_tex_29.create("content/scene/csm/resources/gpu_textures/29_WatchTower_gpu_D.ktx2",colorSampler);
@@ -31,7 +39,7 @@ void CSMRenderer::ResourceManager::loading() {
     textures.d_tex_39.create("content/scene/csm/resources/gpu_textures/39_MedBuilding_gpu_D.ktx2",colorSampler);
 }
 
-CSMRenderer::ResourceManager::~ResourceManager() {
+void CSMRenderer::ResourceManager::cleanup() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
     UT_Fn::cleanup_resources(geos.geometryBufferManager,textures.d_ground, textures.d_tex_29,
      textures.d_tex_35, textures.d_tex_36,textures.d_tex_39);
@@ -49,10 +57,23 @@ void CSMRenderer::prepare() {
     resourceManager.pRenderer = this;
     resourceManager.loading();
     prepareUBOAndDesc();
+    scenePass->prepare();
+
+    mainCamera.setRotation({-10.582830028019421, -12.201134395235595, -1.7394687750417736e-05});
+    mainCamera.mPosition = {-7.345118601417127, 16.530968869105806, 69.05524044127405};
+    mainCamera.mMoveSpeed = 10;
+    mainCamera.updateCameraVectors();
 
 }
 void CSMRenderer::render() {
-
+    updateUBO();
+    auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
+    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
+    scenePass->recordCommandBuffer();
+    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
+    submitMainCommandBuffer();
+    presentMainCommandBufferFrame();
 }
 void CSMRenderer::cleanupObjects() {
     const auto &device = getMainDevice().logicalDevice;
@@ -61,6 +82,8 @@ void CSMRenderer::cleanupObjects() {
     };
     cleanFramedUBOs(uboGround, ubo29,ubo35,ubo36,ubo39);
     vkDestroyDescriptorPool(device, descPool, nullptr);
+    scenePass->cleanup();
+    resourceManager.cleanup();
 }
 
 void CSMRenderer::prepareUBOAndDesc() {
@@ -84,41 +107,11 @@ void CSMRenderer::prepareUBOAndDesc() {
     auto createFramedUBOs = [createFramedUBO](auto & ... ubo) { (createFramedUBO(ubo), ...);};
     createFramedUBOs(uboGround, ubo29, ubo35, ubo36, ubo39);
 
-    // ----update buffer. we do not update per every frame
-    constexpr auto identity = glm::mat4(1.0f);
-    auto [width, height] =  getSwapChainExtent();
-    auto &&mainCamera = getMainCamera();
-    const auto frame = getCurrentFrame();
-    mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
-    uboData.proj = mainCamera.projection();
-    uboData.proj[1][1] *= -1;
-    uboData.view = mainCamera.view();
-    uboData.model = glm::mat4(1.0f);
-
-    auto copyDataToFramedBuffer = [](UBOFramedBuffers &fbs, auto &data) {
-        for (auto &bf : fbs) {
-            memcpy(bf.mapped, &data, sizeof(uboData));
-        }
-    };
-    copyDataToFramedBuffer(uboGround,uboData); // direct to ground
-    uboData.model = glm::translate(identity,{-3.5108f, 0.0f , -0.8984f}) * glm::rotate(identity,-180.6f, {0,1,0}) ;
-    copyDataToFramedBuffer(ubo36,uboData);
-    uboData.model = glm::translate(identity,{-24.0f, 0.0f , 1.5f}) * glm::rotate(identity,-28.6f, {0,1,0}) ;
-    copyDataToFramedBuffer(ubo39,uboData);
-    uboData.model = glm::translate(identity,{7.066614747047424, 0.0, -47.99501860141754}) ;
-    copyDataToFramedBuffer(ubo35,uboData);
-    // instanced 29
-    uboData.model = identity;
-    uboData.instancesPositions[0] = {-2.7002276182174683, 0.0, 16.88442873954773,1.0f};
-    uboData.instancesPositions[1] ={22.42972767353058, 0.0, 16.88442873954773,1.0f};
-    uboData.instancesPositions[2] ={22.42972767353058, 0.0, -17.458569765090942,1.0f};
-    uboData.instancesPositions[3] = {-4.5874022245407104, 0.0, -17.458569765090942,1.0f};
-    copyDataToFramedBuffer(ubo29,uboData);
 
     // --- set layout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
     using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS>;
     using descPos = MetaDesc::desc_binding_position_t<0,1>;
-    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
     if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&sceneDescLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
@@ -149,6 +142,41 @@ void CSMRenderer::prepareUBOAndDesc() {
     updateSets(ubo35, set35, resourceManager.textures.d_tex_35);
     updateSets(ubo36, set36, resourceManager.textures.d_tex_36);
     updateSets(ubo39, set39, resourceManager.textures.d_tex_39);
+}
+
+void CSMRenderer::updateUBO() {
+    // ----update buffer. we do not update per every frame
+    constexpr auto identity = glm::mat4(1.0f);
+    auto [width, height] =  getSwapChainExtent();
+    auto &&mainCamera = getMainCamera();
+    const auto frame = getCurrentFrame();
+    mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
+    uboData.proj = mainCamera.projection();
+    uboData.proj[1][1] *= -1;
+    uboData.view = mainCamera.view();
+    uboData.model = glm::mat4(1.0f);
+
+    auto copyDataToFramedBuffer = [](UBOFramedBuffers &fbs, auto &data) {
+        for (auto &bf : fbs) {
+            memcpy(bf.mapped, &data, sizeof(uboData));
+        }
+    };
+    copyDataToFramedBuffer(uboGround,uboData); // direct to ground
+    uboData.model = glm::translate(identity,{-3.5108f, 0.0f , -0.8984f}) * glm::rotate(identity,-180.6f, {0,1,0}) ;
+    copyDataToFramedBuffer(ubo36,uboData);
+
+    uboData.model = glm::translate(identity,{24.0f, 0.0f , 1.5f}) * glm::rotate(identity,-28.6f, {0,1,0}) ;
+    copyDataToFramedBuffer(ubo39,uboData);
+
+    uboData.model = glm::translate(identity,{7.066614747047424, 0.0, -47.99501860141754}) ;
+    copyDataToFramedBuffer(ubo35,uboData);
+    // instanced 29
+    uboData.model = identity;
+    uboData.instancesPositions[0] = {-2.7002276182174683, 0.0, 16.88442873954773,1.0f};
+    uboData.instancesPositions[1] ={22.42972767353058, 0.0, 16.88442873954773,1.0f};
+    uboData.instancesPositions[2] ={22.42972767353058, 0.0, -17.458569765090942,1.0f};
+    uboData.instancesPositions[3] = {-4.5874022245407104, 0.0, -17.458569765090942,1.0f};
+    copyDataToFramedBuffer(ubo29,uboData);
 }
 
 

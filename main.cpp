@@ -14,7 +14,7 @@
 #include "renderer/indirectdraw/IndirectDrawRenderer.h"
 #include "renderer/dualpass/ScenePass.h"
 #include "renderer/dualpass/DualPassRenderer.h"
-
+#include "renderer/csm/CSMRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -26,7 +26,8 @@ int main() {
     //LLVK::InstanceRenderer app;
     //LLVK::InstanceRendererV2 app;
     //LLVK::IndirectRenderer app;
-    LLVK::DualPassRenderer app;
+    //LLVK::DualPassRenderer app;
+    LLVK::CSMRenderer app;
     try {
         app.run();
     }

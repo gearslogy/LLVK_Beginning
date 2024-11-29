@@ -21,7 +21,7 @@ public:
     // RAII
     struct ResourceManager {
         CSMRenderer *pRenderer{};
-        ~ResourceManager();
+        void cleanup();
 
         void loading();
         struct {
@@ -52,6 +52,7 @@ public:
 private:
     ResourceManager resourceManager{};
     void prepareUBOAndDesc();
+    void updateUBO();
 
     struct {
         glm::mat4 proj;

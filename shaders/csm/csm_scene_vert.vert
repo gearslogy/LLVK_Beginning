@@ -4,9 +4,9 @@
 layout(constant_id = 0 ) const int enableInstance = 0;
 
 layout ( set=0, binding=0) uniform UBOData {
-    mat4 model;
-    mat4 view;
     mat4 proj;
+    mat4 view;
+    mat4 model;
     vec4 instancePos[4]; // 29-geometry will using this position
 }ubo;
 

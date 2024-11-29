@@ -54,6 +54,12 @@ void CSMScenePass::recordCommandBuffer() {
     auto renderPassBeginInfo = FnCommand::renderPassBeginInfo(pRenderer->getMainFramebuffer(), pRenderer->getMainRenderPass(), pRenderer->getSwapChainExtent(), clearValues);
     const auto &cmdBuf = pRenderer->getMainCommandBuffer();
     vkCmdBeginRenderPass(cmdBuf,&renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+    const auto [width , height]= pRenderer->getSwapChainExtent();
+    auto viewport = FnCommand::viewport(width, height );
+    auto scissor = FnCommand::scissor(width, height );
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
+
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , normalPipeline);
     // render ground
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
