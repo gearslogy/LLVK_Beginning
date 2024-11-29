@@ -18,6 +18,7 @@ DualPassRenderer::DualPassRenderer() {
     mainCamera.mMoveSpeed = 0.01;
     opaqueScenePass = std::make_unique<OpaqueScenePass>(this);
     compPass = std::make_unique<CompPass>(this);
+    mainCamera.updateCameraVectors();// must update once
 }
 DualPassRenderer::~DualPassRenderer() = default;
 
