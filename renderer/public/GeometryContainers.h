@@ -18,11 +18,11 @@ namespace UT_GeometryContainer{
     template<typename T>
     concept is_gltf_part = std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<T>>, GLTFLoader::Part>;
 
-    inline void renderPart(VkCommandBuffer cmdBuf, const GLTFLoader::Part * part) {
+    inline void renderPart(VkCommandBuffer cmdBuf, const GLTFLoader::Part * part, uint32_t instanceCount = 1) {
         VkDeviceSize offsets[1] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, &part->verticesBuffer, offsets);
         vkCmdBindIndexBuffer(cmdBuf,part->indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexed(cmdBuf, part->indices.size(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmdBuf, part->indices.size(), instanceCount, 0, 0, 0);
     }
 
 }

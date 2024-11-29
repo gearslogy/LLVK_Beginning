@@ -2,7 +2,7 @@
 // Created by liuya on 11/8/2024.
 //
 
-#include "CSMPass.h"
+#include "CSMDepthPass.h"
 
 #include <LLVK_Descriptor.hpp>
 
@@ -12,10 +12,10 @@
 LLVK_NAMESPACE_BEGIN
 
 
-CSMPass::CSMPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool):pRenderer(renderer),pDescriptorPool(descPool){
+CSMDepthPass::CSMDepthPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool):pRenderer(renderer),pDescriptorPool(descPool){
 }
 
-void CSMPass::prepare() {
+void CSMDepthPass::prepare() {
     prepareDepthResources();
     prepareDepthRenderPass();
     prepareDescriptorSets();
@@ -23,7 +23,7 @@ void CSMPass::prepare() {
     prepareUniformBuffers();
 }
 
-void CSMPass::cleanup() {
+void CSMDepthPass::cleanup() {
     auto device = pRenderer->getMainDevice().logicalDevice;
     UT_Fn::cleanup_resources(depthAttachment);
     UT_Fn::cleanup_sampler(device, depthSampler);
@@ -35,14 +35,14 @@ void CSMPass::cleanup() {
     UT_Fn::cleanup_descriptor_set_layout(device, depthPOGeneric.setLayout);
 }
 
-void CSMPass::prepareDepthResources() {
+void CSMDepthPass::prepareDepthResources() {
     auto device = pRenderer->getMainDevice().logicalDevice;
     depthSampler = FnImage::createDepthSampler(device);
     setRequiredObjectsByRenderer(pRenderer, depthAttachment);
     depthAttachment.create2dArrayDepth32(width,width, cascade_count, depthSampler);
 }
 
-void CSMPass::prepareDepthRenderPass() {
+void CSMDepthPass::prepareDepthRenderPass() {
     VkAttachmentDescription attachmentDescription{};
     attachmentDescription.format = depthAttachment.format;
     std::cout << "[[CSMPass::prepareDepthRenderPass]]:depth attachment format: " << magic_enum::enum_name(depthAttachment.format) << std::endl;
@@ -105,7 +105,7 @@ void CSMPass::prepareDepthRenderPass() {
     UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &depthFramebuffer);
 
 }
-void CSMPass::prepareDescriptorSets() {
+void CSMDepthPass::prepareDescriptorSets() {
     // only set=0. binding =0 UBO, binding=1 albedoTex
     const auto &mainDevice = pRenderer->getMainDevice();
     const auto &device = mainDevice.logicalDevice;
@@ -119,7 +119,7 @@ void CSMPass::prepareDescriptorSets() {
     UT_Fn::invoke_and_check("Error create uboDescSetLayout set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &depthPOGeneric.setLayout);
 
 }
-void CSMPass::preparePipelines() {
+void CSMDepthPass::preparePipelines() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
     {
         const auto vertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_vert.spv",  device);
@@ -143,7 +143,7 @@ void CSMPass::preparePipelines() {
 }
 
 
-void CSMPass::prepareUniformBuffers() {
+void CSMDepthPass::prepareUniformBuffers() {
     setRequiredObjectsByRenderer(pRenderer, uboBuffers[0], uboBuffers[1]);
     for(auto &ubo : uboBuffers)
         ubo.createAndMapping(sizeof(uboData));
@@ -151,12 +151,12 @@ void CSMPass::prepareUniformBuffers() {
 
 
 
-void CSMPass::recordCommandBuffer() {
+void CSMDepthPass::recordCommandBuffer() {
 
 }
 
 
-void CSMPass::updateCascade() {
+void CSMDepthPass::updateCascade() {
 
 }
 

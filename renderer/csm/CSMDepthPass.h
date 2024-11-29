@@ -14,8 +14,8 @@
 LLVK_NAMESPACE_BEGIN
 class VulkanRenderer;
 
-struct CSMPass {
-    CSMPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool);
+struct CSMDepthPass {
+    CSMDepthPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool);
 
     static constexpr uint32_t width = 2048;
     static constexpr uint32_t cascade_count = 4;

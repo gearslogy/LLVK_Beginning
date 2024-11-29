@@ -17,7 +17,6 @@ struct CSMScenePass {
     void cleanup();
     void recordCommandBuffer();
 
-
 private:
     CSMRenderer* pRenderer;
     VkPipelineLayout pipelineLayout{};

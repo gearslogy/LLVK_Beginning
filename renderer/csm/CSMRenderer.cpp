@@ -7,9 +7,10 @@
 #include <LLVK_Descriptor.hpp>
 #include <LLVK_RenderPass.hpp>
 
-#include "CSMPass.h"
+#include "CSMDepthPass.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "LLVK_RenderPass.hpp"
+#include "CSMScenePass.h"
 LLVK_NAMESPACE_BEGIN
 void CSMRenderer::ResourceManager::loading() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
@@ -38,69 +39,28 @@ CSMRenderer::ResourceManager::~ResourceManager() {
 
 }
 
+CSMRenderer::CSMRenderer() {
+    scenePass = std::make_unique<CSMScenePass>(this);
+}
+CSMRenderer::~CSMRenderer() = default;
+
+
 void CSMRenderer::prepare() {
     resourceManager.pRenderer = this;
     resourceManager.loading();
+    prepareUBOAndDesc();
+
 }
 void CSMRenderer::render() {
 
 }
 void CSMRenderer::cleanupObjects() {
     const auto &device = getMainDevice().logicalDevice;
-    UT_Fn::cleanup_sampler(device, depthSampler);
-    depthAttachment.cleanup();
-    UT_Fn::cleanup_render_pass(device, depthRenderPass);
-    UT_Fn::cleanup_framebuffer(device,depthFramebuffer);
     auto cleanFramedUBOs = [](auto &&... framedUBO) {
         (UT_Fn::cleanup_range_resources(framedUBO), ...);
     };
     cleanFramedUBOs(uboGround, ubo29,ubo35,ubo36,ubo39);
     vkDestroyDescriptorPool(device, descPool, nullptr);
-}
-void CSMRenderer::prepareOffscreenDepth() {
-    const auto &device = getMainDevice().logicalDevice;
-    depthSampler = FnImage::createDepthSampler(device);
-    setRequiredObjectsByRenderer(this, depthAttachment);
-    // render target
-    depthAttachment.create2dArrayDepth32(2048,2048, CASCADE_COUNT,depthSampler);
-    // render pass
-    prepareDepthRenderPass();
-    prepareFramebuffer();
-}
-void CSMRenderer::prepareDepthRenderPass() {
-    auto depthATM = FnRenderPass::depthAttachmentDescription(VK_FORMAT_R32_SFLOAT);
-    auto depthATM_Ref = FnRenderPass::attachmentReference(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;  // before renderpass
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;    // before stage
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;   // after stage
-    dependency.srcAccessMask = 0; // before access 首次写入，不需要等待之前的访问
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT ; // after access
-    auto subpassDesc = FnRenderPass::subpassDescription();
-    subpassDesc.colorAttachmentCount = 0;
-    subpassDesc.pDepthStencilAttachment = &depthATM_Ref;
-
-    const std::array attachments = { depthATM};
-    auto renderPassCIO = FnRenderPass::renderPassCreateInfo(attachments);
-    renderPassCIO.subpassCount = 1;
-    renderPassCIO.pSubpasses = &subpassDesc;
-    renderPassCIO.dependencyCount = 1;
-    renderPassCIO.pDependencies = &dependency;
-    const auto device = getMainDevice().logicalDevice;
-    const auto ret = vkCreateRenderPass(device, &renderPassCIO, nullptr, &depthRenderPass);
-    if(ret != VK_SUCCESS) throw std::runtime_error{"ERROR"};
-}
-void CSMRenderer::prepareFramebuffer() {
-    const auto &device = getMainDevice().logicalDevice;
-    std::array<VkImageView, 1> attachments{
-        depthAttachment.view
-    };
-    auto fbCIO  = FnRenderPass::framebufferCreateInfo(shadow_map_size,shadow_map_size, depthRenderPass,attachments);
-    fbCIO.layers = CASCADE_COUNT;
-    if (vkCreateFramebuffer(device, &fbCIO, nullptr, &depthFramebuffer)!= VK_SUCCESS) throw std::runtime_error{"ERROR"};
-
 }
 
 void CSMRenderer::prepareUBOAndDesc() {
@@ -156,9 +116,9 @@ void CSMRenderer::prepareUBOAndDesc() {
     copyDataToFramedBuffer(ubo29,uboData);
 
     // --- set layout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
-    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>;
-    using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
-    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS>;
+    using descPos = MetaDesc::desc_binding_position_t<0,1>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
     if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&sceneDescLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
@@ -184,11 +144,11 @@ void CSMRenderer::prepareUBOAndDesc() {
             }
         }(std::make_index_sequence<sizeof...(textures)>{});
     };
-    updateSets(uboGround, setGround, resourceManager.textures.d_ground, depthAttachment);
-    updateSets(ubo29, set29, resourceManager.textures.d_tex_29,depthAttachment);
-    updateSets(ubo35, set35, resourceManager.textures.d_tex_35,depthAttachment);
-    updateSets(ubo36, set36, resourceManager.textures.d_tex_36,depthAttachment);
-    updateSets(ubo39, set39, resourceManager.textures.d_tex_39,depthAttachment);
+    updateSets(uboGround, setGround, resourceManager.textures.d_ground);
+    updateSets(ubo29, set29, resourceManager.textures.d_tex_29);
+    updateSets(ubo35, set35, resourceManager.textures.d_tex_35);
+    updateSets(ubo36, set36, resourceManager.textures.d_tex_36);
+    updateSets(ubo39, set39, resourceManager.textures.d_tex_39);
 }
 
 

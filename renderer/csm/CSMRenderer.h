@@ -10,12 +10,14 @@
 #include "VulkanRenderer.h"
 
 LLVK_NAMESPACE_BEGIN
-struct CSMPass;
+struct CSMDepthPass;
+struct CSMScenePass;
 class CSMRenderer : public VulkanRenderer {
     static constexpr int32_t CASCADE_COUNT{4};
     static constexpr int32_t shadow_map_size{2048};
 public:
     friend struct CSMScenePass;
+    friend struct CSMDepthPass;
     // RAII
     struct ResourceManager {
         CSMRenderer *pRenderer{};
@@ -41,21 +43,14 @@ public:
         VkSampler colorSampler{};
 
     };
+    CSMRenderer();
+    ~CSMRenderer();
     void prepare() override;
     void render() override;
     void cleanupObjects() override;
 
 private:
     ResourceManager resourceManager{};
-    // depth relative objs
-    void prepareOffscreenDepth();
-    void prepareDepthRenderPass();
-    void prepareFramebuffer();
-    VkRenderPass depthRenderPass{};
-    VkSampler depthSampler{};
-    VmaAttachment depthAttachment{};
-    VkFramebuffer depthFramebuffer{};
-
     void prepareUBOAndDesc();
 
     struct {
@@ -83,7 +78,7 @@ private:
     //depth sets
 
     VkDescriptorPool descPool{};
-    bool enableInstance{false};
+    std::unique_ptr<CSMScenePass> scenePass;
 
 };
 LLVK_NAMESPACE_END
