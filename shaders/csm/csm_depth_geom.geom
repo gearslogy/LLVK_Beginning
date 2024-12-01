@@ -8,7 +8,7 @@ layout(location = 0) in vec2 uv0[];    // 接收顶点着色器输出的纹理�
 layout(location = 0) out vec2 out_uv0; //
 
 // Cascade矩阵UBO
-layout(set = 0, binding = 0) uniform CascadeUBO {
+layout(set = 0, binding = 1) uniform CascadeUBO {
     mat4 lightViewProj[cascade_count];
 } ubo;
 

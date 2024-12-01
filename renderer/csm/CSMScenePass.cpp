@@ -10,12 +10,6 @@ CSMScenePass::CSMScenePass(CSMRenderer *rd) : pRenderer(rd){}
 
 void CSMScenePass::prepare() {
     const auto &device = pRenderer->mainDevice.logicalDevice;
-    // pipeline layout
-    const std::array layouts{pRenderer->sceneDescLayout};
-    VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(layouts);
-    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device,
-        &pipelineLayoutCIO,nullptr, &pipelineLayout );
-
 
     uint32_t enableInstance{0};
     VkSpecializationMapEntry specMapEntry = {0,0, sizeof(uint32_t)};
@@ -32,7 +26,7 @@ void CSMScenePass::prepare() {
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
 
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);
-    pso.setPipelineLayout(pipelineLayout);
+    pso.setPipelineLayout(pRenderer->pipelineLayout);
     pso.setRenderPass(pRenderer->getMainRenderPass());
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), normalPipeline);
     enableInstance = 1;
@@ -44,7 +38,6 @@ void CSMScenePass::prepare() {
 void CSMScenePass::cleanup() {
     const auto &device = pRenderer->mainDevice.logicalDevice;
     UT_Fn::cleanup_pipeline(device, instancePipeline, normalPipeline);
-    UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
 }
 
 void CSMScenePass::recordCommandBuffer() {
@@ -60,36 +53,7 @@ void CSMScenePass::recordCommandBuffer() {
     vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
-    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , normalPipeline);
-    // render ground
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &pRenderer->setGround[pRenderer->getCurrentFrame()] ,
-      0, nullptr);
-    UT_GeometryContainer::renderPart(cmdBuf, &pRenderer->resourceManager.geos.ground.parts[0]);
-
-    // render 35
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &pRenderer->set35[pRenderer->getCurrentFrame()] ,
-      0, nullptr);
-    UT_GeometryContainer::renderPart(cmdBuf, &pRenderer->resourceManager.geos.geo_35.parts[0]);
-    // render 36
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &pRenderer->set36[pRenderer->getCurrentFrame()] ,
-      0, nullptr);
-    UT_GeometryContainer::renderPart(cmdBuf, &pRenderer->resourceManager.geos.geo_36.parts[0]);
-    // render 39
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &pRenderer->set39[pRenderer->getCurrentFrame()] ,
-      0, nullptr);
-    UT_GeometryContainer::renderPart(cmdBuf, &pRenderer->resourceManager.geos.geo_39.parts[0]);
-
-    // render instance geometry
-    constexpr auto instanceCount = 4;
-    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , instancePipeline);
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-       0, 1, &pRenderer->set29[pRenderer->getCurrentFrame()] ,
-       0, nullptr);
-    UT_GeometryContainer::renderPart(cmdBuf, &pRenderer->resourceManager.geos.geo_29.parts[0], instanceCount);
+    pRenderer->renderGeometry(normalPipeline, instancePipeline);
     vkCmdEndRenderPass(cmdBuf);
 }
 

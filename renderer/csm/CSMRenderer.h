@@ -44,7 +44,7 @@ public:
 
     };
     CSMRenderer();
-    ~CSMRenderer();
+    ~CSMRenderer() override;
     void prepare() override;
     void render() override;
     void cleanupObjects() override;
@@ -74,12 +74,15 @@ private:
     SetsFramed set35{};
     SetsFramed set36{};
     SetsFramed set39{};
-    VkDescriptorSetLayout sceneDescLayout{};
+    VkDescriptorSetLayout descSetLayout{};
+    VkPipelineLayout pipelineLayout{};
 
+    void renderGeometry(VkPipeline normalPipeline, VkPipeline instancePipeline) const;
     //depth sets
 
     VkDescriptorPool descPool{};
     std::unique_ptr<CSMScenePass> scenePass;
+
 
 };
 LLVK_NAMESPACE_END

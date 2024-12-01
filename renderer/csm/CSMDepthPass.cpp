@@ -8,17 +8,15 @@
 
 #include "LLVK_Image.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
-#include "VulkanRenderer.h"
+#include "CSMRenderer.h"
 LLVK_NAMESPACE_BEGIN
 
 
-CSMDepthPass::CSMDepthPass(const VulkanRenderer *renderer, const VkDescriptorPool *descPool):pRenderer(renderer),pDescriptorPool(descPool){
-}
+CSMDepthPass::CSMDepthPass(const CSMRenderer *renderer):pRenderer(renderer){}
 
 void CSMDepthPass::prepare() {
     prepareDepthResources();
     prepareDepthRenderPass();
-    prepareDescriptorSets();
     preparePipelines();
     prepareUniformBuffers();
 }
@@ -30,9 +28,7 @@ void CSMDepthPass::cleanup() {
     vkDestroyRenderPass(device, depthRenderPass, nullptr);
     vkDestroyFramebuffer(device, depthFramebuffer, nullptr);
     UT_Fn::cleanup_range_resources(uboBuffers);
-    UT_Fn::cleanup_pipeline_layout(device, depthPOGeneric.pipelineLayout);
-    UT_Fn::cleanup_pipeline(device, depthPOGeneric.pipeline);
-    UT_Fn::cleanup_descriptor_set_layout(device, depthPOGeneric.setLayout);
+    UT_Fn::cleanup_pipeline(device, normalPipeline, instancePipeline);
 }
 
 void CSMDepthPass::prepareDepthResources() {
@@ -100,45 +96,44 @@ void CSMDepthPass::prepareDepthRenderPass() {
     framebufferInfo.attachmentCount = 1;
     framebufferInfo.pAttachments = &depthAttachment.view;
     framebufferInfo.width = width;           // FIXED shadow map size;
-    framebufferInfo.height = width;         // FIXED shadow map size;
-    framebufferInfo.layers = 1;
-    UT_Fn::invoke_and_check("create framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &depthFramebuffer);
+    framebufferInfo.height = width;          // FIXED shadow map size;
+    framebufferInfo.layers = cascade_count;
+    UT_Fn::invoke_and_check("create csm framebuffer failed", vkCreateFramebuffer,device, &framebufferInfo, nullptr, &depthFramebuffer);
 
 }
-void CSMDepthPass::prepareDescriptorSets() {
-    // only set=0. binding =0 UBO, binding=1 albedoTex
-    const auto &mainDevice = pRenderer->getMainDevice();
-    const auto &device = mainDevice.logicalDevice;
-    const auto &physicalDevice = mainDevice.physicalDevice;
 
-    auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_GEOMETRY_BIT);           // ubo
-    auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK_SHADER_STAGE_FRAGMENT_BIT); // albedo
-    const std::array set0_bindings = {set0_ubo_binding0, set0_ubo_binding1};
-
-    const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(set0_bindings);
-    UT_Fn::invoke_and_check("Error create uboDescSetLayout set layout",vkCreateDescriptorSetLayout,device, &setLayoutCIO, nullptr, &depthPOGeneric.setLayout);
-
-}
 void CSMDepthPass::preparePipelines() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
-    {
-        const auto vertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_vert.spv",  device);
-        const auto geomModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_geom.spv",  device);
-        const auto fragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/depthPass_frag.spv",  device);
-        VkPipelineShaderStageCreateInfo vertSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertModule);
-        VkPipelineShaderStageCreateInfo geomSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, geomModule);
-        VkPipelineShaderStageCreateInfo fragSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragModule);
-        depthPOGeneric.pipelinePSOs.setShaderStages(vertSSCIO, geomSSCIO, fragSSCIO);
 
-        // layout
-        const std::array sceneSetLayouts{depthPOGeneric.setLayout};
-        VkPipelineLayoutCreateInfo sceneSetLayout_CIO = FnPipeline::layoutCreateInfo(sceneSetLayouts);
-        UT_Fn::invoke_and_check("ERROR create scene pipeline layout",vkCreatePipelineLayout,device, &sceneSetLayout_CIO,nullptr, &depthPOGeneric.pipelineLayout );
-        depthPOGeneric.pipelinePSOs.setPipelineLayout(depthPOGeneric.pipelineLayout);
-        depthPOGeneric.pipelinePSOs.setRenderPass(pRenderer->getMainRenderPass());
-        UT_GraphicsPipelinePSOs::createPipeline(device, depthPOGeneric.pipelinePSOs, pRenderer->getPipelineCache(), depthPOGeneric.pipeline);
-        UT_Fn::cleanup_shader_module(device,vertModule, geomModule, fragModule);
-    }
+    const auto vertModule = FnPipeline::createShaderModuleFromSpvFile("shaders/csm_depth_vert.spv",  device);
+    const auto geomModule = FnPipeline::createShaderModuleFromSpvFile("shaders/csm_depth_geom.spv",  device);
+    const auto fragModule = FnPipeline::createShaderModuleFromSpvFile("shaders/csm_depth_frag.spv",  device);
+
+    uint32_t enableInstance{0};
+    VkSpecializationMapEntry specMapEntry = {0,0, sizeof(uint32_t)}; // one constant
+    VkSpecializationInfo specInfo = {};
+    specInfo.mapEntryCount = 1;
+    specInfo.pMapEntries = &specMapEntry;
+    specInfo.dataSize = sizeof(uint32_t);
+    specInfo.pData = &enableInstance;
+
+
+    VkPipelineShaderStageCreateInfo vertSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertModule);
+    vertSSCIO.pSpecializationInfo = &specInfo; // inject specialize var
+    VkPipelineShaderStageCreateInfo geomSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, geomModule);
+    VkPipelineShaderStageCreateInfo fragSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragModule);
+
+    pso.setShaderStages(vertSSCIO, geomSSCIO, fragSSCIO);
+    pso.setPipelineLayout(pRenderer->pipelineLayout);
+    pso.setRenderPass(pRenderer->getMainRenderPass());
+    // pipeline1
+    UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), normalPipeline);
+
+    // pipeline2
+    enableInstance = 1;
+    UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), instancePipeline);
+    UT_Fn::cleanup_shader_module(device,vertModule, geomModule, fragModule);
+
 
 }
 
@@ -152,14 +147,27 @@ void CSMDepthPass::prepareUniformBuffers() {
 
 
 void CSMDepthPass::recordCommandBuffer() {
+    std::vector<VkClearValue> clearValues(1);
+    clearValues[0].depthStencil = { 1.0f, 0 };
+    VkExtent2D shadowExtent{width, width};
+    auto renderPassBeginInfo = FnCommand::renderPassBeginInfo(depthFramebuffer, depthRenderPass, shadowExtent, clearValues);
+    const auto &cmdBuf = pRenderer->getMainCommandBuffer();
+    vkCmdBeginRenderPass(cmdBuf,&renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
 
+    auto viewport = FnCommand::viewport(width, width );
+    auto scissor = FnCommand::scissor(width, width );
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
+    pRenderer->renderGeometry(instancePipeline, normalPipeline);
+    vkCmdEndRenderPass(cmdBuf);
 }
 
 
-void CSMDepthPass::updateCascade() {
+void CSMDepthPass::update() {
+    // update cascade
 
+    // update ubo for matrices write
 }
-
 
 
 

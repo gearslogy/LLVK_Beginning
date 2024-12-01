@@ -2,7 +2,7 @@
 layout(location = 0) in vec2 uv0;
 
 // 用于alpha测试的纹理
-layout(set = 0, binding = 1) uniform sampler2D albedoTexture; // one set
+layout(set = 0, binding = 2) uniform sampler2D albedoTexture; // one set
 
 void main() {
     vec4 color = texture(albedoTexture, uv0);

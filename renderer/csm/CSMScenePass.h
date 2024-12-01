@@ -19,7 +19,6 @@ struct CSMScenePass {
 
 private:
     CSMRenderer* pRenderer;
-    VkPipelineLayout pipelineLayout{};
     VkPipeline instancePipeline{};
     VkPipeline normalPipeline{};
     UT_GraphicsPipelinePSOs pso;

@@ -12,8 +12,9 @@
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "LLVK_RenderPass.hpp"
 #include "CSMScenePass.h"
+#include "renderer/public/GeometryContainers.h"
 LLVK_NAMESPACE_BEGIN
-void CSMRenderer::ResourceManager::loading() {
+    void CSMRenderer::ResourceManager::loading() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
     const auto &phyDevice = pRenderer->getMainDevice().physicalDevice;
     setRequiredObjectsByRenderer(pRenderer, geos.geometryBufferManager);
@@ -84,6 +85,7 @@ void CSMRenderer::cleanupObjects() {
     vkDestroyDescriptorPool(device, descPool, nullptr);
     scenePass->cleanup();
     resourceManager.cleanup();
+    UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
 }
 
 void CSMRenderer::prepareUBOAndDesc() {
@@ -109,14 +111,14 @@ void CSMRenderer::prepareUBOAndDesc() {
 
 
     // --- set layout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
-    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS>;
-    using descPos = MetaDesc::desc_binding_position_t<0,1>;
-    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>; // MVP/geomUBO/color/depth
+    using descPos = MetaDesc::desc_binding_position_t<0,1,2,3>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_GEOMETRY_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
-    if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&sceneDescLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
+    if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&descSetLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
 
-    std::array<VkDescriptorSetLayout,2> layouts = {sceneDescLayout, sceneDescLayout};
+    std::array<VkDescriptorSetLayout,2> layouts = {descSetLayout, descSetLayout};
     auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
     UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, setGround.data());
     UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set29.data());
@@ -131,7 +133,7 @@ void CSMRenderer::prepareUBOAndDesc() {
                 std::array<VkWriteDescriptorSet, 1 + sizeof...(textures)> writes = {
                     FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &framedUbo[i].descBufferInfo),
                     FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        I + 1, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
+                        I + 2, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
                 };
                 vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
             }
@@ -142,6 +144,14 @@ void CSMRenderer::prepareUBOAndDesc() {
     updateSets(ubo35, set35, resourceManager.textures.d_tex_35);
     updateSets(ubo36, set36, resourceManager.textures.d_tex_36);
     updateSets(ubo39, set39, resourceManager.textures.d_tex_39);
+
+
+    // pipeline layout
+    const std::array setLayouts{descSetLayout}; // just one set
+    VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
+    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device,
+        &pipelineLayoutCIO,nullptr, &pipelineLayout );
+
 }
 
 void CSMRenderer::updateUBO() {
@@ -179,6 +189,39 @@ void CSMRenderer::updateUBO() {
     copyDataToFramedBuffer(ubo29,uboData);
 }
 
+void CSMRenderer::renderGeometry(VkPipeline normalPipeline, VkPipeline instancePipeline) const {
+    const auto &cmdBuf = getMainCommandBuffer();
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , normalPipeline);
+    // render ground
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+      0, 1, &setGround[getCurrentFrame()] ,
+      0, nullptr);
+    UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.ground.parts[0]);
+
+    // render 35
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+      0, 1, &set35[getCurrentFrame()] ,
+      0, nullptr);
+    UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_35.parts[0]);
+    // render 36
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+      0, 1, &set36[getCurrentFrame()] ,
+      0, nullptr);
+    UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_36.parts[0]);
+    // render 39
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+      0, 1, &set39[getCurrentFrame()] ,
+      0, nullptr);
+    UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_39.parts[0]);
+
+    // render instance geometry
+    constexpr auto instanceCount = 4;
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , instancePipeline);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+       0, 1, &set29[getCurrentFrame()] ,
+       0, nullptr);
+    UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_29.parts[0], instanceCount);
+}
 
 
 LLVK_NAMESPACE_END

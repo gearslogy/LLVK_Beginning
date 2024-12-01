@@ -3,7 +3,7 @@
 layout (location = 2) in vec3 N;
 layout (location = 5) in vec2 uv;
 
-layout(binding=1) uniform sampler2D colorTex;
+layout(set=0, binding=2) uniform sampler2D colorTex;
 
 layout(location=0) out vec4 outColor;
 void main(){
