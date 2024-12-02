@@ -7,6 +7,7 @@ layout(location=2) in vec3 N;
 layout(location=3) in vec3 T;
 layout(location=4) in vec3 B;
 layout(location=5) in vec2 uv0;
+layout(location=6) in vec2 uv1;
 
 
 // depth pass only rely on the uv

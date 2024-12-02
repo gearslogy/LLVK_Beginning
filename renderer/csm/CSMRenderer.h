@@ -82,7 +82,7 @@ private:
 
     VkDescriptorPool descPool{};
     std::unique_ptr<CSMScenePass> scenePass;
-
+    std::unique_ptr<CSMDepthPass> depthPass;
 
 };
 LLVK_NAMESPACE_END

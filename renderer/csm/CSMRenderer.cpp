@@ -50,6 +50,7 @@ void CSMRenderer::ResourceManager::cleanup() {
 
 CSMRenderer::CSMRenderer() {
     scenePass = std::make_unique<CSMScenePass>(this);
+    depthPass = std::make_unique<CSMDepthPass>(this);
 }
 CSMRenderer::~CSMRenderer() = default;
 
@@ -57,14 +58,13 @@ CSMRenderer::~CSMRenderer() = default;
 void CSMRenderer::prepare() {
     resourceManager.pRenderer = this;
     resourceManager.loading();
-    prepareUBOAndDesc();
-    scenePass->prepare();
-
     mainCamera.setRotation({-10.582830028019421, -12.201134395235595, -1.7394687750417736e-05});
     mainCamera.mPosition = {-7.345118601417127, 16.530968869105806, 69.05524044127405};
     mainCamera.mMoveSpeed = 10;
     mainCamera.updateCameraVectors();
-
+    prepareUBOAndDesc();
+    scenePass->prepare();
+    depthPass->prepare();
 }
 void CSMRenderer::render() {
     updateUBO();
@@ -84,7 +84,9 @@ void CSMRenderer::cleanupObjects() {
     cleanFramedUBOs(uboGround, ubo29,ubo35,ubo36,ubo39);
     vkDestroyDescriptorPool(device, descPool, nullptr);
     scenePass->cleanup();
+    depthPass->cleanup();
     resourceManager.cleanup();
+    UT_Fn::cleanup_descriptor_set_layout(device, descSetLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
 }
 
@@ -130,8 +132,9 @@ void CSMRenderer::prepareUBOAndDesc() {
     auto updateSets= [&device](const UBOFramedBuffers &framedUbo, const SetsFramed&framedSet, const auto &... textures) {
         [&]<std::size_t... I>(std::index_sequence<I...>) {
             for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                std::array<VkWriteDescriptorSet, 1 + sizeof...(textures)> writes = {
+                std::array<VkWriteDescriptorSet, 2 + sizeof...(textures)> writes = {
                     FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &framedUbo[i].descBufferInfo),
+                    FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &framedUbo[i].descBufferInfo), // geom shader
                     FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                         I + 2, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
                 };
