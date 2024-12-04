@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by liuya on 11/8/2024.
 //
 
@@ -164,6 +164,42 @@ void CSMDepthPass::recordCommandBuffer() {
 
 
 void CSMDepthPass::update() {
+    constexpr std::array<glm::vec3, 8> frustumCorners = {
+        {
+            // NDC near plane
+            {-1.0f,  1.0f, 0.0f},
+           { 1.0f,  1.0f, 0.0f},
+           { 1.0f, -1.0f, 0.0f},
+           {-1.0f, -1.0f, 0.0f},
+            //NDC far plane
+           {-1.0f,  1.0f,  1.0f},
+           { 1.0f,  1.0f,  1.0f},
+           { 1.0f, -1.0f,  1.0f},
+           {-1.0f, -1.0f,  1.0f}
+        }
+    };
+
+    // 计算切割百分比
+    float cascadeSplits[cascade_count];
+    const auto nearClip = pRenderer->mainCamera.mNear;
+    const auto farClip =pRenderer->mainCamera.mFar;
+    const float clipRange = farClip - nearClip;
+    const float minZ = nearClip;
+    const float maxZ = nearClip + clipRange;
+    const float range = maxZ - minZ;
+    const float ratio = maxZ / minZ;
+
+    // Calculate split depths based on view camera frustum
+    // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+    for (uint32_t i = 0; i < cascade_count; i++) {
+        float p = static_cast<float>(i + 1) / static_cast<float>(cascade_count);
+        float log = minZ * std::pow(ratio, p);
+        float uniform = minZ + range * p;
+        float d = cascadeSplitLambda * (log - uniform) + uniform;
+        cascadeSplits[i] = (d - nearClip) / clipRange;
+    }// 经过我的测试，当cascade_count = 3 时候。 这个cascadeSplits[] = {   0.0197262 0.0887107 1 }, 也就是可以自己定义：比如0.06   0.2   1
+
+
     // update cascade
 
     // update ubo for matrices write

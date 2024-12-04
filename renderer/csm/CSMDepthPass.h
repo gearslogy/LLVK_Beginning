@@ -52,7 +52,7 @@ private:
 private:
     const CSMRenderer *pRenderer{};
     const VkDescriptorPool *pDescriptorPool{};
-
+    float cascadeSplitLambda = 0.95f;
 };
 
 LLVK_NAMESPACE_END
