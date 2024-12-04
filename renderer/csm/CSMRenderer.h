@@ -53,7 +53,7 @@ private:
     ResourceManager resourceManager{};
     void prepareUBOAndDesc();
     void updateUBO();
-
+    glm::vec3 lightPos{106.1343, 83.2914, -119.3271};
     struct {
         glm::mat4 proj;
         glm::mat4 view;

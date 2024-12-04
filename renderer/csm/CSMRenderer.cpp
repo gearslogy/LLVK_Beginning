@@ -67,6 +67,9 @@ void CSMRenderer::prepare() {
     depthPass->prepare();
 }
 void CSMRenderer::render() {
+    // update light
+    // update cascade
+    // update ubo
     updateUBO();
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
