@@ -43,6 +43,9 @@ struct Camera {
     float mMoveSpeed{2.5f};
     float mMouseSensitivity{0.1f};
     float mZoom{45};
+    [[nodiscard]] auto position() const {return mPosition;}
+    [[nodiscard]] auto near() const {return mNear;}
+    [[nodiscard]] auto far() const {return mFar;}
 
     [[nodiscard]] glm::mat4 view() const ;
     [[nodiscard]] glm::mat4 projection() const;

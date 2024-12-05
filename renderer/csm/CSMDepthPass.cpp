@@ -4,11 +4,13 @@
 
 #include "CSMDepthPass.h"
 
+#include <execution>
 #include <LLVK_Descriptor.hpp>
 
 #include "LLVK_Image.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "CSMRenderer.h"
+#include <functional>
 LLVK_NAMESPACE_BEGIN
 
 
@@ -27,7 +29,7 @@ void CSMDepthPass::cleanup() {
     UT_Fn::cleanup_sampler(device, depthSampler);
     vkDestroyRenderPass(device, depthRenderPass, nullptr);
     vkDestroyFramebuffer(device, depthFramebuffer, nullptr);
-    UT_Fn::cleanup_range_resources(uboBuffers);
+    UT_Fn::cleanup_range_resources(uboGeomBuffer);
     UT_Fn::cleanup_pipeline(device, normalPipeline, instancePipeline);
 }
 
@@ -139,9 +141,9 @@ void CSMDepthPass::preparePipelines() {
 
 
 void CSMDepthPass::prepareUniformBuffers() {
-    setRequiredObjectsByRenderer(pRenderer, uboBuffers[0], uboBuffers[1]);
-    for(auto &ubo : uboBuffers)
-        ubo.createAndMapping(sizeof(uboData));
+    setRequiredObjectsByRenderer(pRenderer, uboGeomBuffer[0], uboGeomBuffer[1]);
+    for(auto &ubo : uboGeomBuffer)
+        ubo.createAndMapping(sizeof(uboGeomData));
 }
 
 
@@ -164,7 +166,7 @@ void CSMDepthPass::recordCommandBuffer() {
 
 
 void CSMDepthPass::update() {
-    constexpr std::array<glm::vec3, 8> frustumCorners = {
+    constexpr std::array<glm::vec3, 8> ndcFrustumCorners = {
         {
             // NDC near plane
             {-1.0f,  1.0f, 0.0f},
@@ -178,6 +180,10 @@ void CSMDepthPass::update() {
            {-1.0f, -1.0f,  1.0f}
         }
     };
+    auto getFrustumCenter = [](const std::array<glm::vec3, 8> &corners) {
+        return std::ranges::fold_left(corners, glm::vec3{0.0f},std::plus<>()) / static_cast<float>(std::size(corners));
+    };
+
 
     // 计算切割百分比
     float cascadeSplits[cascade_count];
@@ -200,9 +206,51 @@ void CSMDepthPass::update() {
     }// 经过我的测试，当cascade_count = 3 时候。 这个cascadeSplits[] = {   0.0197262 0.0887107 1 }, 也就是可以自己定义：比如0.06   0.2   1
 
 
-    // update cascade
+    float lastSplitDist{0.0f};
+    for (int i=0; i < cascade_count; i++) {
+        float splitDist = cascadeSplits[i];
+        // world space frustum
+        glm::mat4 invCam = glm::inverse(pRenderer->mainCamera.projection() * pRenderer->mainCamera.view());
+        auto wpFrustumCornersIter = ndcFrustumCorners | std::views::transform([&invCam](const glm::vec3 &corner) {
+            return invCam * glm::vec4{corner, 1.0f};
+        });
+        std::array<glm::vec3, 8> wpFrustumCorners{};
+        std::ranges::copy(wpFrustumCornersIter, wpFrustumCorners.begin());
 
-    // update ubo for matrices write
+        for (uint32_t j = 0; j < 4; j++) {
+            glm::vec3 dist = wpFrustumCorners[j + 4] - wpFrustumCorners[j]; // per points distance dir : near plane -> far plane_corner
+            wpFrustumCorners[j + 4] = wpFrustumCorners[j] + (dist * splitDist); // 设置远平面位置
+            wpFrustumCorners[j] = wpFrustumCorners[j] + (dist * lastSplitDist); // 近平面从0开始，所以使用lastSplitDist迭代
+        }
+        const auto wpFrustumCenter = getFrustumCenter(wpFrustumCorners);
+        auto radius = std::ranges::max(
+            wpFrustumCorners | std::views::transform(
+                [&wpFrustumCenter](const auto &corner) {
+                    return glm::length(corner - wpFrustumCenter);
+                }
+            )
+        );
+        // 量化到 1/16 单位
+        radius = std::ceil(radius * 16.0f) / 16.0f;
+
+        auto maxExtents = glm::vec3(radius);
+        glm::vec3 minExtents = -maxExtents;
+        glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
+        glm::mat4 lightViewMatrix = glm::lookAt(wpFrustumCenter - lightDir * -minExtents.z, wpFrustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
+
+
+        cascadesSplitDepth[i] = (nearClip + splitDist * clipRange) * -1.0f; // -1 很关键，适配到了材质系统
+        cascadesViewProjMatrix[i] = lightOrthoMatrix * lightViewMatrix;     // 求出来的灯光矩阵。直接用到geometry shader上
+
+        lastSplitDist = cascadeSplits[i];
+
+    }
+    // update geom shader: ubo for matrices write
+    for (const auto &&[k, v]: UT_Fn::enumerate(cascadesViewProjMatrix)) {
+        uboGeomData.lightViewProj[k] = v;
+    }
+    memcpy(uboGeomBuffer[pRenderer->getCurrentFrame()].mapped, &uboGeomData, sizeof(uboGeomData));
 }
 
 
