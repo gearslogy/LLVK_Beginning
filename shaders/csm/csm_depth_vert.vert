@@ -19,7 +19,7 @@ layout(constant_id = 0) const int enableInstance = 0;
 layout(set=0, binding=0) uniform UBOData{
     mat4 proj; // dropped
     mat4 view; // dropped
-    mat4 model;// dropped.
+    mat4 model;
     vec4 instancePos[4]; //29-geometry will using this position
 }ubo;
 
@@ -31,7 +31,7 @@ void main() {
         out_uv0 = uv0;// uv-> geom
     }
     else{
-        gl_Position = vec4(P, 1.0);
+        gl_Position = ubo.model *vec4(P, 1.0);
         out_uv0 = uv0;
     }
 }
