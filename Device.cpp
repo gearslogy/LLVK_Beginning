@@ -51,7 +51,9 @@ void Device::createLogicDevice() {
 
     VkPhysicalDeviceFeatures features{};
     vkGetPhysicalDeviceFeatures(physicalDevice, &features); // 非必要
-
+    if (!features.geometryShader) {
+        throw std::runtime_error("geometry shader not supported!");
+    }
     VkDeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.pQueueCreateInfos = queueInfos.data();               // 注意这里可以挂多个VkQueueCreateInfo, 目前本质只挂一个GraphicsFamily中的一个Queue, 因为GraphicsFamily和Queue是一样的

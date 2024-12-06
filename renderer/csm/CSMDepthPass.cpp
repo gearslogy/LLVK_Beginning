@@ -127,7 +127,7 @@ void CSMDepthPass::preparePipelines() {
 
     pso.setShaderStages(vertSSCIO, geomSSCIO, fragSSCIO);
     pso.setPipelineLayout(pRenderer->pipelineLayout);
-    pso.setRenderPass(pRenderer->getMainRenderPass());
+    pso.setRenderPass(depthRenderPass);
     // pipeline1
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), normalPipeline);
 
@@ -160,12 +160,13 @@ void CSMDepthPass::recordCommandBuffer() {
     auto scissor = FnCommand::scissor(width, width );
     vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
-    pRenderer->renderGeometry(instancePipeline, normalPipeline);
+    pRenderer->renderGeometry(normalPipeline, instancePipeline);
     vkCmdEndRenderPass(cmdBuf);
 }
 
 
 void CSMDepthPass::update() {
+    /*
     constexpr std::array<glm::vec3, 8> ndcFrustumCorners = {
         {
             // NDC near plane
@@ -187,8 +188,8 @@ void CSMDepthPass::update() {
 
     // 计算切割百分比
     float cascadeSplits[cascade_count];
-    const auto nearClip = pRenderer->mainCamera.mNear;
-    const auto farClip =pRenderer->mainCamera.mFar;
+    const auto nearClip = pRenderer->mainCamera.near();
+    const auto farClip =pRenderer->mainCamera.far();
     const float clipRange = farClip - nearClip;
     const float minZ = nearClip;
     const float maxZ = nearClip + clipRange;
@@ -205,14 +206,20 @@ void CSMDepthPass::update() {
         cascadeSplits[i] = (d - nearClip) / clipRange;
     }// 经过我的测试，当cascade_count = 3 时候。 这个cascadeSplits[] = {   0.0197262 0.0887107 1 }, 也就是可以自己定义：比如0.06   0.2   1
 
+    auto cameraProj = pRenderer->mainCamera.projection();
+    cameraProj[1][1] *= -1;
+    auto cameraView = pRenderer->mainCamera.view();
+    glm::mat4 invCam = glm::inverse(cameraProj * cameraView);
 
     float lastSplitDist{0.0f};
     for (int i=0; i < cascade_count; i++) {
         float splitDist = cascadeSplits[i];
+
+
         // world space frustum
-        glm::mat4 invCam = glm::inverse(pRenderer->mainCamera.projection() * pRenderer->mainCamera.view());
         auto wpFrustumCornersIter = ndcFrustumCorners | std::views::transform([&invCam](const glm::vec3 &corner) {
-            return invCam * glm::vec4{corner, 1.0f};
+            auto invCorner =  invCam * glm::vec4{corner, 1.0f};
+            return invCorner / invCorner.w;
         });
         std::array<glm::vec3, 8> wpFrustumCorners{};
         std::ranges::copy(wpFrustumCornersIter, wpFrustumCorners.begin());
@@ -223,6 +230,7 @@ void CSMDepthPass::update() {
             wpFrustumCorners[j] = wpFrustumCorners[j] + (dist * lastSplitDist); // 近平面从0开始，所以使用lastSplitDist迭代
         }
         const auto wpFrustumCenter = getFrustumCenter(wpFrustumCorners);
+
         auto radius = std::ranges::max(
             wpFrustumCorners | std::views::transform(
                 [&wpFrustumCenter](const auto &corner) {
@@ -233,19 +241,107 @@ void CSMDepthPass::update() {
         // 量化到 1/16 单位
         radius = std::ceil(radius * 16.0f) / 16.0f;
 
+        float radius = 0.0f;
+        for (uint32_t j = 0; j < 8; j++) {
+            float distance = glm::length(wpFrustumCorners[j] - wpFrustumCenter);
+            radius = glm::max(radius, distance);
+        }
+        radius = std::ceil(radius * 16.0f) / 16.0f;
+
+        std::cout << radius << std::endl;
         auto maxExtents = glm::vec3(radius);
         glm::vec3 minExtents = -maxExtents;
         glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
         glm::mat4 lightViewMatrix = glm::lookAt(wpFrustumCenter - lightDir * -minExtents.z, wpFrustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
-
+        lightOrthoMatrix[1][1] *= -1;
 
         cascadesSplitDepth[i] = (nearClip + splitDist * clipRange) * -1.0f; // -1 很关键，适配到了材质系统
         cascadesViewProjMatrix[i] = lightOrthoMatrix * lightViewMatrix;     // 求出来的灯光矩阵。直接用到geometry shader上
 
         lastSplitDist = cascadeSplits[i];
 
-    }
+    }*/
+
+		float cascadeSplits[4];
+
+		float nearClip = pRenderer->mainCamera.near();
+		float farClip = pRenderer->mainCamera.far();
+		float clipRange = farClip - nearClip;
+
+		float minZ = nearClip;
+		float maxZ = nearClip + clipRange;
+
+		float range = maxZ - minZ;
+		float ratio = maxZ / minZ;
+
+		// Calculate split depths based on view camera frustum
+		// Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+		for (uint32_t i = 0; i < cascade_count; i++) {
+			float p = (i + 1) / static_cast<float>(cascade_count);
+			float log = minZ * std::pow(ratio, p);
+			float uniform = minZ + range * p;
+			float d = cascadeSplitLambda * (log - uniform) + uniform;
+			cascadeSplits[i] = (d - nearClip) / clipRange;
+		}
+
+		// Calculate orthographic projection matrix for each cascade
+		float lastSplitDist = 0.0;
+		for (uint32_t i = 0; i < cascade_count; i++) {
+			float splitDist = cascadeSplits[i];
+
+			glm::vec3 frustumCorners[8] = {
+				glm::vec3(-1.0f,  1.0f, 0.0f),
+				glm::vec3( 1.0f,  1.0f, 0.0f),
+				glm::vec3( 1.0f, -1.0f, 0.0f),
+				glm::vec3(-1.0f, -1.0f, 0.0f),
+				glm::vec3(-1.0f,  1.0f,  1.0f),
+				glm::vec3( 1.0f,  1.0f,  1.0f),
+				glm::vec3( 1.0f, -1.0f,  1.0f),
+				glm::vec3(-1.0f, -1.0f,  1.0f),
+			};
+
+			// Project frustum corners into world space
+			glm::mat4 invCam = glm::inverse(pRenderer->mainCamera.projection() * pRenderer->mainCamera.view());
+			for (uint32_t j = 0; j < 8; j++) {
+				glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[j], 1.0f);
+				frustumCorners[j] = invCorner / invCorner.w;
+			}
+
+			for (uint32_t j = 0; j < 4; j++) {
+				glm::vec3 dist = frustumCorners[j + 4] - frustumCorners[j];
+				frustumCorners[j + 4] = frustumCorners[j] + (dist * splitDist);
+				frustumCorners[j] = frustumCorners[j] + (dist * lastSplitDist);
+			}
+
+			// Get frustum center
+			glm::vec3 frustumCenter = glm::vec3(0.0f);
+			for (uint32_t j = 0; j < 8; j++) {
+				frustumCenter += frustumCorners[j];
+			}
+			frustumCenter /= 8.0f;
+
+			float radius = 0.0f;
+			for (uint32_t j = 0; j < 8; j++) {
+				float distance = glm::length(frustumCorners[j] - frustumCenter);
+				radius = glm::max(radius, distance);
+			}
+			radius = std::ceil(radius * 16.0f) / 16.0f;
+
+			glm::vec3 maxExtents = glm::vec3(radius);
+			glm::vec3 minExtents = -maxExtents;
+
+			glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
+			glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+			glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
+			lightOrthoMatrix[1][1] *= -1;
+			// Store split distance and matrix in cascade
+			cascadesSplitDepth[i]= (pRenderer->mainCamera.near() + splitDist * clipRange) * -1.0f;
+			cascadesViewProjMatrix[i]= lightOrthoMatrix * lightViewMatrix;
+
+			lastSplitDist = cascadeSplits[i];
+		}
+
     // update geom shader: ubo for matrices write
     for (const auto &&[k, v]: UT_Fn::enumerate(cascadesViewProjMatrix)) {
         uboGeomData.lightViewProj[k] = v;

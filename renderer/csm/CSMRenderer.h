@@ -13,8 +13,6 @@ LLVK_NAMESPACE_BEGIN
 struct CSMDepthPass;
 struct CSMScenePass;
 class CSMRenderer : public VulkanRenderer {
-    static constexpr int32_t CASCADE_COUNT{4};
-    static constexpr int32_t shadow_map_size{2048};
 public:
     friend struct CSMScenePass;
     friend struct CSMDepthPass;
@@ -51,10 +49,10 @@ public:
 
 private:
     ResourceManager resourceManager{};
-    void prepareUBOAndDesc();
+    void preparePVMIUBOAndSets();
     void updateUBO();
-    glm::vec3 lightPos{106.1343, 83.2914, -119.3271};
-    struct {
+    glm::vec3 lightPos{97.316, 53.6274, 0.0};
+    struct {// PVMIUBO ubo data
         glm::mat4 proj;
         glm::mat4 view;
         glm::mat4 model;
@@ -77,6 +75,7 @@ private:
     VkDescriptorSetLayout descSetLayout{};
     VkPipelineLayout pipelineLayout{};
 
+    void updateSets();
     void renderGeometry(VkPipeline normalPipeline, VkPipeline instancePipeline) const;
     //depth sets
 

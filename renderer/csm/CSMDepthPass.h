@@ -27,9 +27,9 @@ struct CSMDepthPass {
     struct {
         glm::mat4 lightViewProj[cascade_count];
     }uboGeomData;
-    std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboGeomBuffer;// FRAMED BUFFERG
+    std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboGeomBuffer;// FRAMED BUFFER
 
-
+    const auto& renderTarget() const {return depthAttachment;}
     void update(); // update cascade and uboData
 private:
     void prepareDepthResources();
@@ -55,8 +55,8 @@ private:
     const CSMRenderer *pRenderer{};
     const VkDescriptorPool *pDescriptorPool{};
     float cascadeSplitLambda = 0.95f;
-    std::array<float, cascade_count> cascadesSplitDepth;
-    std::array<glm::mat4, cascade_count> cascadesViewProjMatrix;
+    std::array<float, cascade_count> cascadesSplitDepth{};
+    std::array<glm::mat4, cascade_count> cascadesViewProjMatrix{};
 };
 
 LLVK_NAMESPACE_END

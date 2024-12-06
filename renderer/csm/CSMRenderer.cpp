@@ -12,9 +12,10 @@
 #include "renderer/public/UT_CustomRenderer.hpp"
 #include "LLVK_RenderPass.hpp"
 #include "CSMScenePass.h"
+#include "CSMDepthPass.h"
 #include "renderer/public/GeometryContainers.h"
 LLVK_NAMESPACE_BEGIN
-    void CSMRenderer::ResourceManager::loading() {
+void CSMRenderer::ResourceManager::loading() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
     const auto &phyDevice = pRenderer->getMainDevice().physicalDevice;
     setRequiredObjectsByRenderer(pRenderer, geos.geometryBufferManager);
@@ -62,19 +63,24 @@ void CSMRenderer::prepare() {
     mainCamera.mPosition = {-7.345118601417127, 16.530968869105806, 69.05524044127405};
     mainCamera.mMoveSpeed = 10;
     mainCamera.updateCameraVectors();
-    prepareUBOAndDesc();
-    scenePass->prepare();
+    preparePVMIUBOAndSets();
     depthPass->prepare();
+    scenePass->prepare();
+    // when depth ready. we can update sets. because need the attachment, and ubo-geom info
+    updateSets();
+
 }
 void CSMRenderer::render() {
     // update light
     // update cascade
     // update ubo
     updateUBO();
+    depthPass->update();
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
     UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     scenePass->recordCommandBuffer();
+    depthPass->recordCommandBuffer();
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
     submitMainCommandBuffer();
     presentMainCommandBufferFrame();
@@ -93,7 +99,7 @@ void CSMRenderer::cleanupObjects() {
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
 }
 
-void CSMRenderer::prepareUBOAndDesc() {
+void CSMRenderer::preparePVMIUBOAndSets() {
     const auto &device = mainDevice.logicalDevice;
     std::array<VkDescriptorPoolSize, 2> poolSizes  = {{
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT},
@@ -115,7 +121,7 @@ void CSMRenderer::prepareUBOAndDesc() {
     createFramedUBOs(uboGround, ubo29, ubo35, ubo36, ubo39);
 
 
-    // --- set layout and sets allocation. 0:UBO 1:CIS 2:CIS(sample depth map)
+    // --- set layout and sets allocation. 0:UBO(vs) 1:UBO(geom) 2:CIS 3:CIS(sample depth map)
     using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>; // MVP/geomUBO/color/depth
     using descPos = MetaDesc::desc_binding_position_t<0,1,2,3>;
     using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_GEOMETRY_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
@@ -131,27 +137,6 @@ void CSMRenderer::prepareUBOAndDesc() {
     UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set36.data());
     UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set39.data());
 
-    // update sets
-    auto updateSets= [&device](const UBOFramedBuffers &framedUbo, const SetsFramed&framedSet, const auto &... textures) {
-        [&]<std::size_t... I>(std::index_sequence<I...>) {
-            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                std::array<VkWriteDescriptorSet, 2 + sizeof...(textures)> writes = {
-                    FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &framedUbo[i].descBufferInfo),
-                    FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &framedUbo[i].descBufferInfo), // geom shader
-                    FnDescriptor::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        I + 2, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
-                };
-                vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
-            }
-        }(std::make_index_sequence<sizeof...(textures)>{});
-    };
-    updateSets(uboGround, setGround, resourceManager.textures.d_ground);
-    updateSets(ubo29, set29, resourceManager.textures.d_tex_29);
-    updateSets(ubo35, set35, resourceManager.textures.d_tex_35);
-    updateSets(ubo36, set36, resourceManager.textures.d_tex_36);
-    updateSets(ubo39, set39, resourceManager.textures.d_tex_39);
-
-
     // pipeline layout
     const std::array setLayouts{descSetLayout}; // just one set
     VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
@@ -159,6 +144,30 @@ void CSMRenderer::prepareUBOAndDesc() {
         &pipelineLayoutCIO,nullptr, &pipelineLayout );
 
 }
+void CSMRenderer::updateSets() {
+    const auto &device = mainDevice.logicalDevice;
+    namespace FnDesc = FnDescriptor;
+    // update sets
+    auto updateSets= [&device,this](const UBOFramedBuffers&mvp_i_framedUbo, const SetsFramed&framedSet, const auto &... textures) {
+        [&]<std::size_t... I>(std::index_sequence<I...>) {
+            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                std::array<VkWriteDescriptorSet, 2 + sizeof...(textures)> writes = {
+                    FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &mvp_i_framedUbo[i].descBufferInfo),          // scene model_view_proj_instance , used in VS shader
+                    FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &depthPass->uboGeomBuffer[i].descBufferInfo), // used in geom shader. !IMPORTANT: depthPass->prepare()
+                    FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        I + 2, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
+                };
+                vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+            }
+        }(std::make_index_sequence<sizeof...(textures)>{});
+    };
+    updateSets(uboGround, setGround, resourceManager.textures.d_ground,depthPass->renderTarget());
+    updateSets(ubo29, set29, resourceManager.textures.d_tex_29,depthPass->renderTarget());
+    updateSets(ubo35, set35, resourceManager.textures.d_tex_35,depthPass->renderTarget());
+    updateSets(ubo36, set36, resourceManager.textures.d_tex_36,depthPass->renderTarget());
+    updateSets(ubo39, set39, resourceManager.textures.d_tex_39,depthPass->renderTarget());
+}
+
 
 void CSMRenderer::updateUBO() {
     // ----update buffer. we do not update per every frame

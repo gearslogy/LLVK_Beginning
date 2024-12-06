@@ -19,7 +19,7 @@ layout(constant_id = 0) const int enableInstance = 0;
 layout(set=0, binding=0) uniform UBOData{
     mat4 proj; // dropped
     mat4 view; // dropped
-    mat4 model;// dropped. reason is we just want allocate one ubo to use anywhere
+    mat4 model;// dropped.
     vec4 instancePos[4]; //29-geometry will using this position
 }ubo;
 
