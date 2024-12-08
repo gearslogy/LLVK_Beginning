@@ -79,8 +79,9 @@ void CSMRenderer::render() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
     UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
-    scenePass->recordCommandBuffer();
     depthPass->recordCommandBuffer();
+    scenePass->recordCommandBuffer();
+
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
     submitMainCommandBuffer();
     presentMainCommandBufferFrame();

@@ -166,7 +166,7 @@ void CSMDepthPass::recordCommandBuffer() {
 
 
 void CSMDepthPass::update() {
-    /*
+
     constexpr std::array<glm::vec3, 8> ndcFrustumCorners = {
         {
             // NDC near plane
@@ -241,14 +241,7 @@ void CSMDepthPass::update() {
         // 量化到 1/16 单位
         radius = std::ceil(radius * 16.0f) / 16.0f;
 
-        float radius = 0.0f;
-        for (uint32_t j = 0; j < 8; j++) {
-            float distance = glm::length(wpFrustumCorners[j] - wpFrustumCenter);
-            radius = glm::max(radius, distance);
-        }
-        radius = std::ceil(radius * 16.0f) / 16.0f;
-
-        std::cout << radius << std::endl;
+        //std::cout << radius << std::endl;
         auto maxExtents = glm::vec3(radius);
         glm::vec3 minExtents = -maxExtents;
         glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
@@ -261,87 +254,7 @@ void CSMDepthPass::update() {
 
         lastSplitDist = cascadeSplits[i];
 
-    }*/
-
-		float cascadeSplits[4];
-
-		float nearClip = pRenderer->mainCamera.near();
-		float farClip = pRenderer->mainCamera.far();
-		float clipRange = farClip - nearClip;
-
-		float minZ = nearClip;
-		float maxZ = nearClip + clipRange;
-
-		float range = maxZ - minZ;
-		float ratio = maxZ / minZ;
-
-		// Calculate split depths based on view camera frustum
-		// Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-		for (uint32_t i = 0; i < cascade_count; i++) {
-			float p = (i + 1) / static_cast<float>(cascade_count);
-			float log = minZ * std::pow(ratio, p);
-			float uniform = minZ + range * p;
-			float d = cascadeSplitLambda * (log - uniform) + uniform;
-			cascadeSplits[i] = (d - nearClip) / clipRange;
-		}
-
-		// Calculate orthographic projection matrix for each cascade
-		float lastSplitDist = 0.0;
-		for (uint32_t i = 0; i < cascade_count; i++) {
-			float splitDist = cascadeSplits[i];
-
-			glm::vec3 frustumCorners[8] = {
-				glm::vec3(-1.0f,  1.0f, 0.0f),
-				glm::vec3( 1.0f,  1.0f, 0.0f),
-				glm::vec3( 1.0f, -1.0f, 0.0f),
-				glm::vec3(-1.0f, -1.0f, 0.0f),
-				glm::vec3(-1.0f,  1.0f,  1.0f),
-				glm::vec3( 1.0f,  1.0f,  1.0f),
-				glm::vec3( 1.0f, -1.0f,  1.0f),
-				glm::vec3(-1.0f, -1.0f,  1.0f),
-			};
-
-			// Project frustum corners into world space
-			glm::mat4 invCam = glm::inverse(pRenderer->mainCamera.projection() * pRenderer->mainCamera.view());
-			for (uint32_t j = 0; j < 8; j++) {
-				glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[j], 1.0f);
-				frustumCorners[j] = invCorner / invCorner.w;
-			}
-
-			for (uint32_t j = 0; j < 4; j++) {
-				glm::vec3 dist = frustumCorners[j + 4] - frustumCorners[j];
-				frustumCorners[j + 4] = frustumCorners[j] + (dist * splitDist);
-				frustumCorners[j] = frustumCorners[j] + (dist * lastSplitDist);
-			}
-
-			// Get frustum center
-			glm::vec3 frustumCenter = glm::vec3(0.0f);
-			for (uint32_t j = 0; j < 8; j++) {
-				frustumCenter += frustumCorners[j];
-			}
-			frustumCenter /= 8.0f;
-
-			float radius = 0.0f;
-			for (uint32_t j = 0; j < 8; j++) {
-				float distance = glm::length(frustumCorners[j] - frustumCenter);
-				radius = glm::max(radius, distance);
-			}
-			radius = std::ceil(radius * 16.0f) / 16.0f;
-
-			glm::vec3 maxExtents = glm::vec3(radius);
-			glm::vec3 minExtents = -maxExtents;
-
-			glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
-			glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
-			glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
-			lightOrthoMatrix[1][1] *= -1;
-			// Store split distance and matrix in cascade
-			cascadesSplitDepth[i]= (pRenderer->mainCamera.near() + splitDist * clipRange) * -1.0f;
-			cascadesViewProjMatrix[i]= lightOrthoMatrix * lightViewMatrix;
-
-			lastSplitDist = cascadeSplits[i];
-		}
-
+    }
     // update geom shader: ubo for matrices write
     for (const auto &&[k, v]: UT_Fn::enumerate(cascadesViewProjMatrix)) {
         uboGeomData.lightViewProj[k] = v;
