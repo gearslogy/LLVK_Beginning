@@ -81,6 +81,10 @@ void main(){
             cascadeIndex = i + 1;
         }
     }
+
+    vec4 shadowCoord = biasMat * casacdeViewProjMatrices.lightViewProj[cascadeIndex] * vec4(wP,1.0);
+    float shadow = filterPCF(shadowCoord, cascadeIndex);
+
     if(cascadeIndex == 0){
         debugCascadeIndexCd = vec3(1,0,0);
     }else if (cascadeIndex == 1){
@@ -93,5 +97,5 @@ void main(){
 
 
 
-    outColor = vec4(debugCascadeIndexCd,0);
+    outColor = vec4(vec3(shadow),0);
 }
