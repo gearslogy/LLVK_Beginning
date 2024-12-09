@@ -45,7 +45,7 @@ float textureProj(vec4 shadow_coord, vec2 off)
 
 float filterPCF(vec4 sc)
 {
-    ivec2 texDim = textureSize(shadowMap, 0);
+    ivec2 texDim = textureSize(shadowMap, 0); // MIP = 0
     float scale = .5;
     float dx = scale * 1.0 / float(texDim.x);
     float dy = scale * 1.0 / float(texDim.y);

@@ -14,6 +14,7 @@ struct CSMDepthPass;
 struct CSMScenePass;
 class CSMRenderer : public VulkanRenderer {
 public:
+    static constexpr uint32_t csm_count = 4;
     friend struct CSMScenePass;
     friend struct CSMDepthPass;
     // RAII

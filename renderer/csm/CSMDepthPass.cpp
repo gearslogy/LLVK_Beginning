@@ -30,6 +30,7 @@ void CSMDepthPass::cleanup() {
     vkDestroyRenderPass(device, depthRenderPass, nullptr);
     vkDestroyFramebuffer(device, depthFramebuffer, nullptr);
     UT_Fn::cleanup_range_resources(uboGeomBuffer);
+    UT_Fn::cleanup_range_resources(uboFSBuffer);
     UT_Fn::cleanup_pipeline(device, normalPipeline, instancePipeline);
 }
 
@@ -144,6 +145,9 @@ void CSMDepthPass::prepareUniformBuffers() {
     setRequiredObjectsByRenderer(pRenderer, uboGeomBuffer[0], uboGeomBuffer[1]);
     for(auto &ubo : uboGeomBuffer)
         ubo.createAndMapping(sizeof(uboGeomData));
+    setRequiredObjectsByRenderer(pRenderer,uboFSBuffer[0], uboFSBuffer[1]);
+    for(auto &ubo : uboFSBuffer)
+        ubo.createAndMapping(sizeof(fsUBOData));
 }
 
 
@@ -166,7 +170,6 @@ void CSMDepthPass::recordCommandBuffer() {
 
 
 void CSMDepthPass::update() {
-
     constexpr std::array<glm::vec3, 8> ndcFrustumCorners = {
         {
             // NDC near plane
@@ -185,7 +188,7 @@ void CSMDepthPass::update() {
         return std::ranges::fold_left(corners, glm::vec3{0.0f},std::plus<>()) / static_cast<float>(std::size(corners));
     };
 
-
+    glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
     // 计算切割百分比
     float cascadeSplits[cascade_count];
     const auto nearClip = pRenderer->mainCamera.near();
@@ -244,7 +247,7 @@ void CSMDepthPass::update() {
         //std::cout << radius << std::endl;
         auto maxExtents = glm::vec3(radius);
         glm::vec3 minExtents = -maxExtents;
-        glm::vec3 lightDir = glm::normalize(-pRenderer->lightPos);
+
         glm::mat4 lightViewMatrix = glm::lookAt(wpFrustumCenter - lightDir * -minExtents.z, wpFrustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
         lightOrthoMatrix[1][1] *= -1;
@@ -260,6 +263,13 @@ void CSMDepthPass::update() {
         uboGeomData.lightViewProj[k] = v;
     }
     memcpy(uboGeomBuffer[pRenderer->getCurrentFrame()].mapped, &uboGeomData, sizeof(uboGeomData));
+
+    fsUBOData.lightDir = {lightDir.x, lightDir.y, lightDir.z, 1.0};
+    for (uint32_t i = 0; i < cascade_count; i++) {
+        fsUBOData.cascadeSplits[i] = cascadesSplitDepth[i];
+    }
+    memcpy(uboFSBuffer[pRenderer->getCurrentFrame()].mapped, &fsUBOData, sizeof(fsUBOData));
+
 }
 
 

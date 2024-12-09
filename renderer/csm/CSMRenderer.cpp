@@ -64,10 +64,12 @@ void CSMRenderer::prepare() {
     mainCamera.mMoveSpeed = 10;
     mainCamera.updateCameraVectors();
     preparePVMIUBOAndSets();
+
     depthPass->prepare();
     scenePass->prepare();
     // when depth ready. we can update sets. because need the attachment, and ubo-geom info
     updateSets();
+
 
 }
 void CSMRenderer::render() {
@@ -123,14 +125,22 @@ void CSMRenderer::preparePVMIUBOAndSets() {
 
 
     // --- set layout and sets allocation. 0:UBO(vs) 1:UBO(geom) 2:CIS 3:CIS(sample depth map)
-    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>; // MVP/geomUBO/color/depth
-    using descPos = MetaDesc::desc_binding_position_t<0,1,2,3>;
-    using descBindingUsage = MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_GEOMETRY_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::UBO, MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>; // MVP/geomUBO/fsUBO/color/depth
+    using descPos = MetaDesc::desc_binding_position_t<0,1,2,3,4>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t<
+        VK_SHADER_STAGE_VERTEX_BIT, // MVP Instance
+        VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,                    // light view project
+        VK_SHADER_STAGE_FRAGMENT_BIT,// color tex
+        VK_SHADER_STAGE_FRAGMENT_BIT,// depth binding
+        VK_SHADER_STAGE_FRAGMENT_BIT // FS binding. Before we do this we have to perform a depthPass prepare!
+    >; //depth tex
+
+
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
     if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&descSetLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
 
-    std::array<VkDescriptorSetLayout,2> layouts = {descSetLayout, descSetLayout};
+    std::array<VkDescriptorSetLayout,2> layouts = {descSetLayout, descSetLayout}; // must be two, because we USE MAX_FLIGHT_FRAME
     auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
     UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, setGround.data());
     UT_Fn::invoke_and_check("create scene sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, set29.data());
@@ -151,12 +161,14 @@ void CSMRenderer::updateSets() {
     // update sets
     auto updateSets= [&device,this](const UBOFramedBuffers&mvp_i_framedUbo, const SetsFramed&framedSet, const auto &... textures) {
         [&]<std::size_t... I>(std::index_sequence<I...>) {
+            constexpr uint32_t numBindings = 3+ sizeof...(textures);
             for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                std::array<VkWriteDescriptorSet, 2 + sizeof...(textures)> writes = {
+                std::array<VkWriteDescriptorSet, numBindings> writes = {
                     FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &mvp_i_framedUbo[i].descBufferInfo),          // scene model_view_proj_instance , used in VS shader
                     FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &depthPass->uboGeomBuffer[i].descBufferInfo), // used in geom shader. !IMPORTANT: depthPass->prepare()
+                    FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &depthPass->uboFSBuffer[i].descBufferInfo), // used in geom shader. !IMPORTANT: depthPass->prepare()
                     FnDesc::writeDescriptorSet(framedSet[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        I + 2, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
+                        I + 3, &std::get<I>(std::forward_as_tuple(textures...)).descImageInfo)...
                 };
                 vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
             }

@@ -29,7 +29,14 @@ struct CSMDepthPass {
     }uboGeomData;
     std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboGeomBuffer;// FRAMED BUFFER
 
-    const auto& renderTarget() const {return depthAttachment;}
+    // FS binding. Before we do this we have to perform a depthPass prepare!
+    struct {
+        float cascadeSplits[cascade_count];
+        glm::vec4 lightDir;
+    }fsUBOData;
+     std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboFSBuffer;
+
+    [[nodiscard]] const auto& renderTarget() const {return depthAttachment;}
     void update(); // update cascade and uboData
 private:
     void prepareDepthResources();
@@ -45,7 +52,6 @@ private:
     VkFramebuffer depthFramebuffer{};
 
     // pipeline
-
     UT_GraphicsPipelinePSOs pso{};
     VkPipeline instancePipeline{};
     VkPipeline normalPipeline{};
