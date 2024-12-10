@@ -52,7 +52,7 @@ private:
     ResourceManager resourceManager{};
     void preparePVMIUBOAndSets();
     void updateUBO();
-    glm::vec3 lightPos{97.316, 53.6274, 0.0};
+    glm::vec3 lightPos{97.316, 53.6274, -20.0};
     struct {// PVMIUBO ubo data
         glm::mat4 proj;
         glm::mat4 view;

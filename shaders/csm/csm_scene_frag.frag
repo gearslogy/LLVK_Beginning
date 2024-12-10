@@ -2,6 +2,9 @@
 #include "common.glsl"
 #define cascade_count 4
 
+
+
+#define ambient 0.35
 layout (location = 0) in vec3 wP;
 layout (location = 2) in vec3 N;
 layout (location = 5) in vec2 uv;
@@ -32,12 +35,12 @@ const mat4 biasMat = mat4(
 float textureProj(vec4 shadowCoord, vec2 offset, uint cascadeIndex)
 {
     float shadow = 1.0;
-    float bias = 0.005;
+    float bias = 0.001;
 
     if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) {
         float dist = texture(depthTex, vec3(shadowCoord.st + offset, cascadeIndex)).r;
         if (shadowCoord.w > 0 && dist < shadowCoord.z - bias) {
-            shadow = 0;
+            shadow = ambient;
         }
     }
     return shadow;
@@ -51,7 +54,7 @@ float filterPCF(vec4 sc, uint cascadeIndex)
     float dy = scale * 1.0 / float(texDim.y);
     float shadowFactor = 0.0;
     int count = 0;
-    int range = 1;
+    int range = 3;
 
     for (int x = -range; x <= range; x++) {
         for (int y = -range; y <= range; y++) {
@@ -72,7 +75,7 @@ void main(){
     color = gammaCorrect(color,2.2);
 
     vec3 L = -normalize(ubo.lightDir).xyz;
-    float diff = max(dot(N,L), 0);
+    float diff = max(dot(N,L), ambient);
 
     // cal cascade index
     uint cascadeIndex = 0;
@@ -95,7 +98,6 @@ void main(){
         debugCascadeIndexCd = vec3(1,1,0);
     }
 
-
-
-    outColor = vec4(vec3(shadow),0);
+    vec3 finalColor =  debugCascadeIndexCd* color.rgb * vec3(shadow) * diff * 3.0;
+    outColor = vec4(finalColor,0);
 }

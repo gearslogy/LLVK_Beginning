@@ -60,7 +60,7 @@ private:
 private:
     const CSMRenderer *pRenderer{};
     const VkDescriptorPool *pDescriptorPool{};
-    float cascadeSplitLambda = 0.95f;
+    float cascadeSplitLambda = 0.85f;
     std::array<float, cascade_count> cascadesSplitDepth{};
     std::array<glm::mat4, cascade_count> cascadesViewProjMatrix{};
 };

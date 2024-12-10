@@ -129,10 +129,10 @@ void CSMRenderer::preparePVMIUBOAndSets() {
     using descPos = MetaDesc::desc_binding_position_t<0,1,2,3,4>;
     using descBindingUsage = MetaDesc::desc_binding_usage_t<
         VK_SHADER_STAGE_VERTEX_BIT, // MVP Instance
-        VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,                    // light view project
-        VK_SHADER_STAGE_FRAGMENT_BIT,// color tex
-        VK_SHADER_STAGE_FRAGMENT_BIT,// depth binding
-        VK_SHADER_STAGE_FRAGMENT_BIT // FS binding. Before we do this we have to perform a depthPass prepare!
+        VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,                    // light view project
+        VK_SHADER_STAGE_FRAGMENT_BIT,// FS UBO binding. Before we do this we have to perform a depthPass prepare!
+        VK_SHADER_STAGE_FRAGMENT_BIT,// color texture binding
+        VK_SHADER_STAGE_FRAGMENT_BIT // depth texture binding
     >; //depth tex
 
 

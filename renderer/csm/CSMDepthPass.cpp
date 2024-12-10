@@ -126,6 +126,13 @@ void CSMDepthPass::preparePipelines() {
     VkPipelineShaderStageCreateInfo geomSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, geomModule);
     VkPipelineShaderStageCreateInfo fragSSCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragModule);
 
+    auto dynamicsStates = FnPipeline::simpleDynamicsStates();
+    dynamicsStates.emplace_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+    pso.dynamicStateCIO = FnPipeline::dynamicStateCreateInfo(dynamicsStates);
+    pso.rasterizerStateCIO.depthBiasEnable = VK_TRUE;
+    pso.rasterizerStateCIO.depthClampEnable = VK_TRUE; //超出近平面和远平面的片段不会被裁剪掉
+    pso.rasterizerStateCIO.cullMode = VK_CULL_MODE_NONE;
+
     pso.setShaderStages(vertSSCIO, geomSSCIO, fragSSCIO);
     pso.setPipelineLayout(pRenderer->pipelineLayout);
     pso.setRenderPass(depthRenderPass);
@@ -153,13 +160,15 @@ void CSMDepthPass::prepareUniformBuffers() {
 
 
 void CSMDepthPass::recordCommandBuffer() {
+    constexpr float depthBiasConstant = 1.25f;
+    constexpr float depthBiasSlope =1.75f;
     std::vector<VkClearValue> clearValues(1);
     clearValues[0].depthStencil = { 1.0f, 0 };
     VkExtent2D shadowExtent{width, width};
     auto renderPassBeginInfo = FnCommand::renderPassBeginInfo(depthFramebuffer, depthRenderPass, shadowExtent, clearValues);
     const auto &cmdBuf = pRenderer->getMainCommandBuffer();
     vkCmdBeginRenderPass(cmdBuf,&renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
-
+    vkCmdSetDepthBias( cmdBuf,depthBiasConstant, 0.0f,depthBiasSlope);
     auto viewport = FnCommand::viewport(width, width );
     auto scissor = FnCommand::scissor(width, width );
     vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
