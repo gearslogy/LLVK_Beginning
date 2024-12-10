@@ -5,6 +5,7 @@ Learn Vulkan from scratch
 * Except houdini works commercially
 
 ## Dive into Cascade ShadowMap
+geometry shader to generate the depth render target
 ![dual.png](screenshot/csm_1.png)
 ![dual.png](screenshot/csm_2.gif)
 with houdini visualize result: scene/csm/vulkan_csm_visualize.hip
