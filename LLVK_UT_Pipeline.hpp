@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.h>
 #include "Utils.h"
 #include "Pipeline.hpp"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 LLVK_NAMESPACE_BEGIN
 struct UT_GraphicsPipelinePSOs{
     UT_GraphicsPipelinePSOs() {

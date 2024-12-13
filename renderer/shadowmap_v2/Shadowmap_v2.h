@@ -4,7 +4,7 @@
 #pragma once
 #include "VulkanRenderer.h"
 #include "LLVK_VmaBuffer.h"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 #include "LLVK_UT_Pipeline.hpp"
 
 LLVK_NAMESPACE_BEGIN

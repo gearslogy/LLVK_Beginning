@@ -6,7 +6,7 @@
 #define RBDVATRENDERER_H
 
 
-#include "LLVK_GeomtryLoader.h"#include "LLVK_SYS.hpp"
+#include "LLVK_GeometryLoader.h"#include "LLVK_SYS.hpp"
 #include "VulkanRenderer.h"
 LLVK_NAMESPACE_BEGIN
 class RbdVatRenderer :public VulkanRenderer {

@@ -4,7 +4,7 @@
 #pragma once
 #include "VulkanRenderer.h"
 #include "LLVK_VmaBuffer.h"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 LLVK_NAMESPACE_BEGIN
 struct shadowmap : VulkanRenderer{
     shadowmap();

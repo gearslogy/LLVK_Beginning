@@ -5,7 +5,7 @@
 #ifndef CSMRENDERER_H
 #define CSMRENDERER_H
 
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 #include "LLVK_SYS.hpp"
 #include "VulkanRenderer.h"
 

@@ -6,7 +6,7 @@
 
 #include "BufferManager.h"
 #include "LLVK_Descriptor.hpp"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 
 // Vertex layout for this example
 // Wrapper functions for aligned memory allocation

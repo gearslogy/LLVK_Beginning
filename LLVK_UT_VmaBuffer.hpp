@@ -6,7 +6,7 @@
 #define LLVK_UT_VMABUFFER_H
 
 #include "LLVK_VmaBuffer.h"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 LLVK_NAMESPACE_BEGIN
 
 namespace UT_VmaBuffer {

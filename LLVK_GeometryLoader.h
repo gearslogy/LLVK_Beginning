@@ -23,43 +23,15 @@ struct GLTFVertex{
     bool operator==(const GLTFVertex& other) const {
         return P == other.P && Cd== other.Cd && uv0 == other.uv0;
     }
-
-
-    static constexpr int vertex_buffer_binding_id = 0;   // basic    buffer id should be at 0
-    static constexpr int instance_buffer_binding_id = 1; // instance buffer id should be at 1
-    // for rendering location descriptions
-    // basic
     static VkVertexInputBindingDescription bindings();
     static std::array<VkVertexInputAttributeDescription,7> attribs();
-    // instance
 };
-
-struct GLTFVertexVATFracture {
-    glm::vec3 P{};      // 0
-    glm::vec3 Cd{};     // 1
-    glm::vec3 N{};      // 2
-    glm::vec3 T{};      // 3
-    glm::vec3 B{};      // 4
-    glm::vec2 uv0{};    // 5
-    glm::int32_t fractureIndex{};
-};
-inline constexpr auto GLTF_VertexHash = [](auto vertex) {
-    return ((std::hash<glm::vec3>()(vertex.P) ^ (std::hash<glm::vec3>()(vertex.Cd) << 1)) >> 1) ^ (std::hash<glm::vec2>()(vertex.uv0) << 1);
-};
-
 LLVK_NAMESPACE_END
 
 namespace std {
     template<> struct hash<LLVK::GLTFVertex> {
         size_t operator()(LLVK::GLTFVertex const& vertex) const {
-            //return ((hash<glm::vec3>()(vertex.P) ^ (hash<glm::vec3>()(vertex.Cd) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.uv0) << 1);
-            return LLVK::GLTF_VertexHash(vertex);
-        }
-    };
-    template<> struct hash<LLVK::GLTFVertexVATFracture> {
-        size_t operator()(LLVK::GLTFVertexVATFracture const& vertex) const {
-            //return ((hash<glm::vec3>()(vertex.P) ^ (hash<glm::vec3>()(vertex.Cd) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.uv0) << 1);
-            return LLVK::GLTF_VertexHash(vertex);
+            return ((hash<glm::vec3>()(vertex.P) ^ (hash<glm::vec3>()(vertex.Cd) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.uv0) << 1);
         }
     };
 }

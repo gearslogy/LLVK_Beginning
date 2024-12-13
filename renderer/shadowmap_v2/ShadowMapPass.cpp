@@ -10,7 +10,7 @@
 #include "ShadowMapPass.h"
 #include "LLVK_Descriptor.hpp"
 #include "Pipeline.hpp"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
 

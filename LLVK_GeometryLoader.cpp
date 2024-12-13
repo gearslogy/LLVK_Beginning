@@ -3,7 +3,7 @@
 //
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 
 #include <iostream>
 #include "Utils.h"
@@ -11,6 +11,7 @@
 LLVK_NAMESPACE_BEGIN
 
 VkVertexInputBindingDescription GLTFVertex::bindings() {
+    constexpr int vertex_buffer_binding_id = 0;   // basic    buffer id should be at 0
     VkVertexInputBindingDescription desc{};
     desc.binding = vertex_buffer_binding_id;
     desc.stride = sizeof(GLTFVertex);
@@ -19,6 +20,7 @@ VkVertexInputBindingDescription GLTFVertex::bindings() {
 }
 
 std::array<VkVertexInputAttributeDescription, 7> GLTFVertex::attribs() {
+    constexpr int vertex_buffer_binding_id = 0;   // basic    buffer id should be at 0
     std::array<VkVertexInputAttributeDescription,7> desc{};
     desc[0] = { 0,vertex_buffer_binding_id,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, P)};
     desc[1] = { 1,vertex_buffer_binding_id,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertex, Cd)};

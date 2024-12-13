@@ -5,7 +5,7 @@
 #ifndef DEFER_H
 #define DEFER_H
 
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 #include "VulkanRenderer.h"
 #include "LLVK_VmaBuffer.h"
 LLVK_NAMESPACE_BEGIN

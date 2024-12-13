@@ -10,7 +10,7 @@
 #include "LLVK_Descriptor.hpp"
 #include "VulkanRenderer.h"
 #include "renderer/public/UT_CustomRenderer.hpp"
-#include "LLVK_GeomtryLoader.h"
+#include "LLVK_GeometryLoader.h"
 LLVK_NAMESPACE_BEGIN
 
 IndirectDrawPass::JsonPointsParser::JsonPointsParser(const std::string &path){
