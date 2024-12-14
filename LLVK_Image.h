@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.h>
 #include <string>
 #include <vector>
-#include "Utils.h"
+#include "LLVK_Utils.hpp"
 
 LLVK_NAMESPACE_BEGIN
 struct ImageAndMemory {

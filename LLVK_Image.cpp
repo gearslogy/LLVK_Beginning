@@ -7,7 +7,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
 #include <vma/vk_mem_alloc.h>
-#include "Utils.h"
+#include "LLVK_Utils.hpp"
 #include "BufferManager.h"
 #include "CommandManager.h"
 

@@ -11,7 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp> // glm::rotate
 #include "LLVK_Image.h"
-#include "Utils.h"
+#include "LLVK_Utils.hpp"
 LLVK_NAMESPACE_BEGIN
 struct LayoutBindings {
     static std::array<VkDescriptorSetLayoutBinding,2> getUBODescriptorSetLayoutBindings(VkDevice device);
