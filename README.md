@@ -112,6 +112,49 @@ attrib key:TEXCOORD_0 value:7
 0 2 1 2 0 3
 
 ```
+### exr dump
+#### dump single part layer:
+.\exr_dump.exe position.exr
+```text
+Not multi part exr: `chunkCount' attribute is not found in the header., roll back to single part exr reader: EXR version: 2
+Number of channels: 4
+Channel[0]: name = A, pixel_type = HALF, sampling = (1, 1)
+Channel[1]: name = B, pixel_type = HALF, sampling = (1, 1)
+Channel[2]: name = G, pixel_type = HALF, sampling = (1, 1)
+Channel[3]: name = R, pixel_type = HALF, sampling = (1, 1)
+first pixel value:1.75879 0.648926 12.7578 1
+last pixel value:2.16992 1.61328 26.7812 1
+```
+#### dump multi part layer:
+.\exr_dump.exe multi_ch.exr
+```text
+exr num parts: 5
+C chunk_count:1024  num_channels:4
+         Channel[0]: name = A, pixel_type = FLOAT, sampling = (1, 1)
+         Channel[1]: name = B, pixel_type = FLOAT, sampling = (1, 1)
+         Channel[2]: name = G, pixel_type = FLOAT, sampling = (1, 1)
+         Channel[3]: name = R, pixel_type = FLOAT, sampling = (1, 1)
+noise chunk_count:1024  num_channels:1
+         Channel[0]: name = noise.Z, pixel_type = FLOAT, sampling = (1, 1)
+displace chunk_count:1024  num_channels:1
+         Channel[0]: name = displace.Z, pixel_type = FLOAT, sampling = (1, 1)
+id chunk_count:1024  num_channels:1
+         Channel[0]: name = id.Z, pixel_type = UINT, sampling = (1, 1)
+vector chunk_count:1024  num_channels:3
+         Channel[0]: name = vector.b, pixel_type = FLOAT, sampling = (1, 1)
+         Channel[1]: name = vector.g, pixel_type = FLOAT, sampling = (1, 1)
+         Channel[2]: name = vector.r, pixel_type = FLOAT, sampling = (1, 1)
+Loaded 5 part images, now dump image info use ExrImage
+        image name:C image num tiles:0 width: 1024 height:1024 num chans:4
+                first pixel value:-0.0527842 0.0313708 -0.0606085 1
+                last pixel value:-0.188693 0.0616372 -0.0752638 1
+        image name:noise image num tiles:0 width: 1024 height:1024 num chans:1
+        image name:displace image num tiles:0 width: 1024 height:1024 num chans:1
+        image name:id image num tiles:0 width: 1024 height:1024 num chans:1
+        image name:vector image num tiles:0 width: 1024 height:1024 num chans:3
+```
+
+
 
 ## REF
 ```html
