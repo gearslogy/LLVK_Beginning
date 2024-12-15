@@ -12,6 +12,7 @@ file(GLOB SOURCES *.h *.cpp
         renderer/*
         renderer/*/*
         renderer/*/*/*
+        ${CMAKE_SOURCE_DIR}/libs/tinyexr/deps/miniz/miniz.c
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
@@ -61,10 +62,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS}
         ${GLFW_PATH_INCLUDE}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/libs/KTX-Software/include) # ktx include
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/tinyexr/deps/miniz) # miniz for tinyexr
 target_link_directories(${PROJECT_NAME} PUBLIC
         ${GLFW_PATH_LIB}
         ${CMAKE_CURRENT_LIST_DIR}/libs/KTX-Software/lib) # ktx lib dir
-target_link_libraries (${PROJECT_NAME} ${Vulkan_LIBRARIES} glfw3 ktx)
+target_link_libraries(${PROJECT_NAME} ${Vulkan_LIBRARIES} glfw3 ktx)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/bin)
 set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
