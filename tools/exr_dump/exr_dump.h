@@ -15,7 +15,7 @@
 LLVK_NAMESPACE_BEGIN
 struct exr_dump {
     void load(const char *filename);
-
+    void directLoadRGBA(const char *filename);
 };
 LLVK_NAMESPACE_END
 
