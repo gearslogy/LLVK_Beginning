@@ -6,8 +6,12 @@
 #define RBDVATRENDERER_H
 
 
-#include "LLVK_GeometryLoader.h"#include "LLVK_SYS.hpp"
+
+#include "LLVK_SYS.hpp"
 #include "VulkanRenderer.h"
+#include "LLVK_ExrImage.h"
+#include "LLVK_GeometryLoader.h"
+#include "LLVK_GeometryLoaderV2.hpp"
 LLVK_NAMESPACE_BEGIN
 class RbdVatRenderer :public VulkanRenderer {
 public:
@@ -15,13 +19,13 @@ public:
     void prepare() override;
     void cleanupObjects() override;
 private:
-    GLTFLoader buildings{};
+    GLTFLoaderV2::Loader<GLTFVertexVATFracture> buildings{};
     VmaSimpleGeometryBufferManager geomManager{};
-
     // VAT
     VkSampler colorSampler{};
-    VmaUBOKTX2Texture texPosition;
-    VmaUBOKTX2Texture texRotation;
+    VkSampler vatSampler{};
+    VmaUBOExrRGBATexture texPosition;
+    VmaUBOExrRGBATexture texRotation;
 
 };
 LLVK_NAMESPACE_END

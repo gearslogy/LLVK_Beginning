@@ -18,6 +18,8 @@ struct ImageAndMemory {
 
 // ImageFunction
 struct FnImage {
+    static VkSamplerCreateInfo samplerCreateInfo(); // default is interpolation, repeat
+
     static VkImageViewCreateInfo imageViewCreateInfo(VkImage image, VkFormat format);
 
     static void createImageView(VkDevice device,
@@ -75,6 +77,8 @@ struct FnImage {
     static VkSampler createImageSampler(VkPhysicalDevice physicalDevice,
                                         VkDevice device);
     static VkSampler createDepthSampler(VkDevice device);
+    static VkSampler createExrVATSampler(VkDevice device); // no interpolation
+
 
     static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
                                       VkImageTiling tiling,

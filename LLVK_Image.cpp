@@ -271,9 +271,7 @@ void FnImage::copyBufferToImage(VkDevice device, const VkCommandPool &pool,
     FnCommand::endSingleTimeCommand(device, pool, queue, commandBuffer);
 }
 
-VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice device) {
-    VkPhysicalDeviceProperties gpuProps{};
-    vkGetPhysicalDeviceProperties(physicalDevice, &gpuProps);
+VkSamplerCreateInfo FnImage::samplerCreateInfo() {
     VkSamplerCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     createInfo.magFilter = VK_FILTER_LINEAR;
@@ -282,13 +280,22 @@ VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice d
     createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     createInfo.anisotropyEnable = VK_TRUE;
-    createInfo.maxAnisotropy = gpuProps.limits.maxSamplerAnisotropy;
+    createInfo.maxAnisotropy = 1;
     createInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;//it only effects when the addressModeU/V/W=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
     // setting up mip
     createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     createInfo.mipLodBias = 0;
     createInfo.minLod = 0.0f;
     createInfo.maxLod = VK_LOD_CLAMP_NONE; // 1000.0f
+    return createInfo;
+}
+
+
+VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice device) {
+    VkPhysicalDeviceProperties gpuProps{};
+    vkGetPhysicalDeviceProperties(physicalDevice, &gpuProps);
+    VkSamplerCreateInfo createInfo = samplerCreateInfo();
+    createInfo.maxAnisotropy = gpuProps.limits.maxSamplerAnisotropy;
     VkSampler textureSampler;
     if (vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
@@ -296,20 +303,11 @@ VkSampler FnImage::createImageSampler(VkPhysicalDevice physicalDevice,VkDevice d
     return textureSampler;
 }
 VkSampler FnImage::createDepthSampler(VkDevice device) {
-    VkSamplerCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    createInfo.magFilter = VK_FILTER_LINEAR;
-    createInfo.magFilter = VK_FILTER_LINEAR;
+    VkSamplerCreateInfo createInfo = samplerCreateInfo();
     createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    createInfo.anisotropyEnable = VK_TRUE;
-    createInfo.maxAnisotropy = 1;
-    createInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;//it only effects when the addressModeU/V/W=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
     // setting up mip
-    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    createInfo.mipLodBias = 0;
-    createInfo.minLod = 0.0f;
     createInfo.maxLod = 1.0;
     VkSampler textureSampler;
     if (vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS) {
@@ -317,6 +315,26 @@ VkSampler FnImage::createDepthSampler(VkDevice device) {
     }
     return textureSampler;
 }
+VkSampler FnImage::createExrVATSampler(VkDevice device) {
+    VkSamplerCreateInfo createInfo = samplerCreateInfo();
+    createInfo.magFilter = VK_FILTER_NEAREST;
+    createInfo.magFilter = VK_FILTER_NEAREST;
+    createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    createInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;//it only effects when the addressModeU/V/W=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
+    // setting up mip
+    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    createInfo.mipLodBias = 0;
+    createInfo.minLod = 0.0f;
+    createInfo.maxLod = 0.0; // no mipmap
+    VkSampler textureSampler;
+    if (vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create vat sampler!");
+    }
+    return textureSampler;
+}
+
 
 
 

@@ -112,7 +112,7 @@ namespace GLTFLoaderV2 {
             bool hasNormal = (primitive.attributes.find("NORMAL") != primitive.attributes.end());
             bool hasTangent = (primitive.attributes.find("TANGENT") != primitive.attributes.end());
             bool hasUV0 = (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end());
-            bool hasUV1 = (primitive.attributes.find("TEXCOORD_1") != primitive.attributes.end());
+            //bool hasUV1 = (primitive.attributes.find("TEXCOORD_1") != primitive.attributes.end());
             bool hasCd0 = (primitive.attributes.find("COLOR_0") != primitive.attributes.end());
             // fix attribute rendering!
             const float *N = nullptr;
@@ -127,8 +127,8 @@ namespace GLTFLoaderV2 {
                 T = getAttribPointer<float>(model, primitive, "TANGENT");
             if (hasUV0)
                 uv0 = getAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
-            if (hasUV1)
-                uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
+            //if (hasUV1)
+            //    uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
             if (hasCd0)
                 Cd = getAttribPointer<float>(model, primitive, "COLOR_0");
 
@@ -198,7 +198,6 @@ namespace GLTFLoaderV2 {
                     vertex.T[2] = T[index * 4 + 2];
                     //vertex.T = vertex.T;
                     vertex.B = glm::cross(vertex.N, vertex.T);
-
                 }
                 if (hasCd0) {
                     vertex.Cd[0] = Cd[index * 3 + 0];
@@ -209,10 +208,10 @@ namespace GLTFLoaderV2 {
                     vertex.uv0[0] = uv0[index * 2 + 0];
                     vertex.uv0[1] = uv0[index * 2 + 1];
                 }
-                if (hasUV1) {
-                    vertex.uv1[0] = uv1[index * 2 + 0];
-                    vertex.uv1[1] = uv1[index * 2 + 1];
-                }
+                //if (hasUV1) {
+                    //vertex.uv1[0] = uv1[index * 2 + 0];
+                    //vertex.uv1[1] = uv1[index * 2 + 1];
+                //}
                 std::apply([&](auto&... loaders) {
                     (loaders.setVertexAttrib(vertex, index), ...);
                 }, extraAttribLoaders);
@@ -236,7 +235,7 @@ namespace GLTFLoaderV2 {
     template<typename vertex_t>
     struct Loader{
         using part_t = Part<vertex_t>;
-        std::vector<part_t> parts;
+        std::vector<part_t> parts{};
         inline void load(const std::string &path, auto && ... customAttribLoaders){ load(path, parts, customAttribLoaders...);}
     };
 } // end of GLTFLoaderV2 namespace

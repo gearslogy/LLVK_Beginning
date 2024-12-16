@@ -14,6 +14,9 @@ struct VmaUBOExrRGBATexture: IVmaUBOTexture {
     VmaBufferRequiredObjects requiredObjects{};
     void create(const std::string &file, const VkSampler &sampler);
     void cleanup();
+private:
+    static void parseExrRGBAHeader(const std::string &file);
+    static float* parseExrRGBAData(const std::string &file, int &width, int &height);
 };
 LLVK_NAMESPACE_END
 

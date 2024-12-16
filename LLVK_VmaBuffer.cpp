@@ -193,7 +193,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFo
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
     }
-    // caculate num mip levels
+    // calculate num mip levels
     auto mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
     createdMipLevels = mipLevels;
     // create staging
@@ -201,7 +201,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFo
     VmaAllocation stagingBufferAllocation{};
     FnVmaBuffer::createBuffer(device, allocator, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         true,stagingBuffer, stagingBufferAllocation);
-    // mapping stagging
+    // mapping staging
     void* data;
     vmaMapMemory(allocator, stagingBufferAllocation, &data);
     memcpy(data, pixels, imageSize);
