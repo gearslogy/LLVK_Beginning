@@ -57,7 +57,7 @@ public :
     [[nodiscard]] VkRenderPass getMainRenderPass() const { return simplePass.pass;}
     [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return activatedSwapChainFramebuffer;}
     [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return activatedFrameCommandBufferToSubmit;}
-    [[nodiscard]] auto getCurrentFrame() const{ return currentFrame;}
+    [[nodiscard]] auto getCurrentFrame() const{ return currentFlightFrame;}
 protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;
@@ -83,7 +83,7 @@ protected:
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
-    int currentFrame{0};
+    int currentFlightFrame{0};
     ImageAndMemory depthImageAndMemory;
     VkImageView depthImageView;
     PipelineCache simplePipelineCache{};
@@ -167,7 +167,7 @@ protected:
     void submitMainCommandBuffer() {
         submitTask(activatedFrameCommandBufferToSubmit,
             activatedImageAvailableSemaphore,
-            activatedRenderFinishedSemaphore, inFlightFences[currentFrame]);
+            activatedRenderFinishedSemaphore, inFlightFences[currentFlightFrame]);
     }
     void presentMainCommandBufferFrame() {
         presentFrame(activatedRenderFinishedSemaphore);

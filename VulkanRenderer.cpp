@@ -465,11 +465,11 @@ void VulkanRenderer::draw() {
 
     //std::cout << "draw frame:" << currentFrame << std::endl;
     // GPU -> CPU, 等待上一帧是不是渲染完成
-    vkWaitForFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
+    vkWaitForFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFlightFrame],VK_TRUE,UINT64_MAX);
 
     //std::cout << "frame:" << currentFrame << std::endl;
     // GPU->GPU 获取可以绘制的交换链图片
-    auto result =vkAcquireNextImageKHR(mainDevice.logicalDevice, simpleSwapchain.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    auto result =vkAcquireNextImageKHR(mainDevice.logicalDevice, simpleSwapchain.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFlightFrame], VK_NULL_HANDLE, &imageIndex);
     if(result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreateSwapChain();
         return;
@@ -477,16 +477,16 @@ void VulkanRenderer::draw() {
         throw std::runtime_error{"failed to acquire swap chain image!"};
     }
     // here can push constant and update uniform
-    vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFrame]);
-    activatedFrameCommandBufferToSubmit = commandBuffers[currentFrame];
+    vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFlightFrame]);
+    activatedFrameCommandBufferToSubmit = commandBuffers[currentFlightFrame];
     vkResetCommandBuffer(activatedFrameCommandBufferToSubmit, 0); //0: main command buffer reset
     activatedSwapChainFramebuffer = simpleFramebuffer.swapChainFramebuffers[imageIndex];
-    activatedImageAvailableSemaphore = imageAvailableSemaphores[currentFrame];
-    activatedRenderFinishedSemaphore = renderFinishedSemaphores[currentFrame];
+    activatedImageAvailableSemaphore = imageAvailableSemaphores[currentFlightFrame];
+    activatedRenderFinishedSemaphore = renderFinishedSemaphores[currentFlightFrame];
     render(); // call the pure virtual function(record command buffer)                         //1: command buffer new content
 
     // advanced
-    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    currentFlightFrame = (currentFlightFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 VkPipelineCache VulkanRenderer::getPipelineCache() const {

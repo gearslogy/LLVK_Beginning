@@ -56,13 +56,13 @@ void BasicRenderer::preparePipelines() {
 
 void BasicRenderer::updateUniformBuffer() {
     // update the PushConstants of the CPP
-    PushConstant::update<VK_SHADER_STAGE_VERTEX_BIT>(currentFrame, [](PushVertexStageData &dataToChange) {
+    PushConstant::update<VK_SHADER_STAGE_VERTEX_BIT>(currentFlightFrame, [](PushVertexStageData &dataToChange) {
         dataToChange = {0,1,0,0};
     });
-    PushConstant::update<VK_SHADER_STAGE_FRAGMENT_BIT>(currentFrame, [](PushFragmentStageData &dataToChange) {
+    PushConstant::update<VK_SHADER_STAGE_FRAGMENT_BIT>(currentFlightFrame, [](PushFragmentStageData &dataToChange) {
         dataToChange ={1,0,0,1};
     });
-    simpleDescriptorManager.simpleUniformBuffer.updateUniform(currentFrame);
+    simpleDescriptorManager.simpleUniformBuffer.updateUniform(currentFlightFrame);
 }
 
 void BasicRenderer::recordCommandBuffer() {
@@ -92,14 +92,14 @@ void BasicRenderer::recordCommandBuffer() {
         VK_SHADER_STAGE_VERTEX_BIT,
         0,
         sizeof(PushVertexStageData),
-        &PushConstant::vertexPushConstants[currentFrame]);
+        &PushConstant::vertexPushConstants[currentFlightFrame]);
     //std::cout << "push range2:" << sizeof(PushFragmentStageData) << " " << sizeof(PushVertexStageData) << std::endl;
     vkCmdPushConstants(activatedFrameCommandBufferToSubmit,
         simplePipeline.pipelineLayout,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         sizeof(PushVertexStageData), // 偏移量为 Vertex Push Constant 的大小
         sizeof(PushFragmentStageData),
-        &PushConstant::fragmentPushConstants[currentFrame]);
+        &PushConstant::fragmentPushConstants[currentFlightFrame]);
 
     // only one buffer hold all data
     VkDeviceSize offset =0;
@@ -109,7 +109,7 @@ void BasicRenderer::recordCommandBuffer() {
                            &simpleObjLoader.verticesBuffer,&offset);
     vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS,
                    simplePipeline.pipelineLayout, 0, 2,
-                   &(simpleDescriptorManager.descriptorSets)[currentFrame * 2],
+                   &(simpleDescriptorManager.descriptorSets)[currentFlightFrame * 2],
                    0, nullptr);
     vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit, simpleObjLoader.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, simpleObjLoader.indices.size(), 1, 0, 0, 0);

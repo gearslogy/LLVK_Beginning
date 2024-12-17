@@ -482,10 +482,10 @@ void defer::render() {
      mrtSubmitInfo.waitSemaphoreCount = 1;
      mrtSubmitInfo.signalSemaphoreCount = 1;
      mrtSubmitInfo.pWaitDstStageMask = waitStages;
-     mrtSubmitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFrame];     // Wait for swap chain presentation to finish
-     mrtSubmitInfo.pSignalSemaphores = & mrtSemaphores[currentFrame];     // Signal ready with offscreen semaphore
+     mrtSubmitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFlightFrame];     // Wait for swap chain presentation to finish
+     mrtSubmitInfo.pSignalSemaphores = & mrtSemaphores[currentFlightFrame];     // Signal ready with offscreen semaphore
      // Submit mrt work
-     mrtSubmitInfo.pCommandBuffers = &mrtCommandBuffers[currentFrame];
+     mrtSubmitInfo.pCommandBuffers = &mrtCommandBuffers[currentFlightFrame];
      UT_Fn::invoke_and_check("error submit mrt queue", vkQueueSubmit, mainDevice.graphicsQueue, 1, &mrtSubmitInfo, VK_NULL_HANDLE);
 
      VkSubmitInfo compSubmitInfo = {};
@@ -495,12 +495,12 @@ void defer::render() {
      compSubmitInfo.signalSemaphoreCount = 1;
      compSubmitInfo.pWaitDstStageMask = waitStages;
      // Wait for offscreen semaphore
-     compSubmitInfo.pWaitSemaphores = &mrtSemaphores[currentFrame];
+     compSubmitInfo.pWaitSemaphores = &mrtSemaphores[currentFlightFrame];
      // Signal ready with render complete semaphore
-     compSubmitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
+     compSubmitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFlightFrame];
      // Submit composition work
      compSubmitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
-     UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &compSubmitInfo, inFlightFences[currentFrame]);
+     UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &compSubmitInfo, inFlightFences[currentFlightFrame]);
 
      presentMainCommandBufferFrame();
 
@@ -560,7 +560,7 @@ void defer::recordMrtCommandBuffer() {
      clearValues[4].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
      clearValues[5].depthStencil = { 1.0f, 0 };
 
-     auto mrtCommandBuffer = mrtCommandBuffers[currentFrame];
+     auto mrtCommandBuffer = mrtCommandBuffers[currentFlightFrame];
      vkResetCommandBuffer(mrtCommandBuffer,/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
 
      const VkFramebuffer &framebuffer = mrtFrameBuf.frameBuffer;
