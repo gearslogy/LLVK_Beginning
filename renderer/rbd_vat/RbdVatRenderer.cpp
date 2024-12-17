@@ -1,9 +1,10 @@
-//
+﻿//
 // Created by liuya on 12/8/2024.
 //
 
 #include "RbdVatRenderer.h"
 
+#include <chrono>
 #include <LLVK_Descriptor.hpp>
 #include <LLVK_UT_VmaBuffer.hpp>
 #include <Pipeline.hpp>
@@ -84,8 +85,8 @@ void RbdVatRenderer::prepareDescSets() {
         using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
         using descBindingUsage = MetaDesc::desc_binding_usage_t<
             VK_SHADER_STAGE_FRAGMENT_BIT, // base color tex
-            VK_SHADER_STAGE_FRAGMENT_BIT,  // VAT tex
-            VK_SHADER_STAGE_FRAGMENT_BIT  // VAT tex
+            VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,  // P VAT
+            VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT   // orient VAT
         >;
         constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
         const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
@@ -119,20 +120,56 @@ void RbdVatRenderer::prepareUBO() {
         ubo.createAndMapping(sizeof(uboData));
 }
 void RbdVatRenderer::render() {
-
+    updateTime();
+    updateUBO();
+    recordCommandBuffer();
+    submitMainCommandBuffer();
+    presentMainCommandBufferFrame();
 }
 void RbdVatRenderer::preparePipeline() {
     const auto &device = mainDevice.logicalDevice;
-    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/csm_scene_vert.spv",  device);    //shader modules
-    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/csm_scene_frag.spv",  device);
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_vert.spv",  device);    //shader modules
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/csm_vat_frag.spv",  device);
     VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);    //shader stages
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);
     pso.setPipelineLayout(pipelineLayout);
     pso.setRenderPass(getMainRenderPass());
+
+    constexpr int vertexBufferBindingID = 0;
+    std::array<VkVertexInputAttributeDescription,5> attribsDesc{};
+    attribsDesc[0] = { 0,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, P)};
+    attribsDesc[1] = { 1,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, Cd)};
+    attribsDesc[2] = { 2,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, N)};
+    attribsDesc[3] = { 3,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, T)};
+    attribsDesc[4] = { 4,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, B)};
+    attribsDesc[5] = { 5,vertexBufferBindingID,VK_FORMAT_R32G32_SFLOAT , offsetof(GLTFVertexVATFracture, uv0) };
+    attribsDesc[6] = { 6,vertexBufferBindingID,VK_FORMAT_R32_SINT , offsetof(GLTFVertexVATFracture, fractureIndex)};
+    VkVertexInputBindingDescription vertexBinding{vertexBufferBindingID, sizeof(GLTFVertexVATFracture), VK_VERTEX_INPUT_RATE_VERTEX};
+    std::array bindingsDesc{vertexBinding};
+    pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
+
+
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, getPipelineCache(), scenePipeline);
     UT_Fn::cleanup_shader_module(device,vsMD,fsMD);
 }
+void RbdVatRenderer::updateTime() {
+    static auto lastTime = std::chrono::high_resolution_clock::now();
+    auto tc_currentTime = std::chrono::high_resolution_clock::now();
+    float deltaTime = std::chrono::duration<float>(tc_currentTime - lastTime).count();
+    lastTime = tc_currentTime;
+
+    // 累加时间
+    tc_accumulator += deltaTime;
+
+    // 当累积的时间超过帧时间时更新
+    while (tc_accumulator >= tc_frameTime) {
+        tc_currentFrame += 1.0f;
+        tc_accumulator -= tc_frameTime;
+    }
+
+}
+
 void RbdVatRenderer::updateUBO() {
     auto [width, height] =   getSwapChainExtent();
     auto &&mainCamera = getMainCamera();
@@ -142,15 +179,34 @@ void RbdVatRenderer::updateUBO() {
     uboData.proj[1][1] *= -1;
     uboData.view = mainCamera.view();
     uboData.model = glm::mat4(1.0f);
-    uboData.frame = ?;
+    auto tcFrame =  fmod(currentFlightFrame, 60.0f);
+    uboData.timeData = { tcFrame, 0, 0, 0}; // 确保在0-59范围内循环
     memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
 }
 
+void RbdVatRenderer::recordCommandBuffer() {
+    std::vector<VkClearValue> clearValues(2);
+    clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
+    clearValues[1].depthStencil = {1.0f, 0};
+    auto cmdBuf  = getMainCommandBuffer();
+    auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(getMainFramebuffer(),
+        simplePass.pass,
+        &simpleSwapchain.swapChainExtent,clearValues);
+    const auto [width , height]= getSwapChainExtent();
 
-auto enable_options = [](auto &option , auto ... name) {
+    vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,scenePipeline);
+    auto viewport = FnCommand::viewport(width, height );
+    auto scissor = FnCommand::scissor(width, height );
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
-};
-
+    auto bindSets = {descSets_set0[currentFlightFrame], descSets_set1[currentFlightFrame]};
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+         0, std::size(bindSets), std::data(bindSets) , 0, nullptr);
+    vkCmdDraw(cmdBuf, 3, 1, 0, 0);
+    vkCmdEndRenderPass(cmdBuf);
+}
 
 
 

@@ -10,29 +10,9 @@
 #include <iostream>
 #include "LLVK_Utils.hpp"
 #include <libs/tiny_gltf.h>
-LLVK_NAMESPACE_BEGIN
-struct GLTFVertexVATFracture {
-    glm::vec3 P{};      // 0
-    glm::vec3 Cd{};     // 1
-    glm::vec3 N{};      // 2
-    glm::vec3 T{};      // 3
-    glm::vec2 uv0{};    // 4
-    glm::int32_t fractureIndex{};
-};
-LLVK_NAMESPACE_END
-
-
-namespace std {
-    template<> struct hash<LLVK::GLTFVertexVATFracture> {
-        size_t operator()(LLVK::GLTFVertexVATFracture const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.P) ^ (hash<glm::vec3>()(vertex.Cd) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.uv0) << 1);
-        }
-    };
-}
-
+#include "LLVK_Utils.hpp"
 
 LLVK_NAMESPACE_BEGIN
-
 namespace GLTFLoaderV2 {
 
     constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
@@ -61,30 +41,6 @@ namespace GLTFLoaderV2 {
 
     template<typename vert_t, typename data_type>
     struct CustomAttribLoader;
-
-
-    // user interface for partial specialization
-    template<typename data_type>
-    struct CustomAttribLoader<GLTFVertexVATFracture, data_type> {
-        using vertex_t = GLTFVertexVATFracture;
-        explicit CustomAttribLoader(const std::string &name) : attribName(name) {}
-    private:
-        bool exist{false};
-        std::string attribName{};
-        const data_type *attrib_data{nullptr};
-    public:
-        void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
-            exist = isExistAttrib(model, prim, attribName);
-            if (exist)
-                attrib_data = getAttribPointer(model, prim, attribName);
-        };
-
-        void setVertexAttrib(vertex_t & vertex, auto index) {
-            if (exist) vertex.fractureIndex = attrib_data[index];
-        }
-    };
-
-
 
 
     template<typename part_t> void load(const std::string &path, std::vector<part_t> &parts, auto &&... customAttribLoader) {
@@ -245,7 +201,6 @@ namespace GLTFLoaderV2 {
         inline void load(const std::string &path, auto && ... customAttribLoaders){ load(path, parts, customAttribLoaders...);}
     };
 } // end of GLTFLoaderV2 namespace
-
 
 LLVK_NAMESPACE_END
 

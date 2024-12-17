@@ -251,7 +251,7 @@ void DualPassRenderer::cmdRenderHair() {
     vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
     vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
     vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
-0, 1, &hairDescSets[currentFrame], 0, nullptr);
+0, 1, &hairDescSets[currentFlightFrame], 0, nullptr);
     vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit, 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
     vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit,hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
