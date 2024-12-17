@@ -34,6 +34,20 @@ namespace std {
 LLVK_NAMESPACE_BEGIN
 
 namespace GLTFLoaderV2 {
+
+    constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
+        return primitive.attributes.find(attribName) != primitive.attributes.end() ;
+    };
+    // get geometry raw buffer
+    template<typename T>
+    auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
+        const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
+        const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
+        return reinterpret_cast<const T *>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+    }
+
+
     template<typename vert_t>
     struct Part {
         using vertex_t = vert_t;
@@ -53,11 +67,13 @@ namespace GLTFLoaderV2 {
     template<typename data_type>
     struct CustomAttribLoader<GLTFVertexVATFracture, data_type> {
         using vertex_t = GLTFVertexVATFracture;
+        explicit CustomAttribLoader(const std::string &name) : attribName(name) {}
+    private:
         bool exist{false};
         std::string attribName{};
-        const data_type *attrib_data;
-
-        void getAttribPointer(const auto &model, const auto &prim) {
+        const data_type *attrib_data{nullptr};
+    public:
+        void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
             exist = isExistAttrib(model, prim, attribName);
             if (exist)
                 attrib_data = getAttribPointer(model, prim, attribName);
@@ -68,18 +84,7 @@ namespace GLTFLoaderV2 {
         }
     };
 
-    // get geometry buffer
-    template<typename T>
-    auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
-        const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
-        const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
-        const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
-        return reinterpret_cast<const T *>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-    }
 
-    constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
-        return primitive.attributes.find(attribName) != primitive.attributes.end() ;
-    };
 
 
     template<typename part_t> void load(const std::string &path, std::vector<part_t> &parts, auto &&... customAttribLoader) {
@@ -232,8 +237,9 @@ namespace GLTFLoaderV2 {
     } // end of loader function
 
 
-    template<typename vertex_t>
+    template<typename vertex_type>
     struct Loader{
+        using vertex_t = vertex_type;
         using part_t = Part<vertex_t>;
         std::vector<part_t> parts{};
         inline void load(const std::string &path, auto && ... customAttribLoaders){ load(path, parts, customAttribLoaders...);}

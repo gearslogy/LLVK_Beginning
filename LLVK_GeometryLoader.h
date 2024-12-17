@@ -48,6 +48,10 @@ struct GLTFLoader {
         VkBuffer verticesBuffer;
         VkBuffer indicesBuffer;
     };
+
+    using part_t = Part;
+    using vertex_t = GLTFVertex;
+
     template<typename T>
     auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
         const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
