@@ -12,7 +12,7 @@ layout(location=0) in vec3 P;
 layout(location=1) in vec3 Cd;
 layout(location=2) in vec3 N;
 layout(location=3) in vec3 T;
-layout(location=5) in vec2 uv0;
+layout(location=4) in vec2 uv0;
 layout(location=5) in int fracture_idx;
 
 
@@ -20,7 +20,7 @@ layout(location = 0) out vec3 fragN;
 layout(location = 1) out vec2 fragTexCoord;
 
 
-layout( binding=0) uniform UBO{
+layout(set=0, binding=0) uniform UBO{
     mat4 proj;
     mat4 view;
     mat4 model;
@@ -40,7 +40,7 @@ void main(){
     // y: 根据当前帧在总帧数中的位置 (0-59)
     vec2 vatST = vec2(
         (fracture_idx + 0.5) / float(width),    // 加0.5确保采样中心对齐
-        (currentFrame + 0.5) / float(height) );
+        (ubo.time.x + 0.5) / float(height) );
 
     vec4 posVatTex = texture( positionVAT, vatST);
     vec4 orientVatTex = texture( orientVAT, vatST);

@@ -137,14 +137,13 @@ void RbdVatRenderer::preparePipeline() {
     pso.setRenderPass(getMainRenderPass());
 
     constexpr int vertexBufferBindingID = 0;
-    std::array<VkVertexInputAttributeDescription,5> attribsDesc{};
+    std::array<VkVertexInputAttributeDescription,6> attribsDesc{};
     attribsDesc[0] = { 0,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, P)};
     attribsDesc[1] = { 1,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, Cd)};
     attribsDesc[2] = { 2,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, N)};
     attribsDesc[3] = { 3,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, T)};
-    attribsDesc[4] = { 4,vertexBufferBindingID,VK_FORMAT_R32G32B32_SFLOAT , offsetof(GLTFVertexVATFracture, B)};
-    attribsDesc[5] = { 5,vertexBufferBindingID,VK_FORMAT_R32G32_SFLOAT , offsetof(GLTFVertexVATFracture, uv0) };
-    attribsDesc[6] = { 6,vertexBufferBindingID,VK_FORMAT_R32_SINT , offsetof(GLTFVertexVATFracture, fractureIndex)};
+    attribsDesc[4] = { 5,vertexBufferBindingID,VK_FORMAT_R32G32_SFLOAT , offsetof(GLTFVertexVATFracture, uv0) };
+    attribsDesc[5] = { 6,vertexBufferBindingID,VK_FORMAT_R32_SINT , offsetof(GLTFVertexVATFracture, fractureIndex)};
     VkVertexInputBindingDescription vertexBinding{vertexBufferBindingID, sizeof(GLTFVertexVATFracture), VK_VERTEX_INPUT_RATE_VERTEX};
     std::array bindingsDesc{vertexBinding};
     pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
@@ -193,19 +192,27 @@ void RbdVatRenderer::recordCommandBuffer() {
         simplePass.pass,
         &simpleSwapchain.swapChainExtent,clearValues);
     const auto [width , height]= getSwapChainExtent();
+    UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBufferBeginInfo);
+    {
+        vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,scenePipeline);
+        auto viewport = FnCommand::viewport(width, height );
+        auto scissor = FnCommand::scissor(width, height );
+        vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+        vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
-    vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,scenePipeline);
-    auto viewport = FnCommand::viewport(width, height );
-    auto scissor = FnCommand::scissor(width, height );
-    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
-    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
+        auto bindSets = {descSets_set0[currentFlightFrame], descSets_set1[currentFlightFrame]};
+        vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+             0, std::size(bindSets), std::data(bindSets) , 0, nullptr);
 
-    auto bindSets = {descSets_set0[currentFlightFrame], descSets_set1[currentFlightFrame]};
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-         0, std::size(bindSets), std::data(bindSets) , 0, nullptr);
-    vkCmdDraw(cmdBuf, 3, 1, 0, 0);
-    vkCmdEndRenderPass(cmdBuf);
+        VkDeviceSize offsets[1] = {0};
+
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, &buildings.parts[0].verticesBuffer, offsets);
+        vkCmdBindIndexBuffer(cmdBuf,buildings.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmdBuf, buildings.parts[0].indices.size(), 1, 0, 0, 0);
+        vkCmdEndRenderPass(cmdBuf);
+    }
+    UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
 
 

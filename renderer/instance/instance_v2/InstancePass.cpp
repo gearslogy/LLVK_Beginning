@@ -5,11 +5,9 @@
 #include "InstancePass.h"
 #include <fstream>
 #include <renderer/public/UT_CustomRenderer.hpp>
-
 #include "LLVK_UT_Json.hpp"
 #include "LLVK_Descriptor.hpp"
 #include "VulkanRenderer.h"
-#include "renderer/public/UT_CustomRenderer.hpp"
 #include "LLVK_GeometryLoader.h"
 LLVK_NAMESPACE_BEGIN
 void InstanceGeometryContainer::buildSet() {
