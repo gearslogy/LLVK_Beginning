@@ -5,22 +5,11 @@
 #ifndef GLTF_DUMP_H
 #define GLTF_DUMP_H
 
-#define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE_WRITE
-#define TINYGLTF_NO_STB_IMAGE
 
-
-#include <libs/tiny_gltf.h>
 #include "LLVK_SYS.hpp"
-#include <vector>
 #include <glm/glm.hpp>
-#include <unordered_map>
-
-
-#include <iostream>
-#include "LLVK_Utils.hpp"
 #include <glm/gtx/hash.hpp>
-
+#include <iostream>
 
 
 LLVK_NAMESPACE_BEGIN

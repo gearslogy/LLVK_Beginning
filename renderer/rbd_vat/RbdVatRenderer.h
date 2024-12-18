@@ -2,18 +2,17 @@
 // Created by liuya on 12/8/2024.
 //
 
-#ifndef RBDVATRENDERER_H
-#define RBDVATRENDERER_H
-
+#pragma once
 
 #include <LLVK_UT_Pipeline.hpp>
 #include <utility>
-
 #include "LLVK_SYS.hpp"
 #include "VulkanRenderer.h"
 #include "LLVK_ExrImage.h"
 #include "LLVK_GeometryLoader.h"
 #include "LLVK_GeometryLoaderV2.hpp"
+
+
 LLVK_NAMESPACE_BEGIN
 struct GLTFVertexVATFracture {
     glm::vec3 P{};      // 0
@@ -22,9 +21,16 @@ struct GLTFVertexVATFracture {
     glm::vec3 T{};      // 3
     glm::vec2 uv0{};    // 5
     glm::int32_t fractureIndex{}; // 6
+    bool operator==(const GLTFVertexVATFracture& other) const {
+        return P == other.P && Cd== other.Cd && uv0 == other.uv0;
+    }
 };
 
 namespace GLTFLoaderV2 {
+
+    inline constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
+        return primitive.attributes.find(attribName) != primitive.attributes.end() ;
+    };
     // user interface for partial specialization
     template<typename data_type>
     struct CustomAttribLoader<GLTFVertexVATFracture, data_type> {
@@ -38,7 +44,7 @@ namespace GLTFLoaderV2 {
         void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
             exist = isExistAttrib(model, prim, attribName);
             if (exist)
-                attrib_data = getAttribPointer(model, prim, attribName);
+                attrib_data = GLTFLoaderV2::getAttribPointer<data_type>(model, prim, attribName);
         };
 
         void setVertexAttrib(vertex_t & vertex, auto index) {
@@ -58,6 +64,13 @@ namespace std {
     };
 }
 
+LLVK_NAMESPACE_BEGIN
+struct TEST_VERTEX{
+    TEST_VERTEX();
+    GLTFLoaderV2::Loader<GLTFVertexVATFracture> buildings{};
+};
+LLVK_NAMESPACE_END
+/*
 LLVK_NAMESPACE_BEGIN
 class RbdVatRenderer :public VulkanRenderer {
 public:
@@ -113,5 +126,4 @@ private:
 };
 LLVK_NAMESPACE_END
 
-
-#endif //RBDVATRENDERER_H
+*/

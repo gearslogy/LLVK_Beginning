@@ -1,4 +1,4 @@
-﻿//
+//
 // Created by liuya on 8/3/2024.
 //
 #pragma once
@@ -7,8 +7,8 @@
 #include <glm/gtx/hash.hpp>
 #include <vulkan/vulkan.h>
 #include <array>
+#include <string>
 #include <unordered_map>
-#include <libs/tiny_gltf.h>
 #include "LLVK_SYS.hpp"
 
 LLVK_NAMESPACE_BEGIN
@@ -52,13 +52,6 @@ struct GLTFLoader {
     using part_t = Part;
     using vertex_t = GLTFVertex;
 
-    template<typename T>
-    auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
-        const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
-        const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
-        const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
-        return reinterpret_cast<const T *>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
-    }
     void load(const std::string &path);
     std::vector<Part> parts;
     std::string filePath;

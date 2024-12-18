@@ -72,4 +72,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAK
 set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/lib)
 target_compile_definitions(${PROJECT_NAME} PRIVATE MAGIC_ENUM_RANGE_MIN=-200 MAGIC_ENUM_RANGE_MAX=500 )
 
-add_subdirectory(tools)
+#add_subdirectory(tools)

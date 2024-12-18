@@ -2,6 +2,7 @@
 // Created by liuya on 12/13/2024.
 //
 
+#define TINYGLTF_NO_STB_IMAGE_WRITE
 #pragma once
 
 #include "LLVK_SYS.hpp"
@@ -10,14 +11,11 @@
 #include <iostream>
 #include "LLVK_Utils.hpp"
 #include <libs/tiny_gltf.h>
-#include "LLVK_Utils.hpp"
+
 
 LLVK_NAMESPACE_BEGIN
 namespace GLTFLoaderV2 {
 
-    constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
-        return primitive.attributes.find(attribName) != primitive.attributes.end() ;
-    };
     // get geometry raw buffer
     template<typename T>
     auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
@@ -29,7 +27,7 @@ namespace GLTFLoaderV2 {
 
 
     template<typename vert_t>
-    struct Part {
+    struct GeometryPart {
         using vertex_t = vert_t;
         uint32_t firstIndex{0}; // usefully for vkCmdDrawIndexed VkDrawIndexedIndirectCommand ...
         std::vector<vert_t> vertices;
@@ -43,7 +41,7 @@ namespace GLTFLoaderV2 {
     struct CustomAttribLoader;
 
 
-    template<typename part_t> void load(const std::string &path, std::vector<part_t> &parts, auto &&... customAttribLoader) {
+    template<typename part_t> void readGeometry(const std::string &path, std::vector<part_t> &parts, auto &&... customAttribLoader) {
         using vertex_t = typename part_t::vertex_t;
         std::cout << "[[GLTFLoader::load]]:" << path << std::endl;
         tinygltf::Model model;
@@ -158,7 +156,7 @@ namespace GLTFLoaderV2 {
                     vertex.T[1] = T[index * 4 + 1];
                     vertex.T[2] = T[index * 4 + 2];
                     //vertex.T = vertex.T;
-                    vertex.B = glm::cross(vertex.N, vertex.T);
+                    //vertex.B = glm::cross(vertex.N, vertex.T);
                 }
                 if (hasCd0) {
                     vertex.Cd[0] = Cd[index * 3 + 0];
@@ -196,9 +194,9 @@ namespace GLTFLoaderV2 {
     template<typename vertex_type>
     struct Loader{
         using vertex_t = vertex_type;
-        using part_t = Part<vertex_t>;
+        using part_t = GeometryPart<vertex_t>;
         std::vector<part_t> parts{};
-        inline void load(const std::string &path, auto && ... customAttribLoaders){ load(path, parts, customAttribLoaders...);}
+        inline void load(const std::string &path, auto && ... customAttribLoaders){ readGeometry(path, parts, customAttribLoaders...);}
     };
 } // end of GLTFLoaderV2 namespace
 

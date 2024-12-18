@@ -84,7 +84,7 @@ struct FnCommand {
 
 /* struct for building command:vkCmdBindVertexBuffers
 VkBuffer vertexBuffers[] = {};
-VkDeviceSize offsets[] = {0}; // 0从每个buffer的起始位置开始读取
+VkDeviceSize offsets[] = {0}; // every buffer begin loading
 vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
  */
 struct CmdBindVertexBuffers {

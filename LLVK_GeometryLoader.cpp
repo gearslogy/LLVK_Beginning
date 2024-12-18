@@ -1,14 +1,24 @@
-﻿//
+//
 // Created by liuya on 8/3/2024.
 //
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "LLVK_GeometryLoader.h"
 
+#include <libs/tiny_gltf.h>
+#include "LLVK_GeometryLoader.h"
 #include <iostream>
 #include "LLVK_Utils.hpp"
 
 LLVK_NAMESPACE_BEGIN
+
+
+template<typename T>
+auto getAttribPointerIMPL(const tinygltf::Model &model, const tinygltf::Primitive &primitive, const std::string &attribName) {
+    const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
+    const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
+    const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
+    return reinterpret_cast<const T *>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
+}
 
 VkVertexInputBindingDescription GLTFVertex::bindings() {
     constexpr int vertex_buffer_binding_id = 0;   // basic    buffer id should be at 0
@@ -57,7 +67,7 @@ void GLTFLoader::load(const std::string &path) {
         // if this object has two materials, there are two primitives.
         auto &part = parts[part_id];
         std::cout << "primitive indices:" << primitive.indices << std::endl; //
-        const float *positions = getAttribPointer<float>(model, primitive, "POSITION");
+        const float *positions = getAttribPointerIMPL<float>(model, primitive, "POSITION");
 
         bool hasNormal = (primitive.attributes.find("NORMAL") != primitive.attributes.end());
         bool hasTangent = (primitive.attributes.find("TANGENT") != primitive.attributes.end());
@@ -72,15 +82,15 @@ void GLTFLoader::load(const std::string &path) {
         const float *Cd = nullptr;
 
         if (hasNormal)
-            N = getAttribPointer<float>(model, primitive, "NORMAL");
+            N = getAttribPointerIMPL<float>(model, primitive, "NORMAL");
         if (hasTangent)
-            T = getAttribPointer<float>(model, primitive, "TANGENT");
+            T = getAttribPointerIMPL<float>(model, primitive, "TANGENT");
         if (hasUV0)
-            uv0 = getAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
+            uv0 = getAttribPointerIMPL<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
         if (hasUV1)
-            uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
+            uv1 = getAttribPointerIMPL<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
         if (hasCd0)
-            Cd = getAttribPointer<float>(model, primitive, "COLOR_0");
+            Cd = getAttribPointerIMPL<float>(model, primitive, "COLOR_0");
 
         std::vector<uint32_t> prim_indices;
         const auto &indexAccessor = model.accessors[primitive.indices];
@@ -156,7 +166,7 @@ void GLTFLoader::load(const std::string &path) {
                 vertex.uv1[0] = uv1[index * 2 + 0];
                 vertex.uv1[1] = uv1[index * 2 + 1];
             }
-            // 查找或插入唯一顶点
+
             if (part.uniqueVertices.count(vertex) == 0) {
                 part.uniqueVertices[vertex] = static_cast<unsigned int>(part.vertices.size());
                 part.vertices.push_back(vertex);
@@ -175,47 +185,30 @@ void GLTFLoader::load(const std::string &path) {
 
 
 void CombinedGLTFPart::computeCombinedData() {
-
-    /*
-    // Part 1
-    vertices = {v0, v1, v2, v3}
-    indices = {0, 1, 2, 2, 1, 3}  // 索引值范围 0-3
-    // Part 2
-    vertices = {v0, v1, v2, v3}
-    indices = {0, 1, 2, 2, 1, 3}  // 索引值范围也是 0-3
-
-    // 合并的vertices = {v0, v1, v2, v3, v4, v5, v6, v7}
-    //                  Part1的顶点    Part2的顶点
-
-    // 合并的indices = {0, 1, 2, 2, 1, 3,    4, 5, 6, 6, 5, 7}
-    //                 Part1的索引(0-3)       Part2的索引(4-7)
-    */
-
     for (const auto* pPart : parts) {
         totalVertexCount += pPart->vertices.size();
         totalIndexCount += pPart->indices.size();
     }
 
-    // 3. 合并数据并调整索引
     uint32_t vertexOffset = 0;
     uint32_t indexOffset = 0;
 
     for (auto* pPart : parts) {
         auto &part = *pPart;
-        // 添加顶点
+
         vertices.insert(
             vertices.end(),
             part.vertices.begin(),
             part.vertices.end()
         );
 
-        // 复制并调整索引
+
         for (uint32_t index : part.indices) {
             indices.push_back(index + vertexOffset);
         }
-        // 记录这个part的firstIndex
+
         part.firstIndex = indexOffset;
-        // 更新偏移
+
         vertexOffset += part.vertices.size();
         indexOffset += part.indices.size();
     }

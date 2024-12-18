@@ -3,8 +3,12 @@
 //
 
 #include "gltf_dump.h"
-
-
+#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#define TINYGLTF_NO_STB_IMAGE
+#include <libs/tiny_gltf.h>
+#include "LLVK_Utils.hpp"
+#include <unordered_map>
 LLVK_NAMESPACE_BEGIN
 struct GLTFLoader {
     // every geometry has multi parts(at least one part) that has multi materials
@@ -16,7 +20,7 @@ struct GLTFLoader {
         VkBuffer indicesBuffer{};
     };
     template<typename T>
-    auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
+    static auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
         const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
         const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
         const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];

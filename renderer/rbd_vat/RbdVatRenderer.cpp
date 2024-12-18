@@ -6,10 +6,18 @@
 
 #include <chrono>
 #include <LLVK_Descriptor.hpp>
-#include <LLVK_UT_VmaBuffer.hpp>
+//#include <LLVK_UT_VmaBuffer.hpp>
 #include <Pipeline.hpp>
-
 #include "renderer/public/UT_CustomRenderer.hpp"
+
+LLVK_NAMESPACE_BEGIN
+TEST_VERTEX::TEST_VERTEX() {
+    auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture, uint32_t>{"_fracture_index"};
+    buildings.load("content/scene/rbd_vat/gltf/buildings.gltf", std::move(fracture_index_loader));
+}
+LLVK_NAMESPACE_END
+
+/*
 LLVK_NAMESPACE_BEGIN
 RbdVatRenderer::RbdVatRenderer()  = default;
 
@@ -21,7 +29,7 @@ void RbdVatRenderer::prepare() {
     auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture, uint32_t>{"_fracture_index"};
     // 1.geo
     buildings.load("content/scene/rbd_vat/gltf/buildings.gltf", std::move(fracture_index_loader));
-    UT_VmaBuffer::addGeometryToSimpleBufferManager(buildings,geomManager);
+    //UT_VmaBuffer::addGeometryToSimpleBufferManager(buildings,geomManager);
     // 2.samplers
     colorSampler = FnImage::createImageSampler(phyDevice, device);
     vatSampler = FnImage::createExrVATSampler(device);
@@ -217,4 +225,4 @@ void RbdVatRenderer::recordCommandBuffer() {
 
 
 
-LLVK_NAMESPACE_END
+LLVK_NAMESPACE_END*/

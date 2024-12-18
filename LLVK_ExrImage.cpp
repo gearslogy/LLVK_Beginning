@@ -1,6 +1,7 @@
 //
 // Created by liuya on 12/16/2024.
 //
+#define TINYEXR_USE_STB_ZLIB 0
 #define TINYEXR_IMPLEMENTATION
 #include <LLVK_Utils.hpp>
 #include "libs/tinyexr/tinyexr.h"

@@ -18,7 +18,7 @@ namespace UT_VmaBuffer {
     inline constexpr VkBufferUsageFlags index_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
     inline constexpr auto getGLTFVerticesSize = []<is_geometry_loader Loader>(const Loader &geom, int32_t partIdx, VkBufferUsageFlags usage){
-        using vertex_t = typename std::remove_cvref_t<decltype(geom)>::vertex_t;
+        using vertex_t = typename Loader::vertex_t;
         if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) {
             // Create for plant
             size_t vertexBufferSize = sizeof(vertex_t) * geom.parts[partIdx].vertices.size();
