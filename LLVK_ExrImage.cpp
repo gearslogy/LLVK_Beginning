@@ -9,7 +9,7 @@
 #include "LLVK_ExrImage.h"
 
 #include "LLVK_Image.h"
-
+#include <filesystem>
 LLVK_NAMESPACE_BEGIN
 void VmaUBOExrRGBATexture::cleanup() {
     vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
@@ -17,13 +17,26 @@ void VmaUBOExrRGBATexture::cleanup() {
 }
 
 void VmaUBOExrRGBATexture::create(const std::string &file, const VkSampler &sampler) {
+    namespace fs = std::filesystem;
+    if (not fs::exists(file) ) throw std::runtime_error(std::format("File not found{}", file) );
+
     const auto &[device,physicalDevice,commandPool, queue, allocator] = requiredObjects;
     constexpr auto format = VK_FORMAT_R32G32B32A32_SFLOAT; // VK_FORMAT_R16G16B16A16_SFLOAT
-    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    constexpr VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     parseExrRGBAHeader(file);
     int width,height{};
     auto *pixels = parseExrRGBAData(file, width, height);
-    VkDeviceSize imageSize = width * height * 4;
+    std::cout << file << " -> width: " << width << " height: " << height << std::endl;
+
+    // FOR VK_FORMAT_R32G32B32A32_SFLOAT:
+    // 1 byte = 8 BIT
+    //constexpr auto pixelBytes = 4 * 4 ; //4 channels × 4 bytes = 16 bytes( per channel need 4 bytes)
+    VkDeviceSize imageSize = width * height * 4 * sizeof(float);
+
+    // FOR VK_FORMAT_R16G16B16A16_SFLOAT
+    // 1 byte = 8 BIT
+    //constexpr auto pixelBytes = 4 * 2 ; //4 channels × 2 bytes = 8 bytes( per channel need 2 bytes)
+    //  VkDeviceSize imageSize = width * height * 4 * sizeof(uint16_t);
 
     // 1. create staging
     VkBuffer stagingBuffer{};
@@ -44,21 +57,22 @@ void VmaUBOExrRGBATexture::create(const std::string &file, const VkSampler &samp
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         false,
         image, imageAllocation );
-
     // 3. copy buffer to image
     FnImage::transitionImageLayout(device, commandPool, queue,
                           image, format,
                           VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels,1);
     FnImage::copyBufferToImage(device, commandPool, queue, stagingBuffer,
                           image, width, height);
-
+    FnImage::transitionImageLayout(device, commandPool, queue,
+                              image, format,
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels,1);
     // 4. create image view
-    FnImage::createImageView(requiredObjects.device, image, format,aspect,1, 1, view);
+    FnImage::createImageView(requiredObjects.device, image, format, aspect,1, 1, view);
     descImageInfo.sampler = sampler;
-    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // finally need transition to this layout
+    descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // finally need transition to this layout
     descImageInfo.imageView = view;
     vmaDestroyBuffer(allocator, stagingBuffer,stagingBufferAllocation);
-    free(data);
+    free(pixels);
 }
 
 

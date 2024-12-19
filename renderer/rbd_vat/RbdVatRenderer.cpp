@@ -5,21 +5,18 @@
 #include "RbdVatRenderer.h"
 
 #include <chrono>
-#include <LLVK_Descriptor.hpp>
-//#include <LLVK_UT_VmaBuffer.hpp>
-#include <Pipeline.hpp>
+#include "LLVK_Descriptor.hpp"
+#include "LLVK_UT_VmaBuffer.hpp"
+#include "Pipeline.hpp"
 #include "renderer/public/UT_CustomRenderer.hpp"
 
-LLVK_NAMESPACE_BEGIN
-TEST_VERTEX::TEST_VERTEX() {
-    auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture, uint32_t>{"_fracture_index"};
-    buildings.load("content/scene/rbd_vat/gltf/buildings.gltf", std::move(fracture_index_loader));
-}
-LLVK_NAMESPACE_END
 
-/*
 LLVK_NAMESPACE_BEGIN
-RbdVatRenderer::RbdVatRenderer()  = default;
+RbdVatRenderer::RbdVatRenderer() {
+    mainCamera.setRotation({1.18, 7.34, 0});
+    mainCamera.mPosition = glm::vec3(10, 4.4, 59);
+    mainCamera.updateCameraVectors();
+}
 
 void RbdVatRenderer::prepare() {
     const auto &device = mainDevice.logicalDevice;
@@ -28,15 +25,15 @@ void RbdVatRenderer::prepare() {
     setRequiredObjectsByRenderer(this, texPosition,texOrient, texDiff);
     auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture, uint32_t>{"_fracture_index"};
     // 1.geo
-    buildings.load("content/scene/rbd_vat/gltf/buildings.gltf", std::move(fracture_index_loader));
-    //UT_VmaBuffer::addGeometryToSimpleBufferManager(buildings,geomManager);
+    buildings.load("content/scene/rbdvat/gltf/destruct_house.gltf", std::move(fracture_index_loader));
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(buildings,geomManager);
     // 2.samplers
     colorSampler = FnImage::createImageSampler(phyDevice, device);
     vatSampler = FnImage::createExrVATSampler(device);
     // 3.tex
-    texDiff.create("content/scene/rbd_vat/resources/gpu_textures/39_MedBuilding_gpu_D.ktx2", colorSampler);
-    texPosition.create("content/scene/vat_tex/position.ktx2",vatSampler);
-    texOrient.create("content/scene/vat_tex/orient.ktx2",vatSampler);
+    texDiff.create("content/scene/rbdvat/resources/gpu_textures/39_MedBuilding_gpu_D.ktx2", colorSampler);
+    texPosition.create("content/scene/rbdvat/vat_tex/position.exr",vatSampler);
+    texOrient.create("content/scene/rbdvat/vat_tex/orient.exr",vatSampler);
 
     // desc pool
     std::array<VkDescriptorPoolSize, 2> poolSizes  = {{
@@ -186,7 +183,8 @@ void RbdVatRenderer::updateUBO() {
     uboData.proj[1][1] *= -1;
     uboData.view = mainCamera.view();
     uboData.model = glm::mat4(1.0f);
-    auto tcFrame =  fmod(currentFlightFrame, 60.0f);
+    auto tcFrame =  fmod(tc_frameTime, 60.0f);
+    std::cout << " tc frame:" <<tcFrame << std::endl;
     uboData.timeData = { tcFrame, 0, 0, 0}; // 确保在0-59范围内循环
     memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
 }
@@ -225,4 +223,4 @@ void RbdVatRenderer::recordCommandBuffer() {
 
 
 
-LLVK_NAMESPACE_END*/
+LLVK_NAMESPACE_END

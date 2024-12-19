@@ -15,6 +15,7 @@
 #include "renderer/dualpass/ScenePass.h"
 #include "renderer/dualpass/DualPassRenderer.h"
 #include "renderer/csm/CSMRenderer.h"
+#include "renderer/rbd_vat/RbdVatRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -27,7 +28,8 @@ int main() {
     //LLVK::InstanceRendererV2 app;
     //LLVK::IndirectRenderer app;
     //LLVK::DualPassRenderer app;
-    LLVK::CSMRenderer app;
+    //LLVK::CSMRenderer app;
+    LLVK::RbdVatRenderer app;
     try {
         app.run();
     }

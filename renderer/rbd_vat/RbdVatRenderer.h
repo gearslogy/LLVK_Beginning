@@ -64,13 +64,8 @@ namespace std {
     };
 }
 
-LLVK_NAMESPACE_BEGIN
-struct TEST_VERTEX{
-    TEST_VERTEX();
-    GLTFLoaderV2::Loader<GLTFVertexVATFracture> buildings{};
-};
-LLVK_NAMESPACE_END
-/*
+
+
 LLVK_NAMESPACE_BEGIN
 class RbdVatRenderer :public VulkanRenderer {
 public:
@@ -126,4 +121,3 @@ private:
 };
 LLVK_NAMESPACE_END
 
-*/
