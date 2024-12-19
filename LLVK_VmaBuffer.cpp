@@ -189,7 +189,10 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFo
     const auto &[device,physicalDevice,commandPool, queue, allocator] = reqObj;
     int texWidth, texHeight, texChannels;
     stbi_uc *pixels = stbi_load(filePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
+    // 1 byte = 8 bit
+    // format VK_FORMAT_R8G8B8A8_SRGB is : 4 bytes(1byte = 8bit)
+    // 4 channels × 1 byte (per channel need 1 byte)
+    VkDeviceSize imageSize = texWidth * texHeight * 4 * 1;
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
     }

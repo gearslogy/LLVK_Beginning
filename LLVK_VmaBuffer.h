@@ -172,6 +172,7 @@ struct FnVmaImage {
     static void createImageAndAllocation(const VmaBufferRequiredObjects &reqObj,
         const VkImageCreateInfo &createInfo, bool canMapping, VkImage &image, VmaAllocation &allocation );
 
+    // MIP generated!
     static void createTexture(const VmaBufferRequiredObjects &reqObj,const VkFormat format,
         const std::string &filePath,
         VkImage &image, VmaAllocation &allocation,uint32_t &createdMipLevels
