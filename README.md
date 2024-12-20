@@ -5,6 +5,12 @@ Learn Vulkan from scratch
 * Except houdini works commercially
 
 ## VAT
+* 600 RBDs
+* 128 frames
+
+![dual.png](screenshot/rbd_vat.gif)
+![dual.png](screenshot/RBD_VAT1.png)
+
 ![dual.png](screenshot/vat0.png)
 ![dual.png](screenshot/vat1.gif)
 

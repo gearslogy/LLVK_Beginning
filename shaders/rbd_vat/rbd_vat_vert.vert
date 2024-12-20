@@ -7,6 +7,8 @@ glm::vec2 uv0{};    // 4
 glm::int32_t fractureIndex{}; //5*/
 
 #version 460 core
+#include "math.glsl"
+
 
 layout(location=0) in vec3 P;
 layout(location=1) in vec3 Cd;
@@ -18,7 +20,9 @@ layout(location=5) in int fracture_idx;
 
 layout(location = 0) out vec3 fragN;
 layout(location = 1) out vec2 fragTexCoord;
-
+layout(location = 2) out vec3 fragCd;
+layout(location = 3) out vec3 fragVAT_P;
+layout(location = 4) out vec4 fragVAT_orient;
 
 layout(set=0, binding=0) uniform UBO{
     mat4 proj;
@@ -44,10 +48,17 @@ void main(){
 
     vec4 posVatTex = texture( positionVAT, vatST);
     vec4 orientVatTex = texture( orientVAT, vatST);
-
-
-    vec4 worldPos = ubo.proj * ubo.view* ubo.model * vec4(P, 1.0);
+    // Cd is RBD pivot
+    vec3 toPivotSpace = P - Cd;
+    vec3 rbdP = rotateVectorByQuat(toPivotSpace,  orientVatTex) +  posVatTex.xyz;
+    vec4 worldPos = ubo.proj * ubo.view* ubo.model * vec4(rbdP, 1.0);
     gl_Position = worldPos;
     fragTexCoord = uv0;
-    fragN = N;
+
+
+    vec3 rbdN =  rotateVectorByQuat(N,  orientVatTex);
+    fragN = normalize(rbdN );
+    fragCd = Cd;
+    fragVAT_P = posVatTex.xyz;
+    fragVAT_orient = orientVatTex;
 }

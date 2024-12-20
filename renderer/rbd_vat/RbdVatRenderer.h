@@ -19,10 +19,13 @@ struct GLTFVertexVATFracture {
     glm::vec3 Cd{};     // 1
     glm::vec3 N{};      // 2
     glm::vec3 T{};      // 3
-    glm::vec2 uv0{};    // 5
-    glm::int32_t fractureIndex{}; // 6
+    glm::vec2 uv0{};    // 4
+    glm::int32_t fractureIndex{}; // 5
     bool operator==(const GLTFVertexVATFracture& other) const {
-        return P == other.P && Cd== other.Cd && uv0 == other.uv0;
+        return P == other.P &&
+            Cd== other.Cd &&
+            uv0 == other.uv0 &&
+            fractureIndex == other.fractureIndex && N == other.N ; // IMPORTANT, DO NOT COMBINE N! DON't use combined N(point)
     }
 };
 
