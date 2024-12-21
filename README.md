@@ -7,7 +7,13 @@ Learn Vulkan from scratch
 ## VAT
 * 600 RBDs
 * 128 frames
+### scene v2
+rbd_vat_v2.hip
+![dual.png](screenshot/RBD_VAT2.gif)
+![dual.png](screenshot/RBD_VAT3.png)
 
+### scene v1
+[rbd_vat.hip](build/bin/content/scene/rbdvat/rbd_vat.hip)
 ![dual.png](screenshot/rbd_vat.gif)
 ![dual.png](screenshot/RBD_VAT1.png)
 
