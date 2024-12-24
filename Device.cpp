@@ -79,6 +79,10 @@ bool Device::checkDeviceSuitable(const VkPhysicalDevice &device) const{
     vkGetPhysicalDeviceProperties(device, &props);
     std::cout << "GPU name:" <<props.deviceName << std::endl;
     std::cout << "GPU maxMemoryAllocationCount:" << props.limits.maxMemoryAllocationCount << std::endl;
+    std::cout << "GPU maxUniformBufferRange:"<<props.limits.maxUniformBufferRange << " bytes" << std::endl;
+    std::cout << "GPU maxStorageBufferRange:"<<static_cast<float>(props.limits.maxStorageBufferRange) / 1024 / 1024 / 1024 << " GB" << std::endl;
+    std::cout << "GPU maxStorageBufferRange support vec4 count:"<<static_cast<float>(props.limits.maxStorageBufferRange) / sizeof(float)*4 << " vec4" << std::endl; // sizeof(vec4) = 16bytes
+
     QueueFamilyIndices indices = getQueueFamilies(bindSurface,device);
     condition0 = indices.isValid();
     // assert checking
