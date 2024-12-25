@@ -194,7 +194,8 @@ namespace MetaDesc {
     // types
     struct UBO {}; // ubo
     struct CIS {}; // combined image sampler
-    struct UBO_DYNAMIC {};
+    struct UBO_DYNAMIC{};
+    struct SSBO{};
     struct SAMPLER{};
     // concept checking
     template<typename T>
@@ -204,10 +205,12 @@ namespace MetaDesc {
     template<typename T>
     concept is_ubo_dynamic = std::is_same_v<T, UBO_DYNAMIC> ;
     template<typename T>
+    concept is_ssbo = std::is_same_v<T, SSBO> ;
+    template<typename T>
     concept is_sampler = std::is_same_v<T, SAMPLER> ;
     // check all interface
     template<typename T>
-    concept is_desc_type = is_desc_ubo<T> or is_desc_cis<T> or is_ubo_dynamic<T> or is_sampler<T>;
+    concept is_desc_type = is_desc_ubo<T> or is_desc_cis<T> or is_ubo_dynamic<T> or is_sampler<T> or is_ssbo<T>;
 
     template<typename binding_type_t, uint32_t binding_position, uint32_t usage>
     consteval auto getBinding() {
@@ -220,6 +223,8 @@ namespace MetaDesc {
             return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLER, binding_position, usage);
         if constexpr (is_ubo_dynamic<binding_type_t>)
             return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, binding_position, usage);
+        if constexpr (is_ssbo<binding_type_t>)
+            return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, binding_position, usage);
     }
 
     // type: of binding types
@@ -244,11 +249,13 @@ namespace MetaDesc {
     struct is_binding_position : std::false_type {};
     template<size_t... positions>
     struct is_binding_position<desc_binding_position_t<positions...>> : std::true_type {};
+
     // binding_usage checking
     template<typename T>
     struct is_binding_usage : std::false_type {};
     template<size_t... usages>
     struct is_binding_usage<desc_binding_usage_t<usages...>> : std::true_type {};
+
     // ------ concept interface-----
     template<typename T>
     concept is_desc_types_t = is_binding_types<T>::value;
