@@ -2,9 +2,9 @@
 // Created by liuya on 12/13/2024.
 //
 
-#define TINYGLTF_NO_STB_IMAGE_WRITE
-#pragma once
 
+#pragma once
+#define TINYGLTF_NO_STB_IMAGE_WRITE
 #include "LLVK_SYS.hpp"
 #include <glm/gtx/hash.hpp>
 #include <vulkan/vulkan.h>
@@ -18,7 +18,7 @@ namespace GLTFLoaderV2 {
 
     // get geometry raw buffer
     template<typename T>
-    auto getAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
+    auto getRawAttribPointer(auto &model, const auto &primitive, const std::string &attribName) {
         const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find(attribName)->second];
         const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
         const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
@@ -66,7 +66,7 @@ namespace GLTFLoaderV2 {
             // if this object has two materials, there are two primitives.
             auto &part = parts[part_id];
             std::cout << "primitive indices:" << primitive.indices << std::endl; //
-            const float *positions = getAttribPointer<float>(model, primitive, "POSITION");
+            const float *positions = getRawAttribPointer<float>(model, primitive, "POSITION");
 
             bool hasNormal = (primitive.attributes.find("NORMAL") != primitive.attributes.end());
             bool hasTangent = (primitive.attributes.find("TANGENT") != primitive.attributes.end());
@@ -81,15 +81,15 @@ namespace GLTFLoaderV2 {
             const float *Cd = nullptr;
 
             if (hasNormal)
-                N = getAttribPointer<float>(model, primitive, "NORMAL");
+                N = getRawAttribPointer<float>(model, primitive, "NORMAL");
             if (hasTangent)
-                T = getAttribPointer<float>(model, primitive, "TANGENT");
+                T = getRawAttribPointer<float>(model, primitive, "TANGENT");
             if (hasUV0)
-                uv0 = getAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
+                uv0 = getRawAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
             //if (hasUV1)
             //    uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
             if (hasCd0)
-                Cd = getAttribPointer<float>(model, primitive, "COLOR_0");
+                Cd = getRawAttribPointer<float>(model, primitive, "COLOR_0");
 
 
             auto extraAttribLoaders = std::forward_as_tuple(std::forward<decltype(customAttribLoader)>(customAttribLoader)...);
