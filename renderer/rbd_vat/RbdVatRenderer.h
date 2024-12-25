@@ -11,63 +11,7 @@
 #include "LLVK_ExrImage.h"
 #include "LLVK_GeometryLoader.h"
 #include "LLVK_GeometryLoaderV2.hpp"
-
-
-LLVK_NAMESPACE_BEGIN
-struct GLTFVertexVATFracture {
-    glm::vec3 P{};      // 0
-    glm::vec3 Cd{};     // 1
-    glm::vec3 N{};      // 2
-    glm::vec3 T{};      // 3
-    glm::vec2 uv0{};    // 4
-    glm::int32_t fractureIndex{}; // 5
-    bool operator==(const GLTFVertexVATFracture& other) const {
-        return P == other.P &&
-            Cd== other.Cd &&
-            uv0 == other.uv0 &&
-            fractureIndex == other.fractureIndex && N == other.N ; // IMPORTANT, DO NOT COMBINE N! DON't use combined N(point)
-    }
-};
-
-namespace GLTFLoaderV2 {
-
-    inline constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
-        return primitive.attributes.find(attribName) != primitive.attributes.end() ;
-    };
-    // user interface for partial specialization
-    template<typename data_type>
-    struct CustomAttribLoader<GLTFVertexVATFracture, data_type> {
-        using vertex_t = GLTFVertexVATFracture;
-        explicit CustomAttribLoader(std::string name) : attribName(std::move(name)) {}
-    private:
-        bool exist{false};
-        std::string attribName{};
-        const data_type *attrib_data{nullptr};
-    public:
-        void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
-            exist = isExistAttrib(model, prim, attribName);
-            if (exist)
-                attrib_data = GLTFLoaderV2::getAttribPointer<data_type>(model, prim, attribName);
-        };
-
-        void setVertexAttrib(vertex_t & vertex, auto index) {
-            if (exist) vertex.fractureIndex = attrib_data[index];
-        }
-    };
-}
-
-LLVK_NAMESPACE_END
-
-
-namespace std {
-    template<> struct hash<LLVK::GLTFVertexVATFracture> {
-        size_t operator()(LLVK::GLTFVertexVATFracture const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.P) ^ (hash<glm::vec3>()(vertex.Cd) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.uv0) << 1);
-        }
-    };
-}
-
-
+#include "renderer/public/CustomVertexFormat.hpp"
 
 LLVK_NAMESPACE_BEGIN
 class RbdVatRenderer :public VulkanRenderer {
