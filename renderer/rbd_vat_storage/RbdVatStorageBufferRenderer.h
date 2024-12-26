@@ -37,10 +37,13 @@ private:
 
 
     static constexpr int numFrames = 128;
-    struct {
-        std::vector<glm::vec4> positions; // size : numRBDPacks * numFrames
-        std::vector<glm::vec4> orientations; // size : numRBDPacks * numFrames
-    }VatData{};
+
+
+    struct RBDData{
+        glm::vec4 rbdP;
+        glm::vec4 rbdOrient;
+    };
+    std::vector<RBDData> rbdData;
 
 
     void updateTime();

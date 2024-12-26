@@ -115,7 +115,7 @@ void RbdVatStorageBufferRenderer::parseStorageData() {
         const auto &P = data["P"].get<glm::vec3>();
         const auto &orient = data["orient"].get<glm::vec4>();
     }
-    //std::cout << "[[JsonSceneParser]]" << " npts:" << instanceData.size() << std::endl;
+
 }
 void RbdVatStorageBufferRenderer::prepareDescSets() {
         const auto &device = mainDevice.logicalDevice;
@@ -146,8 +146,7 @@ void RbdVatStorageBufferRenderer::prepareDescSets() {
         using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
         using descBindingUsage = MetaDesc::desc_binding_usage_t<
             VK_SHADER_STAGE_FRAGMENT_BIT, // base color tex
-            VK_SHADER_STAGE_VERTEX_BIT,  // P VAT
-            VK_SHADER_STAGE_VERTEX_BIT   // orient VAT
+            VK_SHADER_STAGE_VERTEX_BIT // P and orients VAT
         >;
         constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
         const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
