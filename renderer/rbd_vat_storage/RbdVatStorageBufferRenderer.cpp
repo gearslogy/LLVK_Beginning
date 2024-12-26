@@ -110,7 +110,12 @@ void RbdVatStorageBufferRenderer::parseStorageData() {
     if(not jsHandle.contains("points") )
         throw std::runtime_error{std::string{"Could not parse JSON file, no points key "} };
     const nlohmann::json &points = jsHandle["points"];
-
+/*
+    {
+        P: [[FRAME0 DATA],[FRAME1 DATA],[...],[...]],
+        orient:[[],[],[],[...],[...]]
+    }
+*/
     for (auto &data: points) {
         const auto &P = data["P"].get<glm::vec3>();
         const auto &orient = data["orient"].get<glm::vec4>();
