@@ -20,7 +20,7 @@ LLVK_NAMESPACE_BEGIN
 void RbdVatStorageBufferRenderer::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
-    UT_Fn::cleanup_resources(geomManager, texDiff);
+    UT_Fn::cleanup_resources(geomManager, texDiff, ssboBuffer);
     UT_Fn::cleanup_sampler(device, colorSampler);
     vkDestroyDescriptorPool(device, descPool, nullptr);
     UT_Fn::cleanup_range_resources(uboBuffers);
@@ -36,16 +36,17 @@ void RbdVatStorageBufferRenderer::prepare() {
     setRequiredObjectsByRenderer(this, texDiff);
     auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture, uint32_t>{"_fracture_index"};
     // 1.geo
-    buildings.load("content/scene/rbdvat/gltf/destruct_house.gltf", std::move(fracture_index_loader));
+    buildings.load("content/scene/rbdvat_ssbo/gltf/destruct_house.gltf", std::move(fracture_index_loader));
     UT_VmaBuffer::addGeometryToSimpleBufferManager(buildings,geomManager);
     // 2.samplers
     colorSampler = FnImage::createImageSampler(phyDevice, device);
     // 3.tex
-    texDiff.create("content/scene/rbdvat/resources/gpu_textures/39_MedBuilding_gpu_D.ktx2", colorSampler);
+    texDiff.create("content/scene/rbdvat_ssbo/resources/gpu_textures/39_MedBuilding_gpu_D.ktx2", colorSampler);
 
     // desc pool
-    std::array<VkDescriptorPoolSize, 2> poolSizes  = {{
+    std::array<VkDescriptorPoolSize, 3> poolSizes  = {{
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * MAX_FRAMES_IN_FLIGHT}
     }};
     VkDescriptorPoolCreateInfo createInfo = FnDescriptor::poolCreateInfo(poolSizes, 20 * MAX_FRAMES_IN_FLIGHT); //
@@ -54,6 +55,8 @@ void RbdVatStorageBufferRenderer::prepare() {
     if (result != VK_SUCCESS) throw std::runtime_error{"ERROR"};
 
     prepareUBO();
+    parseStorageData();
+    prepareSSBO();
     prepareDescSets();
     preparePipeline();
 }
@@ -74,10 +77,9 @@ void RbdVatStorageBufferRenderer::updateUBO() {
     uboData.proj[1][1] *= -1;
     uboData.view = mainCamera.view();
     uboData.model = glm::mat4(1.0f);
-    constexpr float numAnimFrame = 128;
-    auto tcFrame =  fmod(tc_currentFrame, numAnimFrame);
-    //std::cout << " tc frame:" <<tcFrame << std::endl;
-    uboData.timeData = { tcFrame, 0, 0, 0}; // 确保在0-59范围内循环
+    auto tcFrame =  fmod(tc_currentFrame, numFrames);
+    std::cout << " tc frame:" <<tcFrame << std::endl;
+    uboData.timeData = { tcFrame, static_cast<float>(numPacks), 0, 0}; // 确保在0-59范围内循环
     memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
 }
 
@@ -102,26 +104,37 @@ void RbdVatStorageBufferRenderer::updateTime() {
 void RbdVatStorageBufferRenderer::parseStorageData() {
     using json = nlohmann::json;
     json jsHandle;
-    std::string_view path = "content/scene/storage_rbdvat/scene.json";
+    std::string_view path = "content/scene/rbdvat_ssbo/json/rbd.json";
     std::ifstream in(path.data());
     if (!in.good())
         throw std::runtime_error{std::string{"Could not open file "} + path.data() + "."};
     in >> jsHandle;
-    if(not jsHandle.contains("points") )
-        throw std::runtime_error{std::string{"Could not parse JSON file, no points key "} };
-    const nlohmann::json &points = jsHandle["points"];
-/*
-    {
-        P: [[FRAME0 DATA],[FRAME1 DATA],[...],[...]],
-        orient:[[],[],[],[...],[...]]
-    }
-*/
-    for (auto &data: points) {
-        const auto &P = data["P"].get<glm::vec3>();
-        const auto &orient = data["orient"].get<glm::vec4>();
-    }
+    std::cout << "reading json file end\n";
 
+    const auto &jsData = jsHandle["data"].get_ref<const nlohmann::json::array_t&>();
+    numPacks = jsHandle["npts"];
+    numFrames = jsHandle["num_frames"];
+    /*
+        {
+            P: [[FRAME0 DATA],[FRAME1 DATA],[...],[...]],
+            orient:[[],[],[],[...],[...]]
+        }
+    */
+    for (auto &elem : jsData) {
+        auto p = glm::vec4{elem[0],elem[1],elem[2],1};
+        auto orient = glm::vec4{elem[3],elem[4],elem[5],elem[6]};
+        RBDData data{p, orient};
+        rbdData.emplace_back(data);
+    }
 }
+void RbdVatStorageBufferRenderer::prepareSSBO() {
+    setRequiredObjectsByRenderer(this, ssboBuffer);
+    VkDeviceSize bufferSize = sizeof(RBDData) * rbdData.size();
+    ssboBuffer.createAndMapping(bufferSize);
+    memcpy(ssboBuffer.mapped, rbdData.data(), bufferSize);
+}
+
+
 void RbdVatStorageBufferRenderer::prepareDescSets() {
         const auto &device = mainDevice.logicalDevice;
 
@@ -147,8 +160,8 @@ void RbdVatStorageBufferRenderer::prepareDescSets() {
 
     }
     {//set1 desc
-        using descTypes = MetaDesc::desc_types_t<MetaDesc::CIS, MetaDesc::CIS, MetaDesc::CIS>; // base/vat
-        using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
+        using descTypes = MetaDesc::desc_types_t<MetaDesc::CIS, MetaDesc::SSBO>; // base/vat
+        using descPos = MetaDesc::desc_binding_position_t<0,1>;
         using descBindingUsage = MetaDesc::desc_binding_usage_t<
             VK_SHADER_STAGE_FRAGMENT_BIT, // base color tex
             VK_SHADER_STAGE_VERTEX_BIT // P and orients VAT
@@ -163,10 +176,9 @@ void RbdVatStorageBufferRenderer::prepareDescSets() {
         // update sets
         namespace FnDesc = FnDescriptor;
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::array<VkWriteDescriptorSet,3> writes = {
-                FnDesc::writeDescriptorSet(descSets_set1[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texDiff.descImageInfo),          // scene model_view_proj_instance , used in VS shader
-                FnDesc::writeDescriptorSet(descSets_set1[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &texPosition.descImageInfo),          // scene model_view_proj_instance , used in VS shader
-                FnDesc::writeDescriptorSet(descSets_set1[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &texOrient.descImageInfo)          // scene model_view_proj_instance , used in VS shader
+            std::array<VkWriteDescriptorSet,2> writes = {
+                FnDesc::writeDescriptorSet(descSets_set1[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texDiff.descImageInfo),
+                FnDesc::writeDescriptorSet(descSets_set1[i], VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &ssboBuffer.descBufferInfo),
             };
             vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
         }
@@ -183,8 +195,8 @@ void RbdVatStorageBufferRenderer::prepareDescSets() {
 
 void RbdVatStorageBufferRenderer::preparePipeline(){
     const auto &device = mainDevice.logicalDevice;
-    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_vert.spv",  device);    //shader modules
-    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_frag.spv",  device);
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_storage_vert.spv",  device);    //shader modules
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_storage_frag.spv",  device);
     VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);    //shader stages
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);

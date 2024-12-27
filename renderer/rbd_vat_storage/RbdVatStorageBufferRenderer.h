@@ -18,8 +18,9 @@
 LLVK_NAMESPACE_BEGIN
 
 class RbdVatStorageBufferRenderer:public VulkanRenderer {
-protected:
+public:
     RbdVatStorageBufferRenderer();
+protected:
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
@@ -32,21 +33,22 @@ private:
         glm::mat4 proj;
         glm::mat4 view;
         glm::mat4 model;
-        glm::vec4 timeData; // use x for frame
+        glm::vec4 timeData; // use x for frame. y for numFrames
     }uboData{};
 
 
-    static constexpr int numFrames = 128;
+    int numFrames = 128;
 
 
     struct RBDData{
         glm::vec4 rbdP;
         glm::vec4 rbdOrient;
     };
-    std::vector<RBDData> rbdData;
-
+    std::vector<RBDData> rbdData; // number of packs * number of frames
+    VmaSSBOBuffer ssboBuffer;
 
     void updateTime();
+    void prepareSSBO();
     void prepareUBO();
     void updateUBO();
     void prepareDescSets();
@@ -82,6 +84,7 @@ private:
     const float tc_frameRate = 24.0f;
     const float tc_frameTime = 1.0f / tc_frameRate;
     float tc_accumulator = 0.0f;
+    uint32_t numPacks{0};
 };
 
 LLVK_NAMESPACE_END

@@ -4,9 +4,12 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
-## VAT
-* 600 RBDs
-* 128 frames
+## SSBO RBD animation
+Implement RBD animation with vulkan SSBO
+![dual.png](screenshot/RBD_SSBO.png)
+
+## RBD VAT
+
 ### scene v2
 rbd_vat_v2.hip
 ![dual.png](screenshot/RBD_VAT2.gif)

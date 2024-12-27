@@ -28,7 +28,7 @@ layout(set=0, binding=0) uniform UBO{
     mat4 proj;
     mat4 view;
     mat4 model;
-    vec4 time; // x for frame,y is num fractures
+    vec4 metaInfo; // x for frame,y is num fractures
 }ubo;
 
 
@@ -39,13 +39,13 @@ struct RBDData{
 
 layout(set=1, binding=1) buffer SSBO{
     RBDData data[];  // numRBDS * numFrames
-};
+}ssbo;
 
 void main(){
-    int numFractures = time.y;
-    int evalFrame = time.x;
+    int evalFrame = int(ubo.metaInfo.x);
+    int numFractures = int(ubo.metaInfo.y);
     int dataIndex = fracture_idx + numFractures * evalFrame;
-    RBDData packData = SSBO.data[dataIndex];
+    RBDData packData = ssbo.data[dataIndex];
     vec4 packP = packData.rbdP;
     vec4 packOrient = packData.rbdOrient;
 
@@ -58,6 +58,6 @@ void main(){
     vec3 rbdN =  rotateVectorByQuat(N,  packOrient);
     fragN = normalize(rbdN );
     fragCd = Cd;
-    fragVAT_P = posVatTex.xyz;
+    fragVAT_P = packP.xyz;
     fragVAT_orient = packOrient;
 }

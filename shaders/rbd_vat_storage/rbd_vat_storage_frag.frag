@@ -14,7 +14,7 @@ layout (location = 0) out vec4 outColor;
 void main(){
     vec4 diff = texture( diffTex, uv0);
     diff = gammaCorrect(diff,2.2);
-    float topLight = max(dot(N, vec3(0,1,0) ) , 0.5);
+    float topLight = max(dot(N, vec3(0,1,0) ) , 0.3);
 
     outColor = vec4(vec3(diff) * topLight, 1);
     //outColor = vec4(fragVAT_P,1);
