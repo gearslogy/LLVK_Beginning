@@ -8,24 +8,44 @@
 #include <ktx.h>
 #include "libs/magic_enum.hpp"
 LLVK_NAMESPACE_BEGIN
-    void VmaUBOBuffer::createAndMapping(VkDeviceSize bufferSize) {
+
+inline void cleanupVMABuffer(const auto &obj) {
+    vmaUnmapMemory(obj.requiredObjects.allocator, obj.bufferAndAllocation.allocation);
+    FnVmaBuffer::destroyBuffer(obj.requiredObjects.allocator ,obj.bufferAndAllocation.buffer,obj.bufferAndAllocation.allocation );
+}
+
+void VmaUBOBuffer::createAndMapping(VkDeviceSize bufferSize) {
     auto result = FnVmaBuffer::createBuffer(requiredObjects.device,
         requiredObjects.allocator,
         bufferSize,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         true,
         bufferAndAllocation.buffer, bufferAndAllocation.allocation);
-    if (result != VK_SUCCESS) throw std::runtime_error{"ERROR create stagging vma buffer"};
+    if (result != VK_SUCCESS) throw std::runtime_error{"ERROR create vma buffer"};
     bufferAndAllocation.memorySize = bufferSize;
     descBufferInfo.buffer = bufferAndAllocation.buffer;
     descBufferInfo.offset = 0;
     descBufferInfo.range = bufferSize;
     vmaMapMemory(requiredObjects.allocator, bufferAndAllocation.allocation, &mapped);
 }
-void VmaUBOBuffer::cleanup() {
-    vmaUnmapMemory(requiredObjects.allocator, bufferAndAllocation.allocation);
-    FnVmaBuffer::destroyBuffer(requiredObjects.allocator ,bufferAndAllocation.buffer,bufferAndAllocation.allocation );
+void VmaUBOBuffer::cleanup() { cleanupVMABuffer(*this); }
+
+void VmaSSBOBuffer::createAndMapping(VkDeviceSize bufferSize) {
+    auto result = FnVmaBuffer::createBuffer(requiredObjects.device,
+       requiredObjects.allocator,
+       bufferSize,
+       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+       true,
+       bufferAndAllocation.buffer, bufferAndAllocation.allocation);
+    if (result != VK_SUCCESS) throw std::runtime_error{"ERROR create vma buffer"};
+    bufferAndAllocation.memorySize = bufferSize;
+    descBufferInfo.buffer = bufferAndAllocation.buffer;
+    descBufferInfo.offset = 0;
+    descBufferInfo.range = bufferSize;
+    vmaMapMemory(requiredObjects.allocator, bufferAndAllocation.allocation, &mapped);
 }
+
+void VmaSSBOBuffer::cleanup() { cleanupVMABuffer(*this); }
 
 
 void VmaSimpleGeometryBufferManager::cleanup() {

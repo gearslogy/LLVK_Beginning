@@ -86,6 +86,15 @@ struct VmaUBOBuffer {
     void cleanup();
 };
 
+struct VmaSSBOBuffer {
+    VmaBufferAndAllocation bufferAndAllocation{};
+    VkDescriptorBufferInfo descBufferInfo{};
+    VmaBufferRequiredObjects requiredObjects{};
+    void *mapped{};
+    void createAndMapping(VkDeviceSize bufferSize);
+    void cleanup();
+};
+
 
 struct VmaSimpleGeometryBufferManager {
     VmaBufferRequiredObjects requiredObjects;
