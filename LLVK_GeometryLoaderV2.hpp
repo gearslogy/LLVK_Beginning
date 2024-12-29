@@ -14,6 +14,33 @@
 
 
 LLVK_NAMESPACE_BEGIN
+struct VertexFmt_P{
+    glm::vec3 P{};      // 0
+};
+struct VertexFmt_P_N{
+    glm::vec3 P{};      // 0
+    glm::vec3 N{};      // 0
+};
+struct VertexFmt_P_N_ST0{
+    glm::vec3 P{};
+    glm::vec3 N{};
+    glm::vec2 uv0{};
+};
+struct VertexFmt_P_N_T_ST0{
+    glm::vec3 P{};
+    glm::vec3 N{};
+    glm::vec3 T{};
+    glm::vec2 uv0{};
+};
+struct VertexFmt_P_Cd_N_T_ST0{
+    glm::vec3 P{};
+    glm::vec3 Cd{};
+    glm::vec3 N{};
+    glm::vec3 T{};
+    glm::vec2 uv0{};
+};
+
+
 namespace GLTFLoaderV2 {
 
     // get geometry raw buffer
@@ -37,7 +64,7 @@ namespace GLTFLoaderV2 {
         VkBuffer indicesBuffer;
     };
 
-    template<typename vert_t, typename data_type>
+    template<typename vert_t>
     struct CustomAttribLoader;
 
 
@@ -77,8 +104,9 @@ namespace GLTFLoaderV2 {
             const float *N = nullptr;
             const float *T = nullptr;
             const float *uv0 = nullptr;
+            /*
             const float *uv1 = nullptr;
-            const float *Cd = nullptr;
+            const float *Cd = nullptr;*/ // see CustomVertexFormat for GLTFVertexVATFracture
 
             if (hasNormal)
                 N = getRawAttribPointer<float>(model, primitive, "NORMAL");
@@ -88,8 +116,8 @@ namespace GLTFLoaderV2 {
                 uv0 = getRawAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
             //if (hasUV1)
             //    uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
-            if (hasCd0)
-                Cd = getRawAttribPointer<float>(model, primitive, "COLOR_0");
+            //if (hasCd0)
+                //Cd = getRawAttribPointer<float>(model, primitive, "COLOR_0");
 
 
             auto extraAttribLoaders = std::forward_as_tuple(std::forward<decltype(customAttribLoader)>(customAttribLoader)...);
@@ -158,11 +186,12 @@ namespace GLTFLoaderV2 {
                     //vertex.T = vertex.T;
                     //vertex.B = glm::cross(vertex.N, vertex.T);
                 }
+                /*
                 if (hasCd0) {
                     vertex.Cd[0] = Cd[index * 3 + 0];
                     vertex.Cd[1] = Cd[index * 3 + 1];
                     vertex.Cd[2] = Cd[index * 3 + 2];
-                }
+                }*/
                 if (hasUV0) {
                     vertex.uv0[0] = uv0[index * 2 + 0];
                     vertex.uv0[1] = uv0[index * 2 + 1];
