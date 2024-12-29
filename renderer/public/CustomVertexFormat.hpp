@@ -37,29 +37,23 @@ namespace GLTFLoaderV2 {
         return primitive.attributes.find(attribName) != primitive.attributes.end() ;
     };
     // user interface for partial specialization
-    template<typename data_type>
-    struct CustomAttribLoader<GLTFVertexVATFracture, data_type> {
+    template<>
+    struct CustomAttribLoader<GLTFVertexVATFracture> {
         using vertex_t = GLTFVertexVATFracture;
-        explicit CustomAttribLoader(std::string name) : attribName(std::move(name)) {}
     private:
-        bool exist{false};
-        std::string attribName{};
-        const data_type *attrib_data{nullptr};
+        const uint32_t *fractureIndexAttribData{nullptr};
+        const float *CdAttribData{nullptr};
     public:
         void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
-            exist = isExistAttrib(model, prim, attribName);
-            if (exist)
-                attrib_data = GLTFLoaderV2::getRawAttribPointer<data_type>(model, prim, attribName);
+            //if (isExistAttrib(model, prim, "_fracture_index")) {}
+            fractureIndexAttribData = GLTFLoaderV2::getRawAttribPointer<uint32_t>(model, prim, "_fracture_index");
+            CdAttribData = GLTFLoaderV2::getRawAttribPointer<float>(model, prim, "COLOR_0");
         };
-
         void setVertexAttrib(vertex_t & vertex, auto index) {
-            if constexpr (std::is_same_v<data_type, uint32_t>) {
-                if (attribName == "_fracture_index" and exist)
-                    vertex.fractureIndex = attrib_data[index];
-                //if (attribName == "other attrib...." and exist){}
-            }
-            else
-                static_assert(not ALWAYS_TRUE, "not support value type");
+            vertex.fractureIndex = fractureIndexAttribData[index];
+            vertex.Cd[0] = CdAttribData[index * 3 + 0];
+            vertex.Cd[1] = CdAttribData[index * 3 + 1];
+            vertex.Cd[2] = CdAttribData[index * 3 + 2];
         }
     };
 }
