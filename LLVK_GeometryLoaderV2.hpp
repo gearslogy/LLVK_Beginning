@@ -12,34 +12,7 @@
 #include "LLVK_Utils.hpp"
 #include <libs/tiny_gltf.h>
 
-
 LLVK_NAMESPACE_BEGIN
-struct VertexFmt_P{
-    glm::vec3 P{};      // 0
-};
-struct VertexFmt_P_N{
-    glm::vec3 P{};      // 0
-    glm::vec3 N{};      // 0
-};
-struct VertexFmt_P_N_ST0{
-    glm::vec3 P{};
-    glm::vec3 N{};
-    glm::vec2 uv0{};
-};
-struct VertexFmt_P_N_T_ST0{
-    glm::vec3 P{};
-    glm::vec3 N{};
-    glm::vec3 T{};
-    glm::vec2 uv0{};
-};
-struct VertexFmt_P_Cd_N_T_ST0{
-    glm::vec3 P{};
-    glm::vec3 Cd{};
-    glm::vec3 N{};
-    glm::vec3 T{};
-    glm::vec2 uv0{};
-};
-
 
 namespace GLTFLoaderV2 {
 
@@ -95,30 +68,29 @@ namespace GLTFLoaderV2 {
             std::cout << "primitive indices:" << primitive.indices << std::endl; //
             const float *positions = getRawAttribPointer<float>(model, primitive, "POSITION");
 
+            /*
             bool hasNormal = (primitive.attributes.find("NORMAL") != primitive.attributes.end());
             bool hasTangent = (primitive.attributes.find("TANGENT") != primitive.attributes.end());
             bool hasUV0 = (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end());
-            //bool hasUV1 = (primitive.attributes.find("TEXCOORD_1") != primitive.attributes.end());
+            bool hasUV1 = (primitive.attributes.find("TEXCOORD_1") != primitive.attributes.end());
             bool hasCd0 = (primitive.attributes.find("COLOR_0") != primitive.attributes.end());
             // fix attribute rendering!
             const float *N = nullptr;
             const float *T = nullptr;
             const float *uv0 = nullptr;
-            /*
             const float *uv1 = nullptr;
-            const float *Cd = nullptr;*/ // see CustomVertexFormat for GLTFVertexVATFracture
-
+            const float *Cd = nullptr;
             if (hasNormal)
                 N = getRawAttribPointer<float>(model, primitive, "NORMAL");
             if (hasTangent)
                 T = getRawAttribPointer<float>(model, primitive, "TANGENT");
             if (hasUV0)
                 uv0 = getRawAttribPointer<float>(model, primitive, "TEXCOORD_0"); // houdini attribute name: uv
-            //if (hasUV1)
-            //    uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
-            //if (hasCd0)
-                //Cd = getRawAttribPointer<float>(model, primitive, "COLOR_0");
-
+            if (hasUV1)
+                uv1 = getAttribPointer<float>(model, primitive, "TEXCOORD_1"); // Houdini attribute name: uv2
+            if (hasCd0)
+                Cd = getRawAttribPointer<float>(model, primitive, "COLOR_0");
+            */
 
             auto extraAttribLoaders = std::forward_as_tuple(std::forward<decltype(customAttribLoader)>(customAttribLoader)...);
             std::apply([&](auto&... loaders) {
@@ -174,32 +146,34 @@ namespace GLTFLoaderV2 {
                 vertex.P[0] = positions[index * 3 + 0];
                 vertex.P[1] = positions[index * 3 + 1];
                 vertex.P[2] = positions[index * 3 + 2];
+                /*
                 if (hasNormal) {
                     vertex.N[0] = N[index * 3 + 0];
                     vertex.N[1] = N[index * 3 + 1];
                     vertex.N[2] = N[index * 3 + 2];
                 }
-                if (hasTangent) { // * 4 was found by houdini. tangent is float4...... in gltf
+                if (hasTangent) { // 4 was found by houdini. tangent is float4...... in gltf
                     vertex.T[0] = T[index * 4 + 0];
                     vertex.T[1] = T[index * 4 + 1];
                     vertex.T[2] = T[index * 4 + 2];
                     //vertex.T = vertex.T;
                     //vertex.B = glm::cross(vertex.N, vertex.T);
                 }
-                /*
+
                 if (hasCd0) {
                     vertex.Cd[0] = Cd[index * 3 + 0];
                     vertex.Cd[1] = Cd[index * 3 + 1];
                     vertex.Cd[2] = Cd[index * 3 + 2];
-                }*/
+                }
                 if (hasUV0) {
                     vertex.uv0[0] = uv0[index * 2 + 0];
                     vertex.uv0[1] = uv0[index * 2 + 1];
                 }
-                //if (hasUV1) {
+                if (hasUV1) {
                     //vertex.uv1[0] = uv1[index * 2 + 0];
                     //vertex.uv1[1] = uv1[index * 2 + 1];
-                //}
+                }
+                */
                 std::apply([&](auto&... loaders) {
                     (loaders.setVertexAttrib(vertex, index), ...);
                 }, extraAttribLoaders);

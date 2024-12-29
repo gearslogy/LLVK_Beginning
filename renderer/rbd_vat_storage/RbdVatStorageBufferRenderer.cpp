@@ -78,7 +78,7 @@ void RbdVatStorageBufferRenderer::updateUBO() {
     uboData.view = mainCamera.view();
     uboData.model = glm::mat4(1.0f);
     auto tcFrame =  fmod(tc_currentFrame, numFrames);
-    std::cout << " tc frame:" <<tcFrame << std::endl;
+    //std::cout << " tc frame:" <<tcFrame << std::endl;
     uboData.timeData = { tcFrame, static_cast<float>(numPacks), 0, 0}; // 确保在0-59范围内循环
     memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
 }
