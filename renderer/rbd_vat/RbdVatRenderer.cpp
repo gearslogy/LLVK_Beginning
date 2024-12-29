@@ -23,7 +23,7 @@ void RbdVatRenderer::prepare() {
     const auto &phyDevice = mainDevice.physicalDevice;
     setRequiredObjectsByRenderer(this, geomManager);
     setRequiredObjectsByRenderer(this, texPosition,texOrient, texDiff);
-    auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture, uint32_t>{"_fracture_index"};
+    auto fracture_index_loader = GLTFLoaderV2::CustomAttribLoader<GLTFVertexVATFracture>{};
     // 1.geo
     buildings.load("content/scene/rbdvat/gltf/destruct_house.gltf", std::move(fracture_index_loader));
     UT_VmaBuffer::addGeometryToSimpleBufferManager(buildings,geomManager);

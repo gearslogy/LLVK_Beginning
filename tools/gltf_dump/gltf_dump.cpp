@@ -152,8 +152,12 @@ void GLTFLoader::load(const std::string &path) {
                 }
             } // end swith index component type
             std::cout << "gltf part indices size: " << prim_indices.size() << std::endl;
+            std::cout << "the first 100 prim_indices: " << std::endl;
+            auto printIndex = 0;
             for (const auto &index: prim_indices) {
-                std::cout << index << " ";
+                if(printIndex < 100)
+                    std::cout << index << " ";
+                printIndex++;
             }
             std::cout << std::endl;
 
