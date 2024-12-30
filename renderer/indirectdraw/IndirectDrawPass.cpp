@@ -60,7 +60,7 @@ void IndirectDrawPass::prepareUniformBuffers() {
 void IndirectDrawPass::updateUniformBuffers( const glm::mat4 &depthMVP, const glm::vec4 &lightPos) {
     auto [width, height] =   pRenderer->getSwapChainExtent();
     auto &&mainCamera = const_cast<VulkanRenderer *>(pRenderer)->getMainCamera();
-    const auto frame = pRenderer->getCurrentFrame();
+    const auto frame = pRenderer->getCurrentFlightFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uniformDataScene.projection = mainCamera.projection();
     uniformDataScene.projection[1][1] *= -1;
@@ -160,7 +160,7 @@ void IndirectDrawPass::recordCommandBuffer() {
     // Binding point 1 : Instance data buffer
     vkCmdBindVertexBuffers(sceneCommandBuffer, 1, 1, &instanceBuffer, offsets);
     vkCmdBindIndexBuffer(sceneCommandBuffer, indicesBuffer , 0, VK_INDEX_TYPE_UINT32);
-    std::array bindSets = {setUBOs[pRenderer->getCurrentFrame()], setTextures[pRenderer->getCurrentFrame()]};
+    std::array bindSets = {setUBOs[pRenderer->getCurrentFlightFrame()], setTextures[pRenderer->getCurrentFlightFrame()]};
     vkCmdBindDescriptorSets(sceneCommandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, bindSets.size(), bindSets.data(), 0, nullptr);
     vkCmdDrawIndexedIndirect(sceneCommandBuffer, indirectCommandBuffer, 0, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
 }

@@ -11,6 +11,7 @@
 #include <LLVK_UT_VmaBuffer.hpp>
 #include "LLVK_SYS.hpp"
 #include "LLVK_VmaBuffer.h"
+#include "renderer/public/CustomVertexFormat.hpp"
 #include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
 template<typename renderer_t, typename geo_loader_t>
@@ -18,8 +19,9 @@ struct CubeMapPass {
     renderer_t *pRenderer; // to bind
     geo_loader_t mLoader;  // to load geometry
     VmaUBOKTX2Texture mCubeTex; // to bind texture
+    VkSampler mCubeTexSampler{};
     void prepare();
-    void recordCommandBuffer(VkCommandBuffer commandBuffer);
+    void recordCommandBuffer(const VkCommandBuffer &cmdBuf);
     void cleanup();
 private:
     UT_GraphicsPipelinePSOs pso;
@@ -41,13 +43,20 @@ private:
 template<typename renderer_t,typename geo_loader_t>
 void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     const auto &device = pRenderer->mainDevice.logicalDevice;
+    // sampler create
+    auto samplerCIO = FnImage::samplerCreateInfo();
+    samplerCIO.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerCIO.addressModeV = samplerCIO.addressModeU;
+    samplerCIO.addressModeW = samplerCIO.addressModeU;
+    samplerCIO.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+    if (vkCreateSampler(device, &samplerCIO, nullptr, &mCubeTexSampler)!= VK_SUCCESS ) throw std::runtime_error("failed to create sampler");
     // geo
     setRequiredObjectsByRenderer(pRenderer, geomManager);
     mLoader.load("content/scene/cubemap/gltf/cube.gltf");
     UT_VmaBuffer::addGeometryToSimpleBufferManager(mLoader,geomManager);
     // load cube tex
     setRequiredObjectsByRenderer(pRenderer, mCubeTex);
-    mCubeTex.create("content/scene/cubemap/tex/cubemap.ktx2");
+    mCubeTex.create("content/scene/cubemap/tex/cubemap.ktx2", mCubeTexSampler);
     // ubo
     setRequiredObjectsByRenderer(this, uboBuffers);
     for (auto &ubo: uboBuffers) {
@@ -86,18 +95,44 @@ void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);
     pso.setPipelineLayout(pipelineLayout);
     pso.setRenderPass(pRenderer->getMainRenderPass());
-
-
-
+    pso.depthStencilStateCIO.depthTestEnable = VK_TRUE;
+    pso.depthStencilStateCIO.depthWriteEnable = VK_FALSE;
+    pso.depthStencilStateCIO.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    std::array<VkVertexInputAttributeDescription,1> attribsDesc{};
+    attribsDesc[0] = { 0,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P, P)};
+    VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P), VK_VERTEX_INPUT_RATE_VERTEX};
+    std::array bindingsDesc{vertexBinding};
+    pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), pipeline);
     UT_Fn::cleanup_shader_module(device,vsMD,fsMD);
-
 }
 
 
 template<typename renderer_t,typename geo_loader_t>
-void CubeMapPass<renderer_t,geo_loader_t>::recordCommandBuffer(VkCommandBuffer commandBuffer) {
+void CubeMapPass<renderer_t,geo_loader_t>::recordCommandBuffer(const VkCommandBuffer &cmdBuf) {
     // update ubo
+    auto [width, height] =   pRenderer->getSwapChainExtent();
+    auto &&mainCamera = pRenderer->getMainCamera();
+    const auto frame = pRenderer->getCurrentFrame();
+    mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
+    uboData.proj = mainCamera.projection();
+    uboData.proj[1][1] *= -1;
+    uboData.view = mainCamera.view();
+    memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
+    //
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipeline);
+    auto viewport = FnCommand::viewport(width, height );
+    auto scissor = FnCommand::scissor(width, height );
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
+
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+         0, 1, descSets[pRenderer->getCurrentFlightFrame()], 0, nullptr);
+
+    VkDeviceSize offsets[1] = {0};
+    vkCmdBindVertexBuffers(cmdBuf, 0, 1, &mLoader.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(cmdBuf,mLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(cmdBuf, mLoader.parts[0].indices.size(), 1, 0, 0, 0);
 }
 
 template<typename renderer_t, typename geo_loader_t>
@@ -110,7 +145,7 @@ void CubeMapPass<renderer_t, geo_loader_t>::cleanup() {
     UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
-
+    UT_Fn::cleanup_sampler(device, mCubeTexSampler);
 }
 
 

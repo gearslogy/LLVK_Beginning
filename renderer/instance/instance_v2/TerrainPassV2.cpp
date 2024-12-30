@@ -74,7 +74,7 @@ void TerrainPassV2::prepareUniformBuffers() {
 void TerrainPassV2::updateUniformBuffers(const glm::mat4 &depthMVP, const glm::vec4 &lightPos) {
     auto [width, height] =   pRenderer->getSwapChainExtent();
     auto &&mainCamera = const_cast<VulkanRenderer *>(pRenderer)->getMainCamera();
-    const auto frame = pRenderer->getCurrentFrame();
+    const auto frame = pRenderer->getCurrentFlightFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uniformDataScene.projection = mainCamera.projection();
     uniformDataScene.projection[1][1] *= -1;
@@ -168,7 +168,7 @@ void TerrainPassV2::recordCommandBuffer() {
             const GLTFLoader::Part *gltfPartGeo = geo.pGeometry;
             vkCmdBindVertexBuffers(sceneCommandBuffer, 0, 1, &gltfPartGeo->verticesBuffer, offsets);
             vkCmdBindIndexBuffer(sceneCommandBuffer,gltfPartGeo->indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-            std::array bindSets = {geo.setUBOs[pRenderer->getCurrentFrame()], geo.setTextures[pRenderer->getCurrentFrame()]};
+            std::array bindSets = {geo.setUBOs[pRenderer->getCurrentFlightFrame()], geo.setTextures[pRenderer->getCurrentFlightFrame()]};
             vkCmdBindDescriptorSets(sceneCommandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, bindSets.size(), bindSets.data(), 0, nullptr);
             vkCmdDrawIndexed(sceneCommandBuffer, gltfPartGeo->indices.size(), 1, 0, 0, 0);
         }

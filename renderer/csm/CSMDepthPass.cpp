@@ -271,13 +271,13 @@ void CSMDepthPass::update() {
     for (const auto &&[k, v]: UT_Fn::enumerate(cascadesViewProjMatrix)) {
         uboGeomData.lightViewProj[k] = v;
     }
-    memcpy(uboGeomBuffer[pRenderer->getCurrentFrame()].mapped, &uboGeomData, sizeof(uboGeomData));
+    memcpy(uboGeomBuffer[pRenderer->getCurrentFlightFrame()].mapped, &uboGeomData, sizeof(uboGeomData));
 
     fsUBOData.lightDir = {lightDir.x, lightDir.y, lightDir.z, 1.0};
     for (uint32_t i = 0; i < cascade_count; i++) {
         fsUBOData.cascadeSplits[i] = cascadesSplitDepth[i];
     }
-    memcpy(uboFSBuffer[pRenderer->getCurrentFrame()].mapped, &fsUBOData, sizeof(fsUBOData));
+    memcpy(uboFSBuffer[pRenderer->getCurrentFlightFrame()].mapped, &fsUBOData, sizeof(fsUBOData));
 
 }
 
