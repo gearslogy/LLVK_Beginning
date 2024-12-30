@@ -26,7 +26,7 @@ struct CubeMapPass {
 private:
     UT_GraphicsPipelinePSOs pso;
     VmaSimpleGeometryBufferManager geomManager{};
-    VkSampler mSampler{};
+
 
     struct {
         glm::mat4 proj;
@@ -42,7 +42,10 @@ private:
 
 template<typename renderer_t,typename geo_loader_t>
 void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
-    const auto &device = pRenderer->mainDevice.logicalDevice;
+    //auto &&cam = pRenderer->getMainCamera();
+    //cam.mPosition = glm::vec3(0.0f);
+    //cam.updateCameraVectors();
+    const auto &device = pRenderer->getMainDevice().logicalDevice;
     // sampler create
     auto samplerCIO = FnImage::samplerCreateInfo();
     samplerCIO.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -58,7 +61,7 @@ void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     setRequiredObjectsByRenderer(pRenderer, mCubeTex);
     mCubeTex.create("content/scene/cubemap/tex/cubemap.ktx2", mCubeTexSampler);
     // ubo
-    setRequiredObjectsByRenderer(this, uboBuffers);
+    setRequiredObjectsByRenderer(pRenderer, uboBuffers);
     for (auto &ubo: uboBuffers) {
         ubo.createAndMapping(sizeof(uboData));
     }
@@ -79,7 +82,7 @@ void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         std::array<VkWriteDescriptorSet, 2> writes = {
             FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),          // scene model_view_proj_instance , used in VS shader
-            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 &mCubeTex.descImageInfo),          // scene model_view_proj_instance , used in VS shader
+            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 , &mCubeTex.descImageInfo),          // scene model_view_proj_instance , used in VS shader
         };
         vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
     }
@@ -88,8 +91,8 @@ void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
     UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
 
-    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_vert.spv",  device);    //shader modules
-    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/rbd_vat_frag.spv",  device);
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/cubemap_vert.spv",  device);    //shader modules
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/cubemap_frag.spv",  device);
     VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);    //shader stages
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);
@@ -98,6 +101,7 @@ void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     pso.depthStencilStateCIO.depthTestEnable = VK_TRUE;
     pso.depthStencilStateCIO.depthWriteEnable = VK_FALSE;
     pso.depthStencilStateCIO.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    pso.rasterizerStateCIO.cullMode = VK_CULL_MODE_FRONT_BIT;
     std::array<VkVertexInputAttributeDescription,1> attribsDesc{};
     attribsDesc[0] = { 0,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P, P)};
     VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P), VK_VERTEX_INPUT_RATE_VERTEX};
@@ -113,11 +117,11 @@ void CubeMapPass<renderer_t,geo_loader_t>::recordCommandBuffer(const VkCommandBu
     // update ubo
     auto [width, height] =   pRenderer->getSwapChainExtent();
     auto &&mainCamera = pRenderer->getMainCamera();
-    const auto frame = pRenderer->getCurrentFrame();
+    const auto frame = pRenderer->getCurrentFlightFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uboData.proj = mainCamera.projection();
     uboData.proj[1][1] *= -1;
-    uboData.view = mainCamera.view();
+    uboData.view = glm::mat4{glm::mat3{mainCamera.view()} };
     memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
     //
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipeline);
@@ -127,7 +131,7 @@ void CubeMapPass<renderer_t,geo_loader_t>::recordCommandBuffer(const VkCommandBu
     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-         0, 1, descSets[pRenderer->getCurrentFlightFrame()], 0, nullptr);
+         0, 1, &descSets[pRenderer->getCurrentFlightFrame()], 0, nullptr);
 
     VkDeviceSize offsets[1] = {0};
     vkCmdBindVertexBuffers(cmdBuf, 0, 1, &mLoader.parts[0].verticesBuffer, offsets);
@@ -137,11 +141,10 @@ void CubeMapPass<renderer_t,geo_loader_t>::recordCommandBuffer(const VkCommandBu
 
 template<typename renderer_t, typename geo_loader_t>
 void CubeMapPass<renderer_t, geo_loader_t>::cleanup() {
-    const auto &device = pRenderer->mainDevice.logicalDevice;
-    const auto &phyDevice = pRenderer->mainDevice.physicalDevice;
+    const auto &device = pRenderer->getMainDevice().logicalDevice;
+    const auto &phyDevice = pRenderer->getMainDevice().physicalDevice;
     UT_Fn::cleanup_resources(geomManager, mCubeTex);
     UT_Fn::cleanup_range_resources(uboBuffers);
-    UT_Fn::cleanup_sampler(device, mSampler);
     UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);

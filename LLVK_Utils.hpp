@@ -44,6 +44,9 @@ namespace UT_Fn {
     constexpr auto cleanup_descriptor_set_layout(VkDevice device, auto ... layout) {
         (vkDestroyDescriptorSetLayout(device, layout, nullptr),...);
     }
+    constexpr auto cleanup_descriptor_pool(VkDevice device, auto ... pool) {
+        (vkDestroyDescriptorPool(device, pool, nullptr),...);
+    }
     constexpr auto cleanup_pipeline_layout(VkDevice device, auto ... layout) {
        ( vkDestroyPipelineLayout(device,layout,nullptr),... );
     }

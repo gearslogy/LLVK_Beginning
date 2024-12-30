@@ -1,0 +1,1 @@
+ktx create --format=R8G8B8A8_SRGB --cubemap --assign-oetf=srgb --generate-mipmap posx.png negx.png posy.png negy.png posz.png negz.png cubemap.ktx2

@@ -9,5 +9,7 @@ layout(location=0) out vec3 uv;
 
 void main(){
     uv = normalize(P);
-    gl_Position = projection * view * vec4(P, 1.0);
+    uv.x *= -1.0;
+    vec4 pos = ubo.proj * ubo.view * vec4(P, 1.0);
+    gl_Position = pos.xyww;
 }
