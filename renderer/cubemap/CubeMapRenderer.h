@@ -6,6 +6,7 @@
 #define CUBEMAP_H
 #include <LLVK_GeometryLoaderV2.hpp>
 #include "CubeMapPass.hpp"
+#include "ScenePass.hpp"
 #include "VulkanRenderer.h"
 
 LLVK_NAMESPACE_BEGIN
@@ -20,6 +21,7 @@ public:
     void recordCommandBuffer();
     VkDescriptorPool descPool;
     CubeMapPass<CubeMapRenderer, GLTFLoaderV2::Loader<VTXFmt_P>> cubeMapPass;
+    ScenePass<CubeMapRenderer, GLTFLoaderV2::Loader<VTXFmt_P>> scenePass;
 };
 
 LLVK_NAMESPACE_END
