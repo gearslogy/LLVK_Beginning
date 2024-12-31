@@ -150,7 +150,7 @@ void DualPassRenderer::createHairFramebuffers() {
 void DualPassRenderer::updateDualUBOs() {
     auto [width, height] =  getSwapChainExtent();
     auto &&mainCamera = getMainCamera();
-    const auto frame = getCurrentFrame();
+    const auto frame = getCurrentFlightFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uboData.proj = mainCamera.projection();
     uboData.proj[1][1] *= -1;

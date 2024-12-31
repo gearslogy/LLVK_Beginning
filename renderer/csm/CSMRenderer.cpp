@@ -187,7 +187,7 @@ void CSMRenderer::updateUBO() {
     constexpr auto identity = glm::mat4(1.0f);
     auto [width, height] =  getSwapChainExtent();
     auto &&mainCamera = getMainCamera();
-    const auto frame = getCurrentFrame();
+    const auto frame = getCurrentFlightFrame();
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uboData.proj = mainCamera.projection();
     uboData.proj[1][1] *= -1;
@@ -222,23 +222,23 @@ void CSMRenderer::renderGeometry(VkPipeline normalPipeline, VkPipeline instanceP
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , normalPipeline);
     // render ground
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &setGround[getCurrentFrame()] ,
+      0, 1, &setGround[getCurrentFlightFrame()] ,
       0, nullptr);
     UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.ground.parts[0]);
 
     // render 35
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &set35[getCurrentFrame()] ,
+      0, 1, &set35[getCurrentFlightFrame()] ,
       0, nullptr);
     UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_35.parts[0]);
     // render 36
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &set36[getCurrentFrame()] ,
+      0, 1, &set36[getCurrentFlightFrame()] ,
       0, nullptr);
     UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_36.parts[0]);
     // render 39
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      0, 1, &set39[getCurrentFrame()] ,
+      0, 1, &set39[getCurrentFlightFrame()] ,
       0, nullptr);
     UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_39.parts[0]);
 
@@ -246,7 +246,7 @@ void CSMRenderer::renderGeometry(VkPipeline normalPipeline, VkPipeline instanceP
     constexpr auto instanceCount = 4;
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , instancePipeline);
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-       0, 1, &set29[getCurrentFrame()] ,
+       0, 1, &set29[getCurrentFlightFrame()] ,
        0, nullptr);
     UT_GeometryContainer::renderPart(cmdBuf, &resourceManager.geos.geo_29.parts[0], instanceCount);
 }

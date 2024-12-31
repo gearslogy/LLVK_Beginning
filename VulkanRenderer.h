@@ -57,7 +57,7 @@ public :
     [[nodiscard]] VkRenderPass getMainRenderPass() const { return simplePass.pass;}
     [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return activatedSwapChainFramebuffer;}
     [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return activatedFrameCommandBufferToSubmit;}
-    [[nodiscard]] auto getCurrentFrame() const{ return currentFlightFrame;}
+    [[nodiscard]] auto getCurrentFlightFrame() const{ return currentFlightFrame;}
 protected:
     bool framebufferResized  = false;
     GLFWwindow  *window;

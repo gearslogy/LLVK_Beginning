@@ -212,7 +212,7 @@ void CompPass::recordCommandBuffer() {
     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-         0, 1, &sets[pRenderer->getCurrentFrame()] , 0, nullptr);
+         0, 1, &sets[pRenderer->getCurrentFlightFrame()] , 0, nullptr);
     vkCmdDraw(cmdBuf, 3, 1, 0, 0);
     vkCmdEndRenderPass(cmdBuf);
 

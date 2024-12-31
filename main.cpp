@@ -17,6 +17,7 @@
 #include "renderer/csm/CSMRenderer.h"
 #include "renderer/rbd_vat/RbdVatRenderer.h"
 #include "renderer/rbd_vat_storage/RbdVatStorageBufferRenderer.h"
+#include "renderer/cubemap/CubeMapRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -31,7 +32,8 @@ int main() {
     //LLVK::DualPassRenderer app;
     //LLVK::CSMRenderer app;
     //LLVK::RbdVatRenderer app;
-    LLVK::RbdVatStorageBufferRenderer app;
+    //LLVK::RbdVatStorageBufferRenderer app;
+    LLVK::CubeMapRenderer app;
     try {
         app.run();
     }

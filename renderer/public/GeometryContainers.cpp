@@ -40,7 +40,7 @@ void RenderContainerTwoSet::buildSet() {
 }
 void RenderContainerTwoSet::draw(const VkCommandBuffer &cmdBuf, const VkPipelineLayout &pipelineLayout) {
     VkDeviceSize offsets[1] = { 0 };
-    const auto currentFrame = requiredObjects.pRenderer->getCurrentFrame();
+    const auto currentFrame = requiredObjects.pRenderer->getCurrentFlightFrame();
     for(const auto &geo : renderDelegates) {
         const GLTFLoader::Part *gltfPartGeo = geo.pGeometry;
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, &gltfPartGeo->verticesBuffer, offsets);
@@ -80,7 +80,7 @@ void RenderContainerOneSet::buildSet() {
 
 void RenderContainerOneSet::draw(const VkCommandBuffer &cmdBuf, const VkPipelineLayout &pipelineLayout) {
     for(const auto &geo : renderDelegates) {
-        const auto &descSet = geo.descSets[requiredObjects.pRenderer->getCurrentFrame()];
+        const auto &descSet = geo.descSets[requiredObjects.pRenderer->getCurrentFlightFrame()];
         vkCmdBindDescriptorSets(cmdBuf,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
         UT_GeometryContainer::renderPart(cmdBuf,  geo.pGeometry);
     }
@@ -109,7 +109,7 @@ void RenderContainerOneSharedSet::buildSets(const VkDescriptorSetLayout *pSetLay
 }
 void RenderContainerOneSharedSet::draw(const VkCommandBuffer &cmdBuf, const VkPipelineLayout &pipelineLayout) {
     VkDeviceSize offsets[1] = { 0 };
-    const auto &descSet = descSets[requiredObjects.pRenderer->getCurrentFrame()];
+    const auto &descSet = descSets[requiredObjects.pRenderer->getCurrentFlightFrame()];
     vkCmdBindDescriptorSets(cmdBuf,VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
     for(const auto *partGeo : renderGeos)
         UT_GeometryContainer::renderPart(cmdBuf, partGeo);
