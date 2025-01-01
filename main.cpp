@@ -33,7 +33,7 @@ int main() {
     //LLVK::CSMRenderer app;
     //LLVK::RbdVatRenderer app;
     //LLVK::RbdVatStorageBufferRenderer app;
-    LLVK::CubeMapRenderer app;
+    LLVK::CUBEMAP_NAMESPACE::CubeMapRenderer app;
     try {
         app.run();
     }

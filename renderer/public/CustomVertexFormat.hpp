@@ -12,6 +12,14 @@ struct VTXFmt_P{
         return P == other.P;
     }
 };
+struct VTXFmt_P_N{
+    glm::vec3 P{};      // 0
+    glm::vec3 N{};
+    bool operator==(const VTXFmt_P_N& other) const {
+        return P == other.P &&
+          N == other.N;
+    }
+};
 
 // fracture VAT vertex format
 struct GLTFVertexVATFracture {
@@ -37,6 +45,11 @@ namespace std {
             return hash<glm::vec3>()(vertex.P) ;
         }
     };
+    template<> struct hash<LLVK::VTXFmt_P_N> {
+        size_t operator()(LLVK::VTXFmt_P_N const& vertex) const noexcept {
+            return hash<glm::vec3>()(vertex.P);
+        }
+    };
     // for fracture
     template<> struct hash<LLVK::GLTFVertexVATFracture> {
         size_t operator()(LLVK::GLTFVertexVATFracture const& vertex) const noexcept {
@@ -50,6 +63,26 @@ namespace GLTFLoaderV2 {
     inline constexpr auto isExistAttrib = [](auto &model, const auto &primitive, const auto &attribName) {
         return primitive.attributes.find(attribName) != primitive.attributes.end() ;
     };
+
+
+    // user interface for partial specialization
+    template<>
+    struct CustomAttribLoader<VTXFmt_P_N> {
+        using vertex_t = VTXFmt_P_N;
+    private:
+        const float *NAttribData{nullptr};
+    public:
+        void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
+            NAttribData = getRawAttribPointer<float>(model, prim, "NORMAL");
+        };
+        void setVertexAttrib(vertex_t & vertex, auto index) {
+            vertex.N[0] = NAttribData[index * 3 + 0];
+            vertex.N[1] = NAttribData[index * 3 + 1];
+            vertex.N[2] = NAttribData[index * 3 + 2];
+        }
+    };
+
+
     // user interface for partial specialization
     template<>
     struct CustomAttribLoader<GLTFVertexVATFracture> {
@@ -85,6 +118,9 @@ namespace GLTFLoaderV2 {
         }
     };
 }
+
+
+
 
 LLVK_NAMESPACE_END
 

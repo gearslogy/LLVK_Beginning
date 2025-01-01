@@ -7,6 +7,7 @@
 
 
 LLVK_NAMESPACE_BEGIN
+namespace CUBEMAP_NAMESPACE {
 
 void CubeMapRenderer::prepare() {
     const auto &device = getMainDevice().logicalDevice;
@@ -21,6 +22,9 @@ void CubeMapRenderer::prepare() {
     if (result != VK_SUCCESS) throw std::runtime_error{"ERROR"};
     cubeMapPass.pRenderer = this;
     cubeMapPass.prepare();
+    scenePass.pRenderer = this;
+    scenePass.pCubeTex = &cubeMapPass.mCubeTex;
+    scenePass.prepare();
 }
 
 void CubeMapRenderer::render() {
@@ -33,6 +37,7 @@ void CubeMapRenderer::cleanupObjects() {
     const auto &device = getMainDevice().logicalDevice;
     UT_Fn::cleanup_descriptor_pool(device, descPool);
     cubeMapPass.cleanup();
+    scenePass.cleanup();
 }
 
 void CubeMapRenderer::recordCommandBuffer() {
@@ -48,15 +53,12 @@ void CubeMapRenderer::recordCommandBuffer() {
     {
         vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         cubeMapPass.recordCommandBuffer(cmdBuf);
+        scenePass.recordCommandBuffer(cmdBuf);
         vkCmdEndRenderPass(cmdBuf);
     }
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 
 }
-
-
-
-
-
+}
 LLVK_NAMESPACE_END
 

@@ -65,7 +65,7 @@ namespace GLTFLoaderV2 {
         for (auto &&[part_id,primitive]: UT_Fn::enumerate(mesh.primitives)) {
             // if this object has two materials, there are two primitives.
             auto &part = parts[part_id];
-            std::cout << "primitive indices:" << primitive.indices << std::endl; //
+            //std::cout << "primitive indices:" << primitive.indices << std::endl; //
             const float *positions = getRawAttribPointer<float>(model, primitive, "POSITION");
 
             /*
