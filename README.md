@@ -4,9 +4,13 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
+
+## cubemap 
+![cubemap.png](screenshot/cubemap.png)
+
 ## SSBO RBD animation
 Implement RBD animation with vulkan SSBO
-![dual.png](screenshot/RBD_SSBO.png)
+![ssbo rbd.png](screenshot/RBD_SSBO.png)
 
 ## RBD VAT
 

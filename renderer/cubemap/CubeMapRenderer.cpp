@@ -7,6 +7,7 @@
 
 
 LLVK_NAMESPACE_BEGIN
+namespace CUBEMAP_NAMESPACE {
 
 void CubeMapRenderer::prepare() {
     const auto &device = getMainDevice().logicalDevice;
@@ -58,10 +59,6 @@ void CubeMapRenderer::recordCommandBuffer() {
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 
 }
-
-
-
-
-
+}
 LLVK_NAMESPACE_END
 

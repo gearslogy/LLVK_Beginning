@@ -14,6 +14,7 @@
 #include "renderer/public/CustomVertexFormat.hpp"
 #include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
+namespace CUBEMAP_NAMESPACE {
 template<typename renderer_t, typename geo_loader_t>
 struct CubeMapPass {
     renderer_t *pRenderer; // to bind
@@ -51,6 +52,7 @@ void CubeMapPass<renderer_t,geo_loader_t>::prepare() {
     samplerCIO.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     samplerCIO.addressModeV = samplerCIO.addressModeU;
     samplerCIO.addressModeW = samplerCIO.addressModeU;
+    samplerCIO.maxAnisotropy = 16;
     samplerCIO.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
     if (vkCreateSampler(device, &samplerCIO, nullptr, &mCubeTexSampler)!= VK_SUCCESS ) throw std::runtime_error("failed to create sampler");
     // geo
@@ -150,8 +152,7 @@ void CubeMapPass<renderer_t, geo_loader_t>::cleanup() {
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
     UT_Fn::cleanup_sampler(device, mCubeTexSampler);
 }
-
-
+}
 LLVK_NAMESPACE_END
 
 

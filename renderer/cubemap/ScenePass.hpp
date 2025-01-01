@@ -14,6 +14,9 @@
 #include "renderer/public/UT_CustomRenderer.hpp"
 
 LLVK_NAMESPACE_BEGIN
+namespace CUBEMAP_NAMESPACE {
+
+
 template<typename renderer_t, typename geo_loader_t>
 struct ScenePass {
     renderer_t *pRenderer{}; // to bind
@@ -52,7 +55,8 @@ void ScenePass<renderer_t, geo_loader_t>::prepare() {
 
     // geo
     setRequiredObjectsByRenderer(pRenderer, geomManager);
-    mLoader.load("content/scene/cubemap/gltf/sphere.gltf");
+    GLTFLoaderV2::CustomAttribLoader<VTXFmt_P_N> attribSet;
+    mLoader.load("content/scene/cubemap/gltf/sphere.gltf", attribSet);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(mLoader,geomManager);
 
     setRequiredObjectsByRenderer(pRenderer, uboBuffers);
@@ -94,9 +98,10 @@ void ScenePass<renderer_t, geo_loader_t>::prepare() {
     pso.setPipelineLayout(pipelineLayout);
     pso.setRenderPass(pRenderer->getMainRenderPass());
 
-    std::array<VkVertexInputAttributeDescription,1> attribsDesc{};
-    attribsDesc[0] = { 0,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P, P)};
-    VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P), VK_VERTEX_INPUT_RATE_VERTEX};
+    std::array<VkVertexInputAttributeDescription,2> attribsDesc{};
+    attribsDesc[0] = { 0,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P_N, P)};
+    attribsDesc[1] = { 1,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P_N, N)};
+    VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P_N), VK_VERTEX_INPUT_RATE_VERTEX};
     std::array bindingsDesc{vertexBinding};
     pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, pRenderer->getPipelineCache(), pipeline);
@@ -113,7 +118,7 @@ void ScenePass<renderer_t, geo_loader_t>::recordCommandBuffer(const VkCommandBuf
     mainCamera.mAspect = static_cast<float>(width) / static_cast<float>(height);
     uboData.proj = mainCamera.projection();
     uboData.proj[1][1] *= -1;
-    uboData.view = glm::mat4{glm::mat3{mainCamera.view()} };
+    uboData.view = mainCamera.view();
     uboData.model = glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.0f, -2.0f});
     uboData.invView = glm::inverse(uboData.view);
 
@@ -142,9 +147,9 @@ void ScenePass<renderer_t, geo_loader_t>::cleanup() {
     UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
 }
+}
 
 LLVK_NAMESPACE_END
-
 
 
 
