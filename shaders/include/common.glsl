@@ -1,4 +1,6 @@
 const float PI = 3.14159265359;
+const float PI2 = 6.28318530718; // 2*PI
+const float PI_HALF = 1.57079632679; // PI/2
 vec3 getNormalFromMap(vec3 fragNormal,
                       vec3 tangentNormal,
                       vec3 fragPosition,
@@ -75,6 +77,27 @@ float linearizeDepth(float depth, float near, float far)
     return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
+vec2 directionToSphericalUV(vec3 dir) {
+    dir = normalize(dir);
+    float u = (atan(dir.x, -dir.z) + PI) / (2.0 * PI);
+    float v = 0.5 - (asin(dir.y) / PI);
+    return vec2(u, v);
+}
+
+// 1. Reinhard tone mapping
+vec3 reinhardToneMapping(vec3 color) {
+    return color / (color + vec3(1.0));
+}
+
+// 2. ACES tone mapping (更准确的电影级色调映射)
+vec3 ACESToneMapping(vec3 color) {
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+}
 
 
 vec3 gammaCorrect(vec3 color, float gamma) {

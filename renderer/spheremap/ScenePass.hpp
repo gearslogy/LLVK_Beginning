@@ -27,7 +27,7 @@ namespace SPHEREMAP_NAMESPACE {
 template<typename renderer_t, typename geo_loader_t>
 struct ScenePass {
     renderer_t *pRenderer{}; // to bind
-    VmaUBOKTX2Texture *pCubeTex{}; // to bind
+    VmaUBOExrRGBATexture *pCubeTex{}; // to bind
     geo_loader_t mLoader;  // to load geometry
     void prepare();
     void recordCommandBuffer(const VkCommandBuffer &cmdBuf);
@@ -63,7 +63,7 @@ void ScenePass<renderer_t, geo_loader_t>::prepare() {
     // geo
     setRequiredObjectsByRenderer(pRenderer, geomManager);
     GLTFLoaderV2::CustomAttribLoader<VTXFmt_P_N> attribSet;
-    mLoader.load("content/scene/cubemap/gltf/sphere.gltf", attribSet);
+    mLoader.load("content/scene/spheremap/reflect_sphere.gltf", attribSet);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(mLoader,geomManager);
 
     setRequiredObjectsByRenderer(pRenderer, uboBuffers);
@@ -97,8 +97,8 @@ void ScenePass<renderer_t, geo_loader_t>::prepare() {
     VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
     UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
 
-    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/cubemap_scene_vert.spv",  device);    //shader modules
-    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/cubemap_scene_frag.spv",  device);
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/spheremap_scene_vert.spv",  device);    //shader modules
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/spheremap_scene_frag.spv",  device);
     VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);    //shader stages
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);

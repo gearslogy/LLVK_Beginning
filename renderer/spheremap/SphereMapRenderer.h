@@ -12,15 +12,16 @@
 
 LLVK_NAMESPACE_BEGIN
 namespace SPHEREMAP_NAMESPACE {
-    class SphereMapRenderer :  VulkanRenderer{
-        void cleanupObjects() override;
-        void prepare() override;
-        void render() override;
-        void recordCommandBuffer();
-        VkDescriptorPool descPool;
-        SphereMapPass<CubeMapRenderer, GLTFLoaderV2::Loader<VTXFmt_P>> cubeMapPass;
-        ScenePass<CubeMapRenderer, GLTFLoaderV2::Loader<VTXFmt_P_N>> scenePass;
-    };
+class SphereMapRenderer :  public VulkanRenderer{
+public:
+    void cleanupObjects() override;
+    void prepare() override;
+    void render() override;
+    void recordCommandBuffer();
+    VkDescriptorPool descPool{};
+    SphereMapPass<SphereMapRenderer, GLTFLoaderV2::Loader<VTXFmt_P>> sphereMapPass{};
+    ScenePass<SphereMapRenderer, GLTFLoaderV2::Loader<VTXFmt_P_N>> scenePass{};
+};
 }
 
 LLVK_NAMESPACE_END

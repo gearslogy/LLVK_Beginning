@@ -12,14 +12,15 @@
 #include "LLVK_VmaBuffer.h"
 #include "renderer/public/CustomVertexFormat.hpp"
 #include "renderer/public/UT_CustomRenderer.hpp"
+#include "LLVK_ExrImage.h"
 LLVK_NAMESPACE_BEGIN
 namespace SPHEREMAP_NAMESPACE {
 template<typename renderer_t, typename geo_loader_t>
 struct SphereMapPass {
     renderer_t *pRenderer; // to bind
     geo_loader_t mLoader;  // to load geometry
-    VmaUBOKTX2Texture mCubeTex; // to bind texture
-    VkSampler mCubeTexSampler{};
+    VmaUBOExrRGBATexture mSphereTex; // to bind texture
+    VkSampler mSphereTexSampler{};
     void prepare();
     void recordCommandBuffer(const VkCommandBuffer &cmdBuf);
     void cleanup();
@@ -48,19 +49,19 @@ void SphereMapPass<renderer_t,geo_loader_t>::prepare() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
     // sampler create
     auto samplerCIO = FnImage::samplerCreateInfo();
-    samplerCIO.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerCIO.addressModeV = samplerCIO.addressModeU;
-    samplerCIO.addressModeW = samplerCIO.addressModeU;
+    samplerCIO.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCIO.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerCIO.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     samplerCIO.maxAnisotropy = 16;
-    samplerCIO.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
-    if (vkCreateSampler(device, &samplerCIO, nullptr, &mCubeTexSampler)!= VK_SUCCESS ) throw std::runtime_error("failed to create sampler");
+    //samplerCIO.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+    if (vkCreateSampler(device, &samplerCIO, nullptr, &mSphereTexSampler)!= VK_SUCCESS ) throw std::runtime_error("failed to create sampler");
     // geo
     setRequiredObjectsByRenderer(pRenderer, geomManager);
-    mLoader.load("content/scene/cubemap/gltf/cube.gltf");
+    mLoader.load("content/scene/spheremap/sky_sphere.gltf");
     UT_VmaBuffer::addGeometryToSimpleBufferManager(mLoader,geomManager);
     // load cube tex
-    setRequiredObjectsByRenderer(pRenderer, mCubeTex);
-    mCubeTex.create("content/scene/cubemap/tex/cubemap.ktx2", mCubeTexSampler);
+    setRequiredObjectsByRenderer(pRenderer, mSphereTex);
+    mSphereTex.create("content/scene/spheremap/kloppenheim_06_puresky_2k.exr", mSphereTexSampler);
     // ubo
     setRequiredObjectsByRenderer(pRenderer, uboBuffers);
     for (auto &ubo: uboBuffers) {
@@ -83,7 +84,7 @@ void SphereMapPass<renderer_t,geo_loader_t>::prepare() {
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         std::array<VkWriteDescriptorSet, 2> writes = {
             FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),          // scene model_view_proj_instance , used in VS shader
-            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 , &mCubeTex.descImageInfo),          // scene model_view_proj_instance , used in VS shader
+            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 , &mSphereTex.descImageInfo),          // scene model_view_proj_instance , used in VS shader
         };
         vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
     }
@@ -92,8 +93,8 @@ void SphereMapPass<renderer_t,geo_loader_t>::prepare() {
     VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
     UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
 
-    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/cubemap_vert.spv",  device);    //shader modules
-    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/cubemap_frag.spv",  device);
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/spheremap_vert.spv",  device);    //shader modules
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/spheremap_frag.spv",  device);
     VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);    //shader stages
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
     pso.setShaderStages(vsMD_ssCIO, fsMD_ssCIO);
@@ -144,12 +145,12 @@ template<typename renderer_t, typename geo_loader_t>
 void SphereMapPass<renderer_t, geo_loader_t>::cleanup() {
     const auto &device = pRenderer->getMainDevice().logicalDevice;
     const auto &phyDevice = pRenderer->getMainDevice().physicalDevice;
-    UT_Fn::cleanup_resources(geomManager, mCubeTex);
+    UT_Fn::cleanup_resources(geomManager, mSphereTex);
     UT_Fn::cleanup_range_resources(uboBuffers);
     UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
-    UT_Fn::cleanup_sampler(device, mCubeTexSampler);
+    UT_Fn::cleanup_sampler(device, mSphereTexSampler);
 }
 }
 LLVK_NAMESPACE_END

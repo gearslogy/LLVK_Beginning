@@ -10,7 +10,7 @@ layout (set=0, binding=0) uniform UBO{
 
     mat4 invView;
 }ubo;
-layout(set=0, binding=1) uniform samplerCube cubeTex;
+layout(set=0, binding=1) uniform sampler2D sphereTex;
 
 
 layout (location=0) out vec4 outFragCd;
@@ -18,13 +18,12 @@ void main(){
     vec3 I = normalize(camP); // cam to object
     vec3 N = normalize(camN);
     vec3 R = normalize(reflect(I, N) );
-    R.x*=-1;
+    //R.x*=-1;
     vec3 worldR = vec3(ubo.invView * vec4(R,0));
-    const int lodBias=  0;
-    vec4 color = texture(cubeTex, worldR, lodBias); // 世界空间采样颜色
-    color = gammaCorrect(color,2.2);
-
+    vec2 uv = directionToSphericalUV(worldR);
+    vec3 color = texture(sphereTex, uv).rgb; // 世界空间采样颜色
+    color = ACESToneMapping(color);
     float fresnel = 1-max(dot(N, -I),0);
-    color = mix(vec4(0.6,0.2,0.2,1), color, fresnel);
-    outFragCd =vec4(color);
+    color = mix(vec3(0.6,0.2,0.2), color, fresnel);
+    outFragCd = vec4(color,0);
 }
