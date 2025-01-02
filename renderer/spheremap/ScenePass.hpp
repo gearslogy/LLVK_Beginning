@@ -2,16 +2,6 @@
 // Created by liuya on 1/1/2025.
 //
 #pragma once
-
-
-
-//
-// Created by liuya on 12/31/2024.
-//
-
-#pragma once
-
-
 #include <LLVK_Descriptor.hpp>
 #include <LLVK_UT_Pipeline.hpp>
 #include <LLVK_UT_VmaBuffer.hpp>
