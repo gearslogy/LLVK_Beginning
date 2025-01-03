@@ -49,19 +49,47 @@ void Device::createLogicDevice() {
         queueInfos.emplace_back(queueCreateInfo);
     }
 
+    /*
+    // disable this features. use features2
     VkPhysicalDeviceFeatures features{};
     vkGetPhysicalDeviceFeatures(physicalDevice, &features); // 非必要
     if (!features.geometryShader) {
         throw std::runtime_error("geometry shader not supported!");
     }
+
+    */
+
+
     VkDeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.pQueueCreateInfos = queueInfos.data();               // 注意这里可以挂多个VkQueueCreateInfo, 目前本质只挂一个GraphicsFamily中的一个Queue, 因为GraphicsFamily和Queue是一样的
     deviceCreateInfo.queueCreateInfoCount = queueInfos.size();
     deviceCreateInfo.ppEnabledExtensionNames = nullptr;
-    deviceCreateInfo.pEnabledFeatures =  &features;
+    deviceCreateInfo.pEnabledFeatures =  nullptr; // use next VkPhysicalDeviceFeatures2
     deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
     deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+    {
+        // bindless
+        VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, nullptr};
+        VkPhysicalDeviceFeatures2 deviceFeatures2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexingFeatures};
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+        bool bindlessSupported = indexingFeatures.descriptorBindingPartiallyBound && indexingFeatures.runtimeDescriptorArray;
+
+        VkPhysicalDeviceFeatures2 deviceFeatures2Inject{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, nullptr};
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2Inject);
+        deviceCreateInfo.pNext = &deviceFeatures2Inject;
+        if (bindlessSupported) {
+            deviceFeatures2Inject.pNext = &indexingFeatures;
+            std::cout << "[[Device::getPhysicalDevice]]: Bindless supported" << std::endl;
+        }
+        if (deviceFeatures2Inject.features.geometryShader) {
+            std::cout << "[[Device::getPhysicalDevice]]: Geometry shader supported" << std::endl;
+        }
+
+    }
+
+
+
 
     auto result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
     if(result!=VK_SUCCESS) throw std::runtime_error{"create device error"};
@@ -77,11 +105,11 @@ bool Device::checkDeviceSuitable(const VkPhysicalDevice &device) const{
     bool condition0{false};
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(device, &props);
-    std::cout << "GPU name:" <<props.deviceName << std::endl;
-    std::cout << "GPU maxMemoryAllocationCount:" << props.limits.maxMemoryAllocationCount << std::endl;
-    std::cout << "GPU maxUniformBufferRange:"<<props.limits.maxUniformBufferRange << " bytes" << std::endl;
-    std::cout << "GPU maxStorageBufferRange:"<<static_cast<float>(props.limits.maxStorageBufferRange) / 1024 / 1024 / 1024 << " GB" << std::endl;
-    std::cout << "GPU maxStorageBufferRange support vec4 count:"<<static_cast<float>(props.limits.maxStorageBufferRange) / sizeof(float)*4 << " vec4" << std::endl; // sizeof(vec4) = 16bytes
+    std::cout << "[[Device::checkDeviceSuitable]]:" <<" GPU name:" <<props.deviceName << std::endl;
+    std::cout << "[[Device::checkDeviceSuitable]]:"<< " GPU maxMemoryAllocationCount:" << props.limits.maxMemoryAllocationCount << std::endl;
+    std::cout << "[[Device::checkDeviceSuitable]]:"<<" GPU maxUniformBufferRange:"<<props.limits.maxUniformBufferRange << " bytes" << std::endl;
+    std::cout << "[[Device::checkDeviceSuitable]]:"<<" GPU maxStorageBufferRange:"<<static_cast<float>(props.limits.maxStorageBufferRange) / 1024 / 1024 / 1024 << " GB" << std::endl;
+    std::cout << "[[Device::checkDeviceSuitable]]:"<<" GPU maxStorageBufferRange support vec4 count:"<<static_cast<float>(props.limits.maxStorageBufferRange) / sizeof(float)*4 << " vec4" << std::endl; // sizeof(vec4) = 16bytes
 
     QueueFamilyIndices indices = getQueueFamilies(bindSurface,device);
     condition0 = indices.isValid();
