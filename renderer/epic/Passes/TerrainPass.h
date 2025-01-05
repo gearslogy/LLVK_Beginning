@@ -6,11 +6,21 @@
 #define TERRAINPASS_H
 
 
+#include "renderer/epic/EpicRendererDefines.hpp"
 
-class TerrainPass {
+LLVK_NAMESPACE_BEGIN
+EPIC_NAMESSPACE_BEGIN
+class EpicRenderer;
+struct TerrainPass {
+    EpicRenderer *pRenderer{};
+    void prepare();
+    void cleanup();
 
+    VkDescriptorSetLayout setLayout{};
+    VkPipelineLayout pipelineLayout{};
+    VkPipeline pipeline{};
 };
-
-
+EPIC_NAMES_SPACE_END
+LLVK_NAMESPACE_END
 
 #endif //TERRAINPASS_H
