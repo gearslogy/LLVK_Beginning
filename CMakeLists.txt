@@ -15,7 +15,10 @@ file(GLOB SOURCES *.h *.cpp
         ${CMAKE_SOURCE_DIR}/libs/tinyexr/deps/miniz/miniz.c
 )
 
-add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
+add_executable(${PROJECT_NAME} main.cpp ${SOURCES}
+        renderer/epic/EpicRenderer.cpp
+        renderer/epic/EpicRenderer.h
+        renderer/epic/EpicRendererDefines.hpp)
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_ENABLE_EXPERIMENTAL)
 # GLM_ENABLE_EXPERIMENTAL for hash: #include <glm/gtx/hash.hpp>
 MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )
