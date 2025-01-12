@@ -14,7 +14,7 @@ LLVK_NAMESPACE_BEGIN
     RbdVatStorageBufferRenderer::RbdVatStorageBufferRenderer() {
     mainCamera.setRotation({1.18, 7.34, 0});
     mainCamera.mPosition = glm::vec3(10, 4.4, 59);
-    mainCamera.updateCameraVectors();
+    //mainCamera.updateCameraVectors();  // DO NOT CALL THIS , because setRotation will update mFront mRight mUp
 }
 
 void RbdVatStorageBufferRenderer::cleanupObjects() {
