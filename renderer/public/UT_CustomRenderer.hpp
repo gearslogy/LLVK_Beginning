@@ -31,6 +31,14 @@ constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Co
     ((ubo.requiredObjects.allocator = renderer->getVmaAllocator()),...);
 };
 
+constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::is_requiredObjects auto && ... ubo) {
+    const auto *renderer = GetRendererPtr::value(renderer_or_object);
+    ((ubo.device = renderer->getMainDevice().logicalDevice),...);
+    ((ubo.physicalDevice = renderer->getMainDevice().physicalDevice),...);
+    ((ubo.commandPool = renderer->getGraphicsCommandPool()),...);
+    ((ubo.queue = renderer->getGraphicsQueue()),...);
+    ((ubo.allocator = renderer->getVmaAllocator()),...);
+};
 
 constexpr void setRequiredObjectsByRenderer  (const auto *renderer, Concept::is_range auto && range_ubo) {
     for(auto &o : range_ubo) {

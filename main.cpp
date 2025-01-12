@@ -19,6 +19,7 @@
 #include "renderer/rbd_vat_storage/RbdVatStorageBufferRenderer.h"
 #include "renderer/cubemap/CubeMapRenderer.h"
 #include "renderer/spheremap/SphereMapRenderer.h"
+#include "renderer/screenshot/ScreenShotRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -35,7 +36,8 @@ int main() {
     //LLVK::RbdVatRenderer app;
     //LLVK::RbdVatStorageBufferRenderer app;
     //LLVK::CUBEMAP_NAMESPACE::CubeMapRenderer app;
-    LLVK::SPHEREMAP_NAMESPACE::SphereMapRenderer app;
+    //LLVK::SPHEREMAP_NAMESPACE::SphereMapRenderer app;
+    LLVK::ScreenShotRenderer app;
     try {
         app.run();
     }
