@@ -168,10 +168,6 @@ void VulkanRendererWindowEvent::process_input(GLFWwindow *window) {
 }
 
 void VulkanRendererWindowEvent::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_PRINT_SCREEN && action == GLFW_PRESS) {
-        //takeScreenshot();
-    }
-    std::cout << "key event: " << key << std::endl;
     auto vr = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
     vr->keyPressEvent(key,scancode, action, mods);
 }

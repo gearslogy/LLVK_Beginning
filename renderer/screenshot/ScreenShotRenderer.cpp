@@ -10,6 +10,8 @@
 #include "Pipeline.hpp"
 #include "renderer/public/UT_CustomRenderer.hpp"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "libs/stb_image_write.h"
 
 LLVK_NAMESPACE_BEGIN
 ScreenShotRenderer::ScreenShotRenderer() {
@@ -174,7 +176,7 @@ void ScreenShotRenderer::capture() {
     const auto queue = getMainDevice().graphicsQueue;
     const auto swapChainColorFormat = simpleSwapchain.swapChainFormat;
     const auto [width,height] = getSwapChainExtent();
-    constexpr auto dstImageColorFormat = VK_FORMAT_B8G8R8A8_SNORM;
+    auto dstImageColorFormat = swapChainColorFormat;
     VkFormatProperties formatProperties;
     // check source
     vkGetPhysicalDeviceFormatProperties(phyDevice, swapChainColorFormat, &formatProperties);
@@ -194,8 +196,9 @@ void ScreenShotRenderer::capture() {
     auto dstImageCIO = FnImage::imageCreateInfo(width,height);
     dstImageCIO.tiling = VK_IMAGE_TILING_LINEAR;
     dstImageCIO.format = dstImageColorFormat;
+    dstImageCIO.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     FnVmaImage::createImageAndAllocation(requiredObjects,
-         dstImageCIO, false,
+         dstImageCIO, true,
         ssRes.dstImage,
         ssRes.dstAllocation
         );
@@ -248,9 +251,90 @@ void ScreenShotRenderer::capture() {
             1, &copyRegion );
     }
     FnCommand::endSingleTimeCommand(device, getGraphicsCommandPool(), queue, cmd);
-    // copy image data to RGBA 
+    // copy image data to RGBA
+    VkImageSubresource subRes{};
+    subRes.arrayLayer = 0;
+    subRes.mipLevel = 0;
+    subRes.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkSubresourceLayout subResLayout{};
+    vkGetImageSubresourceLayout(device, ssRes.dstImage, &subRes, &subResLayout);
+    // mapping
+    const char *data;
+    vmaMapMemory(vmaAllocator, ssRes.dstAllocation, (void**)&data);
+    data += subResLayout.offset;
+
+    // direct mem copy; ONLY support RGBA order
+    {
+        /*
+        std::vector<uint32_t> imageData(width * height);
+        for (uint32_t y = 0; y < height; y++) {
+            memcpy(imageData.data() + y * width,
+                   (uint32_t*)((char*)data + y * subResLayout.rowPitch),
+                   width * sizeof(uint32_t));
+        }
+        stbi_write_jpg(
+            "screenshot_v2.jpg",
+            width,
+            height,
+            4,                    // 4 channels (RGBA)
+            imageData.data(),
+            width * 4             // correct stride
+        );*/
+    }
 
 
+
+    uint32_t channels = 4;
+    std::vector<unsigned char> imageData(width * height * channels);
+
+    auto colorSwizzle = false;
+    for (uint32_t y = 0; y < height; y++)
+    {
+        unsigned int *row = (unsigned int*)data;
+        for (uint32_t x = 0; x < width; x++)
+        {
+            size_t index = y * width * channels + x * channels;
+            if (colorSwizzle) // BGR
+            {
+                uint32_t pixel = row[x];
+                imageData[index + 0] = (pixel >> 16) & 0xFF; // B
+                imageData[index + 1] = (pixel >> 8) & 0xFF;  // G
+                imageData[index + 2] = pixel & 0xFF;         // R
+                imageData[index + 3] = (pixel >> 24) & 0xFF; // A
+            }
+            else // RGBA
+            {
+                uint32_t pixel = row[x];
+                imageData[index + 0] = pixel & 0xFF;         // R
+                imageData[index + 1] = (pixel >> 8) & 0xFF;  // G
+                imageData[index + 2] = (pixel >> 16) & 0xFF; // B
+                imageData[index + 3] = (pixel >> 24) & 0xFF; // A
+            }
+        }
+        data += subResLayout.rowPitch;
+    }
+
+    stbi_write_png(
+        "screenshot.png",           // 文件名
+        width,                     // 宽度
+        height,                    // 高度
+        channels,                  // 通道数
+        imageData.data(),       // 图像数据
+        width * channels          // stride (每行的字节数)
+    );
+
+
+    stbi_write_jpg(
+       "screenshot.jpg",           // 文件名
+       width,                     // 宽度
+       height,                    // 高度
+       channels,                  // 通道数
+       imageData.data(),       // 图像数据
+       width * channels          // stride (每行的字节数)
+   );
+
+
+    vmaUnmapMemory(vmaAllocator, ssRes.dstAllocation);
     // 把目标转换到 GENERAL_LAYOUT 可以 来映射内存
     FnImage::transitionImageLayout(device, getGraphicsCommandPool(), queue, ssRes.dstImage, swapChainColorFormat,
            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,1,1);
@@ -258,12 +342,16 @@ void ScreenShotRenderer::capture() {
     FnImage::transitionImageLayout(device, getGraphicsCommandPool(), queue, ssRes.srcImage, swapChainColorFormat,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,1,1);
 
-
     vmaDestroyImage(vmaAllocator, ssRes.dstImage,ssRes.dstAllocation);
 
 }
 
-
-
+void ScreenShotRenderer::keyPressEvent(int key, int scanCode, int action, int mods) {
+    if (key == GLFW_KEY_PRINT_SCREEN and action == GLFW_PRESS) {
+        std::cout << "screenshot begin..." << std::endl;
+        capture();
+        std::cout << "screenshot end..." << std::endl;
+    }
+}
 
 LLVK_NAMESPACE_END

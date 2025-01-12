@@ -4,6 +4,17 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
+## screenshot
+* swapchainImage(src) ---copy---> image(dst) -> write_uint32
+
+Make sure the following functions of swapchain are enabled:
+```c
+VkSwapchainCreateInfoKHR createInfoKhr{};
+createInfoKhr.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+```
+![screenshot.png](screenshot/screenshot.jpg)
+
+
 ## spheremap 
 * spherical mapping
 * 32bit HDR exr 

@@ -11,6 +11,8 @@
 #include "LLVK_UT_Pipeline.hpp"
 LLVK_NAMESPACE_BEGIN
 class ScreenShotRenderer :public VulkanRenderer {
+protected:
+    void keyPressEvent(int key, int scanCode, int action, int mods) override;
 public:
     ScreenShotRenderer();
     void prepare() override;

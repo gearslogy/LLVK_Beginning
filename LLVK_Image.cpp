@@ -5,6 +5,8 @@
 #include "LLVK_Image.h"
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
+#include <libs/magic_enum.hpp>
+
 #include "libs/stb_image.h"
 #include <vma/vk_mem_alloc.h>
 #include "LLVK_Utils.hpp"
@@ -245,7 +247,7 @@ void FnImage::transitionImageLayout(VkDevice device,
         destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
     // src -> present
-    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL and newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL and newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
         barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -260,7 +262,8 @@ void FnImage::transitionImageLayout(VkDevice device,
     }
 
     else {
-        throw std::invalid_argument("unsupported layout transition!");
+        auto message = std::format("unsupported layout:{}->{}", magic_enum::enum_name(oldLayout), magic_enum::enum_name(newLayout) );
+        throw std::invalid_argument(message);
     }
 
     vkCmdPipelineBarrier(
