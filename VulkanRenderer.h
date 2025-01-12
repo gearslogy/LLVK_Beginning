@@ -25,6 +25,7 @@ struct VulkanRendererWindowEvent {
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
     static void process_input(GLFWwindow* window);
+    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 };
 
 
@@ -184,6 +185,7 @@ protected:
     virtual void prepare() {}
     virtual void render() = 0;
     virtual void swapChainResize() {}
+    virtual void keyPressEvent(int key, int scanCode, int action, int mods) {};
 public:
     struct {
         bool isPressingRightMouseButton{false};
