@@ -39,7 +39,7 @@ void Swapchain::init() {
     createInfoKhr.presentMode = surfacePresentationMode;
     createInfoKhr.minImageCount = minImageCount;
     createInfoKhr.imageExtent = extent;
-    createInfoKhr.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfoKhr.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     createInfoKhr.imageArrayLayers = 1; // AI. 它定义了交换链图像的层级数量，这对于立体图像（例如3D）或者多重采样图像是非常有用的。
     createInfoKhr.preTransform = capabilities.currentTransform; //AI.  VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR 表示不对表面进行任何变换。这意味着图形将以其原始方向显示，不会进行旋转或镜像翻转。
     createInfoKhr.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
