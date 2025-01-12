@@ -34,6 +34,13 @@ namespace Concept {
         var.requiredObjects;
     };
     template<typename T>
+    concept is_requiredObjects = requires(T var)
+    {
+        var.device;
+        var.physicalDevice;
+    };
+
+    template<typename T>
     concept has_pRenderer = requires(T var){
         var.pRenderer;
     };
