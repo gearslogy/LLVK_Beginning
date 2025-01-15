@@ -31,5 +31,26 @@ int main(int argn, char** argv) {
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule(spv_data.size(), spv_data.data(), &module);
     assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+    uint32_t count = 0;
+    result = spvReflectEnumerateDescriptorSets(&module, &count, NULL);
+    assert(result == SPV_REFLECT_RESULT_SUCCESS);
+    std::cout << "descriptor set count: " << count << std::endl;
+
+
+    std::vector<SpvReflectDescriptorSet*> sets(count);
+    result = spvReflectEnumerateDescriptorSets(&module, &count, sets.data());
+    assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+    for (const auto &set: sets) {
+        std::cout <<"set id:" <<set->set << std::endl;
+        std::cout << "binding count:" << set->binding_count << std::endl;
+        for (int i=0;i< set->binding_count ;i++) {
+            auto binding = set->bindings[i]->binding ;
+            std::cout << binding << std::endl;
+        }
+
+    }
+
     return 0;
 }
