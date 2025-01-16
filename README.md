@@ -4,6 +4,60 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
+## height blend index map
+![hb.png](screenshot/heightblend.png)
+
+* Consider this method if your terrain surface has more than 16 textures
+* It can intuitively support 4 kinds of surface mixing at the same time(Here we just use RG channels
+  )
+
+all resource download:
+https://drive.google.com/file/d/1qKHuP9KLeSZ3w8a68624mL3u5IMsIJ2D/view?usp=drive_link
+
+encoded R8G8B8A8 indexd image
+* R index: first layer (4 layers)
+* G index: second layer(2 layers)
+* ![hb.png](screenshot/heightblend_mix.png)
+* the road snap to terrain with a custom uv R32G32B32A32 SRV(or you can do this with uv2)
+* ![hb.png](screenshot/heightblend_uv.png)
+```
+index a = noise(R) noise(G)
+index b = noise(R) noise(G)
+index c = noise(R) noise(G)
+index d = noise(R) noise(G)
+
+layer01_sA = sample(a.r)
+layer01_sB = sample(b.r)
+layer01_sC = sample(c.r)
+layer01_sD = sample(d.r)
+
+layer02_sA = sample(a.g)
+layer02_sB = sample(b.g)
+layer02_sC = sample(c.g)
+layer02_sD = sample(d.g)
+
+sa = heightblend(layer01_sA,layer02_sA);
+sb = heightblend(layer01_sB,layer02_sB);
+sc = heightblend(layer01_sC,layer02_sC);
+sd = heightblend(layer01_sD,layer02_sD);
+
+vec3 ab = heightblend(sa,sb)
+vec3 abc = heightblend(sab,sc)
+vec3 abcd = heightblend(sabc,sd)
+
+color01 = (ab+abc+abcd) * 0.33
+color02 = (a+b+c+d)*0.25
+final = mix(color01, color02, 0.5);
+```
+
+* heightblend algorithm: https://zhuanlan.zhihu.com/p/26383778?from_voters_page=true
+
+result:
+![hb.png](screenshot/heightblend1.png)
+
+
+
+
 ## screenshot
 * swapchainImage(src) ---copy---> image(dst) -> write_uint32
 

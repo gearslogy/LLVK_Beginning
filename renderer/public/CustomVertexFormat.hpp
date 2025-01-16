@@ -21,6 +21,15 @@ struct VTXFmt_P_N{
     }
 };
 
+struct VTXFmt_P_N_T_UV0 {
+    glm::vec3 P{};      // 0
+    glm::vec3 N{};      // 1
+    glm::vec3 T{};      // 2
+    glm::vec2 uv0{};    // 3
+    bool operator==(const VTXFmt_P_N_T_UV0& other) const = default; // all checking
+};
+
+
 // fracture VAT vertex format
 struct GLTFVertexVATFracture {
     glm::vec3 P{};      // 0
@@ -48,6 +57,16 @@ namespace std {
     template<> struct hash<LLVK::VTXFmt_P_N> {
         size_t operator()(LLVK::VTXFmt_P_N const& vertex) const noexcept {
             return hash<glm::vec3>()(vertex.P);
+        }
+    };
+    template<> struct hash<LLVK::VTXFmt_P_N_T_UV0> {
+        size_t operator()(LLVK::VTXFmt_P_N_T_UV0 const& vertex) const noexcept {
+            const size_t h1 = hash<glm::vec3>{}(vertex.P);
+            const size_t h2 = hash<glm::vec3>{}(vertex.N);
+            const size_t h3 = hash<glm::vec3>{}(vertex.T);
+            const size_t h4 = hash<glm::vec2>{}(vertex.uv0);
+            return ((h1 ^ (h2 << 1)) >> 1) ^
+                   ((h3 ^ (h4 << 1)) >> 1);
         }
     };
     // for fracture
@@ -79,6 +98,34 @@ namespace GLTFLoaderV2 {
             vertex.N[0] = NAttribData[index * 3 + 0];
             vertex.N[1] = NAttribData[index * 3 + 1];
             vertex.N[2] = NAttribData[index * 3 + 2];
+        }
+    };
+
+    template<>
+    struct CustomAttribLoader<VTXFmt_P_N_T_UV0> {
+        using vertex_t = VTXFmt_P_N_T_UV0;
+    private:
+        const float *NAttribData{nullptr};
+        const float *TAttribData{nullptr};
+        const float *uv0AttribData{nullptr};
+    public:
+        void getAttribPointer(const tinygltf::Model &model, const tinygltf::Primitive &prim) {
+            NAttribData = getRawAttribPointer<float>(model, prim, "NORMAL");
+            TAttribData = getRawAttribPointer<float>(model, prim, "TANGENT");
+            uv0AttribData = getRawAttribPointer<float>(model, prim, "TEXCOORD_0"); // houdini attribute name: uv
+        };
+        void setVertexAttrib(vertex_t & vertex, auto index) {
+            vertex.N[0] = NAttribData[index * 3 + 0];
+            vertex.N[1] = NAttribData[index * 3 + 1];
+            vertex.N[2] = NAttribData[index * 3 + 2];
+            vertex.N[0] = NAttribData[index * 3 + 0];
+            vertex.N[1] = NAttribData[index * 3 + 1];
+            vertex.N[2] = NAttribData[index * 3 + 2];
+            vertex.T[0] = TAttribData[index * 4 + 0];       // * 4 was found by houdini. tangent is float4...... in gltf
+            vertex.T[1] = TAttribData[index * 4 + 1];
+            vertex.T[2] = TAttribData[index * 4 + 2];
+            vertex.uv0[0] = uv0AttribData[index * 2 + 0];
+            vertex.uv0[1] = uv0AttribData[index * 2 + 1];
         }
     };
 
