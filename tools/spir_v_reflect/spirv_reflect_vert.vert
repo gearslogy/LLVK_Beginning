@@ -49,6 +49,9 @@ layout(set=1, binding=1) buffer SSBO{
     RBDData data[];  // numRBDS * numFrames
 }ssbo;
 
+layout(set=1, binding=2) uniform sampler2D testTex1;
+layout(set=1, binding=3) uniform sampler2D testTex2;
+
 void main(){
     int evalFrame = int(ubo.metaInfo.x);
     int numFractures = int(ubo.metaInfo.y);

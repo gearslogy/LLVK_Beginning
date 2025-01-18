@@ -43,11 +43,13 @@ int main(int argn, char** argv) {
     assert(result == SPV_REFLECT_RESULT_SUCCESS);
 
     for (const auto &set: sets) {
-        std::cout <<"set id:" <<set->set << std::endl;
-        std::cout << "binding count:" << set->binding_count << std::endl;
+        std::cout <<"-set id:" <<set->set << std::endl;
+        std::cout << "-binding count:" << set->binding_count << std::endl;
         for (int i=0;i< set->binding_count ;i++) {
-            auto binding = set->bindings[i]->binding ;
-            std::cout << binding << std::endl;
+            const auto &binding = set->bindings[i];
+            std::cout << "\t-binding position:" <<binding->binding  << std::endl;
+
+
         }
 
     }

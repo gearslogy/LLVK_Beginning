@@ -4,6 +4,20 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
+## features
+### core
+* spirv-reflection pipelinelayout or metaprogramming for pipelineLayout
+* pso object
+* dualpass render hair
+* cascade shadowmap or shadowmap
+* screenshot
+* exr32bit image for HDR/Texture
+* custom vertex format 
+* deferred rendering
+* heightblend based on indexmap
+* 
+
+
 ## height blend index map
 ![hb.png](screenshot/heightblend.png)
 
