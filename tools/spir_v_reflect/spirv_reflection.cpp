@@ -6,6 +6,9 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include "libs/magic_enum.hpp"
+
+#include <vulkan/vulkan.h>
 
 int main(int argn, char** argv) {
     if (argn != 2) {
@@ -31,9 +34,23 @@ int main(int argn, char** argv) {
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule(spv_data.size(), spv_data.data(), &module);
     assert(result == SPV_REFLECT_RESULT_SUCCESS);
+    const auto stageStage = static_cast<VkShaderStageFlagBits>(module.shader_stage);
+    std::cout << "shader stage:" <<magic_enum::enum_name(stageStage) << std::endl;
+    std::cout << "entry points count:" << module.entry_point_count << std::endl;
+    for (int i=0;i <module.entry_point_count;i++) {
+        const auto entry_point = module.entry_points[i];
+        std::cout << entry_point.name << std::endl;
+    }
 
+    spir_v_reflect::descriptorReflection(module);
+
+    spvReflectDestroyShaderModule(&module);
+    return 0;
+}
+
+void spir_v_reflect::descriptorReflection(const SpvReflectShaderModule &module) {
     uint32_t count = 0;
-    result = spvReflectEnumerateDescriptorSets(&module, &count, NULL);
+    SpvReflectResult result = spvReflectEnumerateDescriptorSets(&module, &count, nullptr);
     assert(result == SPV_REFLECT_RESULT_SUCCESS);
     std::cout << "descriptor set count: " << count << std::endl;
 
@@ -42,17 +59,47 @@ int main(int argn, char** argv) {
     result = spvReflectEnumerateDescriptorSets(&module, &count, sets.data());
     assert(result == SPV_REFLECT_RESULT_SUCCESS);
 
+
     for (const auto &set: sets) {
-        std::cout <<"-set id:" <<set->set << std::endl;
-        std::cout << "-binding count:" << set->binding_count << std::endl;
+        std::cout << std::format("set id:{}, binding count:{}", set->set, set->binding_count) <<std::endl;
         for (int i=0;i< set->binding_count ;i++) {
-            const auto &binding = set->bindings[i];
-            std::cout << "\t-binding position:" <<binding->binding  << std::endl;
+            const auto *pBinding = set->bindings[i];
+
+
+            const uint32_t bindingPosition = pBinding->binding ;
+            const auto descType = static_cast<VkDescriptorType>(pBinding->descriptor_type);
+            uint32_t descriptorCount{1};
+            for (uint32_t i_dim = 0; i_dim < pBinding->array.dims_count; ++i_dim) {
+                descriptorCount *= pBinding->array.dims[i_dim];
+            }
+            const char * bindingName = pBinding->name;
+            const bool accessed = pBinding->accessed;
+
+            const auto dumpInfo = std::format("\t----{}, binding:{}, descCount:{} {}, accessed:{}----", bindingName,
+                bindingPosition, descriptorCount,
+                magic_enum::enum_name(descType), accessed );
+            std::cout << dumpInfo << std::endl;
+
+            //std::cout << magic_enum::enum_name(static_cast<SpvReflectDecorationFlagBits>(pBinding->decoration_flags)) << std::endl;
+
+            const auto *pTypeDescription = pBinding->type_description;
+            const auto *typeName = pTypeDescription->type_name ;
+            if (typeName != nullptr) {
+                const auto dumpTypeInfo = std::format("\ttype:{}", typeName );
+                std::cout << dumpTypeInfo << std::endl;
+            }
+
+            const uint32_t memberCount = pTypeDescription->member_count ;
+            std::cout << "\tmembers cout :" << memberCount<< std::endl;
+
+            for (int m = 0; m < memberCount; ++m) {
+                const char *memName = pTypeDescription->members[m].struct_member_name ;
+                std::cout << std::format("\t\t{}", memName) << std::endl;
+            }
+
+            const SpvReflectBlockVariable &block = pBinding->block;
 
 
         }
-
     }
-
-    return 0;
 }

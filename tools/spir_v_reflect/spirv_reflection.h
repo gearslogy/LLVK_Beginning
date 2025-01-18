@@ -9,7 +9,7 @@
 
 
 struct spir_v_reflect {
-
+    static void descriptorReflection(const SpvReflectShaderModule &module);
 };
 
 

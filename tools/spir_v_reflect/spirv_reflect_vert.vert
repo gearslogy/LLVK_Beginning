@@ -1,13 +1,17 @@
-/*
-glm::vec3 P{};      // 0
-glm::vec3 Cd{};     // 1
-glm::vec3 N{};      // 2
-glm::vec3 T{};      // 3
-glm::vec2 uv0{};    // 4
-glm::int32_t fractureIndex{}; //5*/
 
 #version 460 core
 #include "math.glsl"
+
+
+layout (constant_id = 0) const int myConstant0 = 0;
+layout (constant_id = 1) const float myConstant1 = 1.0;
+
+layout(push_constant) uniform PushConstantsVertex {
+    float P_xOffset;
+    float P_yOffset;
+    float P_zOffset;
+    float P_wOffset;
+} myPushConstantData;
 
 
 layout(location=0) in vec3 P;
