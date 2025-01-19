@@ -49,6 +49,17 @@ struct RBDData{
     vec4 rbdOrient;
 };
 
+struct Light {
+    vec4 position;
+    vec3 color;
+    float radius;
+};
+layout (set=0, binding = 3) uniform UBO4
+{
+    Light lights[10];
+    vec4 viewPos;
+} ubo4;
+
 layout(set=1, binding=1) buffer SSBO{
     RBDData data[];  // numRBDS * numFrames
 }ssbo;

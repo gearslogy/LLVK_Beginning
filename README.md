@@ -5,17 +5,45 @@ Learn Vulkan from scratch
 * Except houdini works commercially
 
 ## features
-### core
+### todo
+* custom resolve ktx2 files
+* 3d texture
+* lod system
+* font rendering
+* subpass
+* computeshader image/particle system/fluid simulation
+* IMGUI
+* click mouse event: pick object based on BVH traveling
+* atmosphere
+* cloud rendering
+* global illumination
+* GDC grass system
+* GPU path tracing
+* CPU and GPU culling
+* mesh shader
+* SSR/SSAO/GTAO/TAA/FSR/DLSS
+* terrain
+* multi threading rendering
+* runtime virtual textures
+* viewport array
+
+
+### The following features have been implemented :
+* vma memory management
 * spirv-reflection pipelinelayout or metaprogramming for pipelineLayout
 * pso object
 * dualpass render hair
 * cascade shadowmap or shadowmap
 * screenshot
-* exr32bit image for HDR/Texture
+* exr file: 32bit image for HDR/Texture
 * custom vertex format 
-* deferred rendering
+* pbr/GBuffer deferred rendering 
 * heightblend based on indexmap
-* 
+* cubemapping & spheremapping
+* 2d image array: ktx2
+* indirect draw & instance draw
+* rbd vat effects
+* command line tools: exr dump/gltf dump/spv dump
 
 
 ## height blend index map

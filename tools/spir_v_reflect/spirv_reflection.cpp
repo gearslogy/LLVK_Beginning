@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include "libs/magic_enum.hpp"
-
+#include <sstream>
 #include <vulkan/vulkan.h>
 
 int main(int argn, char** argv) {
@@ -45,6 +45,7 @@ int main(int argn, char** argv) {
     spir_v_reflect::descriptorReflection(module);
 
     spvReflectDestroyShaderModule(&module);
+    std::cin.get();
     return 0;
 }
 
@@ -61,9 +62,9 @@ void spir_v_reflect::descriptorReflection(const SpvReflectShaderModule &module) 
 
 
     for (const auto &set: sets) {
-        std::cout << std::format("set id:{}, binding count:{}", set->set, set->binding_count) <<std::endl;
-        for (int i=0;i< set->binding_count ;i++) {
-            const auto *pBinding = set->bindings[i];
+        std::cout << std::format(">>>>  set id:{}, binding count:{}", set->set, set->binding_count) <<std::endl;
+        for (int bindingIndex=0; bindingIndex < set->binding_count ;bindingIndex++) {
+            const SpvReflectDescriptorBinding *pBinding = set->bindings[bindingIndex];
 
 
             const uint32_t bindingPosition = pBinding->binding ;
@@ -75,29 +76,90 @@ void spir_v_reflect::descriptorReflection(const SpvReflectShaderModule &module) 
             const char * bindingName = pBinding->name;
             const bool accessed = pBinding->accessed;
 
-            const auto dumpInfo = std::format("\t----{}, binding:{}, descCount:{} {}, accessed:{}----", bindingName,
+            const auto dumpInfo = std::format("\t----{}, binding:{}, descCount:{} type:{}, accessed:{}----", bindingName,
                 bindingPosition, descriptorCount,
                 magic_enum::enum_name(descType), accessed );
             std::cout << dumpInfo << std::endl;
 
-            //std::cout << magic_enum::enum_name(static_cast<SpvReflectDecorationFlagBits>(pBinding->decoration_flags)) << std::endl;
-
-            const auto *pTypeDescription = pBinding->type_description;
-            const auto *typeName = pTypeDescription->type_name ;
-            if (typeName != nullptr) {
-                const auto dumpTypeInfo = std::format("\ttype:{}", typeName );
-                std::cout << dumpTypeInfo << std::endl;
+            if (pBinding->uav_counter_binding != nullptr) {
+                std::stringstream os;
+                os << "\t" << "counter  : ";
+                os << "(";
+                os << "set=" << pBinding->uav_counter_binding->set << ", ";
+                os << "binding=" << pBinding->uav_counter_binding->binding << ", ";
+                os << "name=" << pBinding->uav_counter_binding->name;
+                os << ");";
+                os << "\n";
+                std::cout << os.str();
             }
 
-            const uint32_t memberCount = pTypeDescription->member_count ;
-            std::cout << "\tmembers cout :" << memberCount<< std::endl;
+
+            if(pBinding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER or pBinding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+                std::cout << "\t{" << std::endl;
+                const auto &block = pBinding->block;
+                const uint32_t member_count = block.member_count; // pTypeDescription->member_count ; // this ok
+                // BLOCK BEGIN
+                {
+                    const char *type_name = (block.type_description->type_name != nullptr) ? block.type_description->type_name : "<unnamed>";
+                    const auto size = block.size;
+                    const auto padded_size = block.padded_size;
+                    std::cout << std::format("\t\t<<block begin ->typename:{} size:{} padded_size:{}>>", type_name, size, padded_size) << std::endl;
+                }
+
+
+                if (member_count == 0) {continue;}
+                const SpvReflectBlockVariable* p_members = block.members;
+                for (uint32_t member_index = 0; member_index < member_count; ++member_index) {
+                    const SpvReflectBlockVariable &member = p_members[member_index];
+                    if (!member.type_description) {
+                        continue;
+                    }
+                    bool is_struct = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_STRUCT)) != 0);
+                    bool is_ref = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_REF)) != 0);
+                    bool is_array = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_ARRAY)) != 0);
+                    const bool is_array_struct = is_array && member.type_description->struct_type_description;
+                    const char *memberName = member.name;
+                    const char *typeName = (member.type_description->type_name == nullptr ? "<not struct>" : member.type_description->type_name);
+                    const auto absolute_offset = member.absolute_offset;
+                    const auto relative_offset = member.offset;
+                    const auto size = member.size;
+                    const auto padded_size = member.padded_size;
+                    const auto array_stride = member.array.stride;
+                    const auto block_variable_flags = member.flags;
+
+                    if (is_array) {
+
+                    }
+
+                    std::cout << std::format("\t\tname:{}, type:{} abs_offset:{} ral_offset:{} size:{} padded_size:{} array_stride:{} var_flags:{} is_struct:{} is_array:{} is_array_struct:{}\n",
+                        memberName, typeName,
+                        absolute_offset, relative_offset,
+                        size, array_stride,
+                        padded_size,
+                        magic_enum::enum_name(static_cast<SpvReflectVariableFlagBits>(block_variable_flags)),
+                        is_struct,
+                        is_array, is_array_struct);
+
+                }
+
+
+                std::cout << "\t}" << std::endl;
+            }
+
+
+            /*
+            std::cout << "\t\tmembers cout :" << memberCount<< std::endl;
 
             for (int m = 0; m < memberCount; ++m) {
-                const char *memName = pTypeDescription->members[m].struct_member_name ;
-                std::cout << std::format("\t\t{}", memName) << std::endl;
+                const auto &member = pTypeDescription->members[i];
+                const char *memName = member.struct_member_name ;
+                std::cout << std::format("\t\t:{}", memName) << std::endl;
             }
-
-            const SpvReflectBlockVariable &block = pBinding->block;
+            if (memberCount !=0) {
+                const SpvReflectBlockVariable &block = pBinding->block;
+                auto blockInfo = std::format("\t\tbinding block-> offset:{} abs_offset:{} padded_size:{}", block.offset, block.absolute_offset, block.padded_size);
+                std::cout << blockInfo << std::endl;
+            }*/
 
 
         }
