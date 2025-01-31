@@ -95,55 +95,7 @@ void spir_v_reflect::descriptorReflection(const SpvReflectShaderModule &module) 
 
 
             if(pBinding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER or pBinding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
-                std::cout << "\t{" << std::endl;
-                const auto &block = pBinding->block;
-                const uint32_t member_count = block.member_count; // pTypeDescription->member_count ; // this ok
-                // BLOCK BEGIN
-                {
-                    const char *type_name = (block.type_description->type_name != nullptr) ? block.type_description->type_name : "<unnamed>";
-                    const auto size = block.size;
-                    const auto padded_size = block.padded_size;
-                    std::cout << std::format("\t\t<<block begin ->typename:{} size:{} padded_size:{}>>", type_name, size, padded_size) << std::endl;
-                }
-
-
-                if (member_count == 0) {continue;}
-                const SpvReflectBlockVariable* p_members = block.members;
-                for (uint32_t member_index = 0; member_index < member_count; ++member_index) {
-                    const SpvReflectBlockVariable &member = p_members[member_index];
-                    if (!member.type_description) {
-                        continue;
-                    }
-                    bool is_struct = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_STRUCT)) != 0);
-                    bool is_ref = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_REF)) != 0);
-                    bool is_array = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_ARRAY)) != 0);
-                    const bool is_array_struct = is_array && member.type_description->struct_type_description;
-                    const char *memberName = member.name;
-                    const char *typeName = (member.type_description->type_name == nullptr ? "<not struct>" : member.type_description->type_name);
-                    const auto absolute_offset = member.absolute_offset;
-                    const auto relative_offset = member.offset;
-                    const auto size = member.size;
-                    const auto padded_size = member.padded_size;
-                    const auto array_stride = member.array.stride;
-                    const auto block_variable_flags = member.flags;
-
-                    if (is_array) {
-
-                    }
-
-                    std::cout << std::format("\t\tname:{}, type:{} abs_offset:{} ral_offset:{} size:{} padded_size:{} array_stride:{} var_flags:{} is_struct:{} is_array:{} is_array_struct:{}\n",
-                        memberName, typeName,
-                        absolute_offset, relative_offset,
-                        size, array_stride,
-                        padded_size,
-                        magic_enum::enum_name(static_cast<SpvReflectVariableFlagBits>(block_variable_flags)),
-                        is_struct,
-                        is_array, is_array_struct);
-
-                }
-
-
-                std::cout << "\t}" << std::endl;
+                parseBlock(pBinding->block , 1);
             }
 
 
@@ -164,4 +116,81 @@ void spir_v_reflect::descriptorReflection(const SpvReflectShaderModule &module) 
 
         }
     }
+}
+void spir_v_reflect::parseBlock(const SpvReflectBlockVariable &block, int indent) {
+    auto getTableStr = [](int count) {
+        std::stringstream ss;
+        for (int i=0;i<count;i++)
+            ss<<"\t";
+        return ss.str();
+    };
+
+
+    const uint32_t member_count = block.member_count; // pTypeDescription->member_count ; // this ok
+    // BLOCK BEGIN
+    {
+        const char *type_name = (block.type_description->type_name != nullptr) ? block.type_description->type_name : "<unnamed>";
+        const auto size = block.size;
+        const auto padded_size = block.padded_size;
+        const auto glslType = toStringGlslType(*block.type_description);
+        std::cout << std::format("{}<<block begin ->name:{} typename:{} glsl_t:{} size:{} padded_size:{}>>",
+            getTableStr(indent),
+            block.name,
+            type_name,
+            glslType,
+            size, padded_size) << std::endl;
+    }
+    if (member_count == 0) {
+        return;
+    }
+    std::cout << getTableStr(indent) <<"{" << std::endl;
+    const SpvReflectBlockVariable* p_members = block.members;
+    for (uint32_t member_index = 0; member_index < member_count; ++member_index) {
+        const SpvReflectBlockVariable &member = p_members[member_index];
+        if (!member.type_description) {
+            continue;
+        }
+        bool is_struct = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_STRUCT)) != 0);
+        bool is_ref = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_REF)) != 0);
+        bool is_array = ((member.type_description->type_flags & static_cast<SpvReflectTypeFlags>(SPV_REFLECT_TYPE_FLAG_ARRAY)) != 0);
+        const bool is_array_struct = is_array && member.type_description->struct_type_description;
+        const char *memberName = member.name;
+        const char *typeName = (member.type_description->type_name == nullptr ? "<not struct>" : member.type_description->type_name);
+        const auto absolute_offset = member.absolute_offset;
+        const auto relative_offset = member.offset;
+        const auto size = member.size;
+        const auto padded_size = member.padded_size;
+        const auto array_stride = member.array.stride;
+        const auto block_variable_flags = member.flags;
+
+        const auto subMemberCount = member.member_count;
+
+        std::cout << std::format("{}name:{}, type:{} abs_offset:{} ral_offset:{} size:{} padded_size:{} array_stride:{} var_flags:{} is_struct:{} is_array:{} is_array_struct:{} sub_member_count:{}",
+            getTableStr(indent),
+            memberName, typeName,
+            absolute_offset, relative_offset,
+            size, array_stride,
+            padded_size,
+            magic_enum::enum_name(static_cast<SpvReflectVariableFlagBits>(block_variable_flags)),
+            is_struct,
+            is_array, is_array_struct, subMemberCount);
+
+        if (is_array) {
+            std::cout << " array-dim:"<< member.array.dims_count ;
+            for (int dimIdx =0 ; dimIdx <member.array.dims_count; dimIdx++) {
+                std::cout << "  ["<< dimIdx <<"]="<<member.array.dims[dimIdx];
+            }
+        }
+        std::cout << "\n";
+        if (is_struct and subMemberCount !=0){
+            for (auto nextMemberIdx = 0 ; nextMemberIdx < subMemberCount; nextMemberIdx++) {
+                parseBlock(member.members[nextMemberIdx] , indent+1);
+                //parseBlock(member.members[nextMemberIdx] );
+                //nextMember = member.members[nextMemberIdx];
+            }
+        }
+    }
+    std::cout << getTableStr(indent)<<"}" << std::endl;
+
+
 }
