@@ -6,8 +6,10 @@
 #include <fstream>
 #include <vector>
 #include <filesystem>
+#include <iostream>
+#include <libs/magic_enum.hpp>
 LLVK_NAMESPACE_BEGIN
-constexpr const char* cacheFolder = "content/engine";
+    constexpr const char* cacheFolder = "content/engine";
 constexpr const char* cacheName = "pipeline_cache.bin";
 namespace fs = std::filesystem;
 void PipelineCache::init() {
@@ -20,6 +22,17 @@ void PipelineCache::loadCache() {
     if(cacheFile) {
         std::vector<uint8_t> cacheData((std::istreambuf_iterator<char>(cacheFile)), std::istreambuf_iterator<char>());
         cacheFile.close();
+        // header version checking
+        auto *cacheHeader = reinterpret_cast<VkPipelineCacheHeaderVersionOne *>(cacheData.data());
+        std::cout << std::format("[[PipelineCache::loadCache]]: headerVersion:{} vendorID:{}\n" ,magic_enum::enum_name(cacheHeader->headerVersion),cacheHeader->vendorID );
+
+        /*
+        VkPhysicalDeviceProperties deviceProperties;
+        cacheHeader->deviceID ==deviceProperties.deviceID ;// checking
+        cacheHeader->vendorID == deviceProperties.vendorID ;//
+        memcmp(cacheHeader->pipelineCacheUUID,deviceProperties.pipelineCacheUUID,VK_UUID_SIZE) == 0;*/
+
+
         pipelineCacheCreateInfo.initialDataSize = cacheData.size();
         pipelineCacheCreateInfo.pInitialData = cacheData.data();
     }

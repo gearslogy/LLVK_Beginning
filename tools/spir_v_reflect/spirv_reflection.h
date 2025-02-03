@@ -76,6 +76,7 @@ struct spir_v_reflect {
                                 return "dvec3";
                             case 4:
                                 return "dvec4";
+                            default: return "unknown";
                         }
                     } break;
                 }
