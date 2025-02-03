@@ -9,7 +9,9 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include "LLVK_SYS.hpp"
+#include "LLVK_Utils.hpp"
 LLVK_NAMESPACE_BEGIN
+
 struct Device {
     // need to transfer from VulkanRenderer class
     VkInstance bindInstance;
@@ -18,16 +20,22 @@ struct Device {
     // created object
     VkPhysicalDevice physicalDevice;
     VkDevice logicalDevice;
-    VkQueue graphicsQueue;
-    VkQueue presentationQueue;
+    // 1 2 3 queue is same
+    VkQueue graphicsQueue;   // 1
+    VkQueue presentationQueue; // 2
+    VkQueue computeQueue;    // 3
+    // only transfer
+    VkQueue transferQueue;
 
+    // cached QueueFamlilies
+    QueueFamilyIndices queueFamilyIndices;
     void init();
     void cleanup();
 
 private:
     void getPhysicalDevice();
     void createLogicDevice();
-    [[nodiscard]] bool checkDeviceSuitable(const VkPhysicalDevice &device) const;
+    [[nodiscard]] bool checkDeviceSuitable(const VkPhysicalDevice &device);
     // support functions
     static bool checkDeviceExtensionSupport(VkPhysicalDevice device,
         const std::vector<const char*> &checkExtensions) ;

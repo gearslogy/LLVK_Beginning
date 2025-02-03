@@ -9,6 +9,8 @@
 #include "Swapchain.h"
 #include <set>
 LLVK_NAMESPACE_BEGIN
+
+
 void Device::init() {
     getPhysicalDevice();
     createLogicDevice();
@@ -32,14 +34,19 @@ void Device::getPhysicalDevice() {
             break;
         }
     }
-    assert(physicalDevice!=VK_NULL_HANDLE);
+    if (physicalDevice == VK_NULL_HANDLE) {
+        throw std::runtime_error("failed to find a suitable GPU device!");
+    }
+
 }
 void Device::createLogicDevice() {
-    auto queueFamilies = getQueueFamilies(bindSurface,physicalDevice);
-
     std::vector<VkDeviceQueueCreateInfo > queueInfos;
-    std::set<int> queueFamilyIndices { queueFamilies.graphicsFamily, queueFamilies.presentationFamily}; // 其实是一个
-    for(auto &familyIndex : queueFamilyIndices){
+
+    std::set unionQueueFamilyIndices{
+        queueFamilyIndices.graphicsFamily, queueFamilyIndices.presentationFamily, queueFamilyIndices.computeFamily, // 其实是一个
+        queueFamilyIndices.transferFamily};  // single
+
+    for(auto &familyIndex : unionQueueFamilyIndices){
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         float queuePriorities[] = {1.0f}; // max is 1.0f
@@ -88,20 +95,25 @@ void Device::createLogicDevice() {
 
     }
 
-
-
-
     auto result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
     if(result!=VK_SUCCESS) throw std::runtime_error{"create device error"};
 
     // create Queue
-    vkGetDeviceQueue(logicalDevice, queueFamilies.graphicsFamily, 0, &graphicsQueue);
-    vkGetDeviceQueue(logicalDevice, queueFamilies.presentationFamily, 0,&presentationQueue);
-    std::cout <<"graphics queue:" <<graphicsQueue << " presentation queue:"<< presentationQueue << std::endl;
+    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsFamily, 0, &graphicsQueue);
+    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily, 0,&presentationQueue);
+    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.computeFamily, 0, &computeQueue);
+    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.transferFamily, 0, &transferQueue);
+    std::string info = std::format("graphicsQueue: {:#x}, presentationQueue: {:#x}, computeQueue: {:#x}, transferQueue:{:#x}",
+        reinterpret_cast<uint64_t>(graphicsQueue),
+        reinterpret_cast<uint64_t>(presentationQueue),
+        reinterpret_cast<uint64_t>(computeQueue),
+        reinterpret_cast<uint64_t>(transferQueue)
+        );
+    std::cout << info << std::endl;
 }
 
 
-bool Device::checkDeviceSuitable(const VkPhysicalDevice &device) const{
+bool Device::checkDeviceSuitable(const VkPhysicalDevice &device) {
     bool condition0{false};
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(device, &props);
@@ -111,15 +123,15 @@ bool Device::checkDeviceSuitable(const VkPhysicalDevice &device) const{
     std::cout << "[[Device::checkDeviceSuitable]]:"<<" GPU maxStorageBufferRange:"<<static_cast<float>(props.limits.maxStorageBufferRange) / 1024 / 1024 / 1024 << " GB" << std::endl;
     std::cout << "[[Device::checkDeviceSuitable]]:"<<" GPU maxStorageBufferRange support vec4 count:"<<static_cast<float>(props.limits.maxStorageBufferRange) / sizeof(float)*4 << " vec4" << std::endl; // sizeof(vec4) = 16bytes
 
-    QueueFamilyIndices indices = getQueueFamilies(bindSurface,device);
-    condition0 = indices.isValid();
-    // assert checking
-
+    queueFamilyIndices = getQueueFamilies(bindSurface,device);
+    condition0 = queueFamilyIndices.isValid();
     auto swapDetails = Swapchain::getSwapChainDetails(bindSurface,device);
     auto condition1 = not swapDetails.formatList.empty();
     auto condition2 = not swapDetails.presentModeList.empty();
     auto condition3 = checkDeviceExtensionSupport(device,deviceExtensions);
-    return condition0 and condition1 and condition2 and condition3;
+    auto allCond = condition0 && condition1 && condition2 && condition3;
+    std::cout << "[[Device::checkDeviceSuitable]]:"<< " CHECK RESULT:"<< allCond  << std::endl; // sizeof(vec4) = 16bytes
+    return allCond;
 }
 bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<const char *> &checkExtensions) {
     uint32_t propCount{0};
