@@ -75,9 +75,13 @@ namespace UT_Fn {
 struct QueueFamilyIndices{
     int graphicsFamily{-1};
     int presentationFamily{-1};
-
+    int computeFamily{-1};
+    int transferFamily{-1};
     [[nodiscard]] bool isValid() const{
-        return graphicsFamily >=0;
+        return graphicsFamily >=0 and
+        computeFamily >= 0 and
+        presentationFamily >= 0 and
+        transferFamily >=0;
     }
 };
 
@@ -91,12 +95,17 @@ inline QueueFamilyIndices getQueueFamilies(VkSurfaceKHR surface, VkPhysicalDevic
 
     int i=0;
     for(auto &queueFamily : queueFamilyList){
+        if (queueFamily.queueCount == 0) continue;
         // has graphics queue family
-        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT and queueFamily.queueCount >0){
+        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT ){
             indices.graphicsFamily = i; // current only focus the GRAPHICS_FAMILY, 用整形自己做indice
-            //std::cout << "find graphics queue VK_QUEUE_GRAPHICS_BIT,queue count: " << queueFamily.queueCount << " ,and graphicsFamily indices:" << indices.graphicsFamily<< std::endl;
         }
-
+        if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+            indices.computeFamily = i;
+        }
+        if ( (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0 and  (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) ) {
+            indices.transferFamily = i;
+        }
         // check if queue family supports presentation . graphics queue also is a presentation queue.!
         // 这里直接这样检查，不用else if. 因为graphics queue 也是 presentation queue
         VkBool32 presentationSupport =false;
