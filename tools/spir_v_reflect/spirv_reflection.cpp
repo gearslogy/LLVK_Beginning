@@ -43,6 +43,7 @@ int main(int argn, char** argv) {
 
     spir_v_reflect::descriptorReflection(module);
     spir_v_reflect::IOReflection(module);
+    spir_v_reflect::pushConstantReflection(module);
     spvReflectDestroyShaderModule(&module);
     std::cin.get();
     return 0;
@@ -243,4 +244,11 @@ void spir_v_reflect::IOReflection(const SpvReflectShaderModule &module) {
 
 }
 
+void spir_v_reflect::pushConstantReflection(const SpvReflectShaderModule &module) {
+    std::cout << "\ndump push constant:" << std::endl;
+    for (int i=0;i<module.push_constant_block_count;i++) {
+       SpvReflectBlockVariable blockVar =  module.push_constant_blocks[i];
+        parseBlock(blockVar, 0);
+    }
+}
 

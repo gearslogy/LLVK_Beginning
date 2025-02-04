@@ -15,6 +15,7 @@ struct spir_v_reflect {
 
     static void IOReflection(const SpvReflectShaderModule &module);
 
+    static void pushConstantReflection(const SpvReflectShaderModule &module);
 
     static std::string toStringScalarType(const SpvReflectTypeDescription &type) {
         switch (type.op) {
