@@ -7,7 +7,6 @@
 #include <fstream>
 #include <iostream>
 #include "libs/magic_enum.hpp"
-#include <sstream>
 #include <vulkan/vulkan.h>
 
 int main(int argn, char** argv) {
@@ -43,7 +42,7 @@ int main(int argn, char** argv) {
     }
 
     spir_v_reflect::descriptorReflection(module);
-
+    spir_v_reflect::IOReflection(module);
     spvReflectDestroyShaderModule(&module);
     std::cin.get();
     return 0;
@@ -194,3 +193,54 @@ void spir_v_reflect::parseBlock(const SpvReflectBlockVariable &block, int indent
 
 
 }
+
+void spir_v_reflect::IOReflection(const SpvReflectShaderModule &module) {
+
+    auto buildInSpvVarStr = [](this auto self, const SpvReflectInterfaceVariable &var) {
+        std::stringstream ss;
+        if (var.decoration_flags & SPV_REFLECT_DECORATION_BLOCK) {
+            ss << "(built-in block)";
+        }else {
+            ss << "(built-in var) ";
+        }
+        ss << "[";
+        for (uint32_t i = 0; i < var.member_count; i++) {
+            ss << magic_enum::enum_name(var.members[i].built_in);
+            if (i < (var.member_count - 1)) {
+                ss << ", ";
+            }
+        }
+        ss << "]";
+        return ss.str();
+    };
+
+    auto dumpVariable = [buildInSpvVarStr](const SpvReflectInterfaceVariable &var) {
+        bool isBuildIn = var.decoration_flags & SPV_REFLECT_DECORATION_BUILT_IN;
+        std::string buildInStr = isBuildIn ?  buildInSpvVarStr(var) : "";
+        const auto dims_count = var.array.dims_count;
+        const auto *name = var.name ? var.name : "";
+        const auto *semantic = var.semantic ? var.semantic : "";
+        const auto glsl_t = toStringGlslType (  *var.type_description);
+        std::cout << std::format(" location:{}\n name:{}\n buidin:{}\n dims_count:{}\n semantic:{}\n glsl_t:{}\n", var.location, name, buildInStr, dims_count, semantic, glsl_t);
+    };
+
+    std::cout << "input variables:" << module.input_variable_count << std::endl;
+    uint32_t inputVariableCount = module.input_variable_count;
+    for (int i=0;i<inputVariableCount;i++) {
+        const SpvReflectInterfaceVariable *var = module.input_variables[i];
+        std::cout << "--------\n";
+        dumpVariable(*var);
+    }
+
+    std::cout << "\noutput variables:" << module.output_variable_count << std::endl;
+    // output
+    uint32_t outputVariableCount = module.output_variable_count;
+    for (int i=0;i<outputVariableCount;i++) {
+        const SpvReflectInterfaceVariable *var = module.output_variables[i];
+        std::cout << "--------\n";
+        dumpVariable(*var);
+    }
+
+}
+
+

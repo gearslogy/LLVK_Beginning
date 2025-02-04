@@ -120,3 +120,94 @@ descriptor set count: 2
         ----testTex2, binding:3, descCount:1 type:VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, accessed:false----
 ```
 
+
+input output dump:
+```
+input variables:6
+--------
+ location:5
+ name:fracture_idx
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:int
+--------
+ location:0
+ name:P
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+--------
+ location:1
+ name:Cd
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+--------
+ location:4
+ name:uv0
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec2
+--------
+ location:2
+ name:N
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+--------
+ location:3
+ name:T
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+
+output variables:6
+--------
+ location:4294967295
+ name:
+ buidin:(built-in block)[SpvBuiltInPosition, SpvBuiltInPointSize, SpvBuiltInClipDistance, SpvBuiltInCullDistance]
+ dims_count:0
+ semantic:
+ glsl_t:struct
+--------
+ location:1
+ name:fragTexCoord
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec2
+--------
+ location:0
+ name:fragN
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+--------
+ location:2
+ name:fragCd
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+--------
+ location:3
+ name:fragVAT_P
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec3
+--------
+ location:4
+ name:fragVAT_orient
+ buidin:
+ dims_count:0
+ semantic:
+ glsl_t:vec4
+```

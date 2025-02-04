@@ -6,14 +6,17 @@
 #define SPIR_V_REFLECT_H
 
 #include "spirv_reflect.h"
-
+#include <sstream>
 
 struct spir_v_reflect {
     static void descriptorReflection(const SpvReflectShaderModule &module);
-    static void parseBlock(const SpvReflectBlockVariable &block, int ident= 0 );
+
+    static void parseBlock(const SpvReflectBlockVariable &block, int ident = 0);
+
+    static void IOReflection(const SpvReflectShaderModule &module);
 
 
-    static std::string toStringScalarType(const SpvReflectTypeDescription& type) {
+    static std::string toStringScalarType(const SpvReflectTypeDescription &type) {
         switch (type.op) {
             case SpvOpTypeVoid: {
                 return "void";
@@ -53,7 +56,7 @@ struct spir_v_reflect {
         return "";
     }
 
-    static std::string toStringGlslType(const SpvReflectTypeDescription& type) {
+    static std::string toStringGlslType(const SpvReflectTypeDescription &type) {
         switch (type.op) {
             case SpvOpTypeVector: {
                 switch (type.traits.numeric.scalar.width) {
@@ -66,7 +69,8 @@ struct spir_v_reflect {
                             case 4:
                                 return "vec4";
                         }
-                    } break;
+                    }
+                    break;
 
                     case 64: {
                         switch (type.traits.numeric.vector.component_count) {
@@ -78,16 +82,19 @@ struct spir_v_reflect {
                                 return "dvec4";
                             default: return "unknown";
                         }
-                    } break;
+                    }
+                    break;
+                    default: break;;
                 }
-            } break;
+            }
+            break;
             default:
                 break;
         }
         return toStringScalarType(type);
     }
-};
 
+};
 
 
 #endif //SPIR_V_REFLECT_H
