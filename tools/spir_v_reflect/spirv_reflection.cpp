@@ -206,7 +206,7 @@ void spir_v_reflect::IOReflection(const SpvReflectShaderModule &module) {
         }
         ss << "[";
         for (uint32_t i = 0; i < var.member_count; i++) {
-            ss << magic_enum::enum_name(var.members[i].built_in);
+            ss << var.members[i].built_in;
             if (i < (var.member_count - 1)) {
                 ss << ", ";
             }
