@@ -21,6 +21,7 @@
 #include "renderer/spheremap/SphereMapRenderer.h"
 #include "renderer/screenshot/ScreenShotRenderer.h"
 #include "renderer/heightblend/HeightBlendRenderer.h"
+#include "renderer/tank_billboard/tank_billboard.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -39,7 +40,8 @@ int main() {
     //LLVK::CUBEMAP_NAMESPACE::CubeMapRenderer app;
     //LLVK::SPHEREMAP_NAMESPACE::SphereMapRenderer app;
     //LLVK::ScreenShotRenderer app;
-    LLVK::HeightBlendRenderer app;
+    //LLVK::HeightBlendRenderer app;
+    LLVK::tank_billboard app;
     try {
         app.run();
     }
