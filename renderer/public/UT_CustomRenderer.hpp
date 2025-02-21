@@ -21,33 +21,30 @@ struct GetRendererPtr {
             return object;
     }
 };
-
-constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::has_requiredObjects auto && ... ubo) {
-    const auto *renderer = GetRendererPtr::value(renderer_or_object);
-    ((ubo.requiredObjects.device = renderer->getMainDevice().logicalDevice),...);
-    ((ubo.requiredObjects.physicalDevice = renderer->getMainDevice().physicalDevice),...);
-    ((ubo.requiredObjects.commandPool = renderer->getGraphicsCommandPool()),...);
-    ((ubo.requiredObjects.queue = renderer->getGraphicsQueue()),...);
-    ((ubo.requiredObjects.allocator = renderer->getVmaAllocator()),...);
-};
-
-constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::is_requiredObjects auto && ... ubo) {
-    const auto *renderer = GetRendererPtr::value(renderer_or_object);
-    ((ubo.device = renderer->getMainDevice().logicalDevice),...);
-    ((ubo.physicalDevice = renderer->getMainDevice().physicalDevice),...);
-    ((ubo.commandPool = renderer->getGraphicsCommandPool()),...);
-    ((ubo.queue = renderer->getGraphicsQueue()),...);
-    ((ubo.allocator = renderer->getVmaAllocator()),...);
-};
-
-constexpr void setRequiredObjectsByRenderer  (const auto *renderer, Concept::is_range auto && range_ubo) {
-    for(auto &o : range_ubo) {
-        o.requiredObjects.device = renderer->getMainDevice().logicalDevice;
-        o.requiredObjects.physicalDevice = renderer->getMainDevice().physicalDevice;
-        o.requiredObjects.commandPool = renderer->getGraphicsCommandPool();
-        o.requiredObjects.queue = renderer->getGraphicsQueue();
-        o.requiredObjects.allocator = renderer->getVmaAllocator();
+struct SetRequiredObjectsIMPL {
+    constexpr static void set(const auto* renderer, auto& obj) {
+        const auto& device = renderer->getMainDevice();
+        obj.device = device.logicalDevice;
+        obj.physicalDevice = device.physicalDevice;
+        obj.commandPool = renderer->getGraphicsCommandPool();
+        obj.queue = renderer->getGraphicsQueue();
+        obj.allocator = renderer->getVmaAllocator();
     }
+};
+
+constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::has_requiredObjects auto && ... req) {
+    const auto *renderer = GetRendererPtr::value(renderer_or_object);
+    (SetRequiredObjectsIMPL::set(renderer, req.requiredObjects), ...);
+};
+
+constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::is_requiredObjects auto && ... req) {
+    const auto *renderer = GetRendererPtr::value(renderer_or_object);
+    (SetRequiredObjectsIMPL::set(renderer, req), ...);
+};
+
+constexpr void setRequiredObjectsByRenderer  (const auto *renderer_or_object, Concept::is_range auto && range_ubo) {
+    const auto *renderer = GetRendererPtr::value(renderer_or_object);
+    for(auto &&o : range_ubo) SetRequiredObjectsIMPL::set(renderer, o.requiredObjects);
 };
 
 
