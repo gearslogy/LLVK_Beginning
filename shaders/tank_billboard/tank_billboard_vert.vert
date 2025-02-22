@@ -28,6 +28,7 @@ layout(set=0, binding=0) uniform UBO{
     mat4 proj;
     mat4 view;
     mat4 model;
+    vec4 camPos;
 } ubo;
 
 vec3 instance_dir(vec3 dir, vec4 orient){
@@ -35,39 +36,24 @@ vec3 instance_dir(vec3 dir, vec4 orient){
 }
 
 
-vec3 getCameraPosition(mat4 view) {
-    mat4 invView = inverse(view);
-    return vec3(invView[3][0], invView[3][1], invView[3][2]);
-}
-
-// XZ rotation
-vec4 lookAtQuat(vec3 from, vec3 to) {
-    vec3 forward = normalize(to - from);           // 从实例到摄像机的方向
-    vec3 refForward = vec3(0.0, 0.0, 1.0);        // 默认朝向（Z 轴）
-
-    // 只在 XZ 平面旋转，忽略 Y 分量
-    vec3 projForward = normalize(vec3(forward.x, 0.0, forward.z));
-    vec3 projRefForward = normalize(vec3(refForward.x, 0.0, refForward.z));
-
-    float dotProd = dot(projRefForward, projForward);
-    vec3 axis = cross(projRefForward, projForward);
-    float angle = acos(clamp(dotProd, -1.0, 1.0));
-
-    // 四元数计算
-    float s = sin(angle * 0.5);
-    return vec4(axis * s, cos(angle * 0.5));
-}
-
 void main(){
-    vec3 cameraPos = getCameraPosition(ubo.view);
+    vec3 cameraPos = ubo.camPos.xyz;
     // S R T order
     mat3 instance_scale_matrix = scale(vec3(instance_scale));
     vec3 instance_scaled_p = instance_scale_matrix * P;
     vec3 instance_rotated_p = rotateVectorByQuat(instance_scaled_p, instance_orient);
 
-    vec3 localP = instance_rotated_p;
+    vec3 localP = instance_scaled_p;
     // make billboard face camera
-    vec4 billboard_orient = lookAtQuat(localP, cameraPos);
+    vec3 camDir = normalize(cameraPos - localP);
+    camDir.y = 0;
+    float angle = atan(camDir.x, camDir.z); // [-PI : PI ]
+    float angle_view_degrees = degrees(angle);
+    if(angle < 0) angle_view_degrees += 360;
+
+
+    vec4 billboard_orient = quaternion(radians(angle_view_degrees),vec3(0,1,0));
+
     localP = rotateVectorByQuat(localP, billboard_orient);
 
     // to world space

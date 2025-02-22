@@ -205,6 +205,7 @@ void tank_billboard::updateUBO() {
     uboData.proj[1][1] *= -1;
     uboData.view = mainCamera.view();
     uboData.model = glm::mat4(1.0f);
+    uboData.camPos = glm::vec4{mainCamera.mPosition, 0};
     memcpy(uboBuffers[frame].mapped, &uboData, sizeof(uboData));
 }
 

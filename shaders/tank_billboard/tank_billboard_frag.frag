@@ -12,9 +12,7 @@ layout(location = 0) in VertexOut {
 layout(binding=1) uniform sampler2D diffSampler;
 void main(){
     vec4 diff =texture(diffSampler, vertexIn.uv0);
-    diff = gammaCorrect(diff,2.2);
     if(diff.a < 0.1)discard;
-
-    //color = diff;
-    color = vec4(vertexIn.index, 0,0,0 );
+    diff = gammaCorrect(diff,2.2);
+    color = vec4(diff.rgb, 0);
 }

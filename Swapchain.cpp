@@ -47,6 +47,7 @@ void Swapchain::init() {
 
     auto indices = getQueueFamilies(bindSurface,bindPhyiscalDevice);
     if(indices.graphicsFamily != indices.presentationFamily){
+        std::cout << "[[Swapchain::init]]:(indices.graphicsFamily != indices.presentationFamily)\n";
         uint32_t queueFamilyIndices[]  {
                 static_cast<uint32_t >(indices.graphicsFamily),
                 static_cast<uint32_t >(indices.presentationFamily)

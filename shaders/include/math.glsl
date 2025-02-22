@@ -122,7 +122,7 @@ mat3 right_hand_eulerAnglesToRotationMatrix(vec3 angles)
 }
 
 
-vec4 quaternionFromAngleAxis(float angle, vec3 axis) {
+vec4 quaternion(float angle, vec3 axis) {
     vec3 normAxis = normalize(axis);
     float halfAngle = angle * 0.5;
     float s = sin(halfAngle);
@@ -133,6 +133,12 @@ vec4 quaternionFromAngleAxis(float angle, vec3 axis) {
 vec3 rotateVectorByQuat(vec3 v, vec4 q) {
     vec3 t = 2.0 * cross(q.xyz, v);
     return v + q.w * t + cross(q.xyz, t);
+}
+
+
+vec3 extractCameraPosition(mat4 view) {
+    mat4 invView = inverse(view);
+    return vec3(invView[3][0], invView[3][1], invView[3][2]);
 }
 
 

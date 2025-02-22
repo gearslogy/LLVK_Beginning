@@ -38,6 +38,7 @@ private:
         glm::mat4 proj{};
         glm::mat4 view{};
         glm::mat4 model{};
+        glm::vec4 camPos{};
     }uboData;
 
     std::array<VmaUBOBuffer,MAX_FRAMES_IN_FLIGHT> uboBuffers;

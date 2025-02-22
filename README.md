@@ -45,6 +45,67 @@ Learn Vulkan from scratch
 * rbd vat effects
 * command line tools: exr dump/gltf dump/spv dump
 
+## billboard 
+### XZ plane rotation by camera direction
+#### 1:use acos(). the range of  acos() : 0->PI
+
+
+* not fixed:
+![hb.png](screenshot/02_acos_not_fixed.gif)
+
+```c++
+vector up = chv("up");
+vector cam_dir = chv("cam_dir");
+cam_dir.y = 0;
+up = normalize(up);
+cam_dir = normalize(cam_dir);
+float cam_dot_front = dot(cam_dir,up );
+float angle = degrees( acos (cam_dot_front  ) );
+@angle = angle;
+```
+--------------------
+
+* fixed:
+![hb.png](screenshot/01_acos_fixed.gif)
+```c++
+vector up = chv("up");
+vector cam_dir = chv("cam_dir");
+cam_dir.y = 0;
+up = normalize(up);
+cam_dir = normalize(cam_dir);
+float cam_dot_front = dot(cam_dir,up );
+float cross_product = cross(cam_dir, up).y; 
+f@cross_product = cross_product;
+
+float angle = degrees( acos (cam_dot_front  ) );
+if(cross_product > 0 ) 
+{
+    angle *=-1;
+}
+
+@angle = angle;
+```
+
+rotation billboard use quaternion:
+```c++
+float angle = radians ( point(1, "angle",0) );
+vector4 orient = quaternion(angle, set(0,1,0) );
+@P = qrotate(orient, @P);
+```
+
+#### 2:use atan2(),the range of atan2():atan2():-PI->PI
+![hb.png](screenshot/01_atan2.gif)
+
+```c++
+vector up = chv("up");
+vector cam_dir = chv("cam_dir");
+cam_dir = normalize(cam_dir);
+float angle_360 = atan2(cam_dir.x, cam_dir.z);
+float angle_view_degrees = degrees(angle_360);
+if(angle_view_degrees < 0) angle_view_degrees += 360; 
+@angle = angle_view_degrees;
+```
+
 
 ## height blend index map
 ![hb.png](screenshot/heightblend.png)
