@@ -23,7 +23,7 @@ layout (set=0, binding = 0) uniform UBO
 } ubo;
 
 vec3 instance_dir(vec3 dir, vec4 orient){
-    return normalize(rotateVectorByQuat(dir, orient) );
+    return normalize(qrotate(dir, orient) );
 }
 
 void main()
@@ -31,7 +31,7 @@ void main()
     // S R T order
     mat3 instance_scale_matrix = scale(vec3(instance_scale));
     vec3 instance_scaled_p = instance_scale_matrix * P;
-    vec3 instance_rotated_p = rotateVectorByQuat(instance_scaled_p, instance_orient);
+    vec3 instance_rotated_p = qrotate(instance_scaled_p, instance_orient);
     vec3 instance_transformed_p = instance_rotated_p + instance_p;
 
     // normal changed

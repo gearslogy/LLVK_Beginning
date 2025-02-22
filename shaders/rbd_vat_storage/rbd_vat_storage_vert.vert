@@ -51,11 +51,11 @@ void main(){
 
     // Cd is RBD pivot
     vec3 toPivotSpace = P - Cd;
-    vec3 rbdP = rotateVectorByQuat(toPivotSpace,  packOrient) +  packP.xyz;
+    vec3 rbdP = qrotate(toPivotSpace,  packOrient) +  packP.xyz;
     vec4 worldPos = ubo.proj * ubo.view* ubo.model * vec4(rbdP, 1.0);
     gl_Position = worldPos;
     fragTexCoord = uv0;
-    vec3 rbdN =  rotateVectorByQuat(N,  packOrient);
+    vec3 rbdN =  qrotate(N,  packOrient);
     fragN = normalize(rbdN );
     fragCd = Cd;
     fragVAT_P = packP.xyz;

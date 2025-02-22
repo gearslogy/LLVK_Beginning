@@ -50,13 +50,13 @@ void main(){
     vec4 orientVatTex = texture( orientVAT, vatST);
     // Cd is RBD pivot
     vec3 toPivotSpace = P - Cd;
-    vec3 rbdP = rotateVectorByQuat(toPivotSpace,  orientVatTex) +  posVatTex.xyz;
+    vec3 rbdP = qrotate(toPivotSpace,  orientVatTex) +  posVatTex.xyz;
     vec4 worldPos = ubo.proj * ubo.view* ubo.model * vec4(rbdP, 1.0);
     gl_Position = worldPos;
     fragTexCoord = uv0;
 
 
-    vec3 rbdN =  rotateVectorByQuat(N,  orientVatTex);
+    vec3 rbdN =  qrotate(N,  orientVatTex);
     fragN = normalize(rbdN );
     fragCd = Cd;
     fragVAT_P = posVatTex.xyz;

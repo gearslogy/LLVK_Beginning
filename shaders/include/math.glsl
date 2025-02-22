@@ -130,7 +130,7 @@ vec4 quaternion(float angle, vec3 axis) {
     return vec4(normAxis * s, c);
 }
 
-vec3 rotateVectorByQuat(vec3 v, vec4 q) {
+vec3 qrotate(vec3 v, vec4 q) {
     vec3 t = 2.0 * cross(q.xyz, v);
     return v + q.w * t + cross(q.xyz, t);
 }

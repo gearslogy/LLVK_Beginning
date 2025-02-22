@@ -32,7 +32,7 @@ layout(set=0, binding=0) uniform UBO{
 } ubo;
 
 vec3 instance_dir(vec3 dir, vec4 orient){
-    return normalize(rotateVectorByQuat(dir, orient) );
+    return normalize(qrotate(dir, orient) );
 }
 
 
@@ -41,7 +41,7 @@ void main(){
     // S R T order
     mat3 instance_scale_matrix = scale(vec3(instance_scale));
     vec3 instance_scaled_p = instance_scale_matrix * P;
-    vec3 instance_rotated_p = rotateVectorByQuat(instance_scaled_p, instance_orient);
+    vec3 instance_rotated_p = qrotate(instance_scaled_p, instance_orient);
 
     vec3 localP = instance_scaled_p;
     // make billboard face camera
@@ -54,7 +54,7 @@ void main(){
 
     vec4 billboard_orient = quaternion(radians(angle_view_degrees),vec3(0,1,0));
 
-    localP = rotateVectorByQuat(localP, billboard_orient);
+    localP = qrotate(localP, billboard_orient);
 
     // to world space
     vec3 wP = localP + instance_p; // worldSpace position
