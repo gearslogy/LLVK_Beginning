@@ -45,6 +45,7 @@ private:
     std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> descSets{};
     VkSampler colorSampler{};
     VmaUBOTexture diffTex{};
+    VmaUBOTexture transTex{};
     VkDescriptorSetLayout setLayout{}; // for set=0
     VkPipeline pipeline{};
     VkPipelineLayout pipelineLayout{};

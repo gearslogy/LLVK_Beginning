@@ -46,12 +46,14 @@ Learn Vulkan from scratch
 * command line tools: exr dump/gltf dump/spv dump
 
 ## billboard 
+THE WORLD OF TANKS!
+![billboard.png](screenshot/tankbillboard.png)
 ### XZ plane rotation by camera direction
 #### 1:use acos(). the range of  acos() : 0->PI
 
 
 * not fixed:
-![hb.png](screenshot/02_acos_not_fixed.gif)
+  ![hb.png](screenshot/02_acos_not_fixed.gif)
 
 ```c++
 vector up = chv("up");

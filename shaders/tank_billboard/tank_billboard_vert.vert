@@ -43,10 +43,10 @@ void main(){
     vec3 instance_scaled_p = instance_scale_matrix * P;
     vec3 instance_rotated_p = qrotate(instance_scaled_p, instance_orient);
 
-    vec3 localP = instance_scaled_p;
+    vec3 localP = instance_rotated_p;
     // make billboard face camera
-    vec3 camDir = normalize(cameraPos - localP);
-    camDir.y = 0;
+    vec3 camDir = normalize(cameraPos - instance_p);
+
     float angle = atan(camDir.x, camDir.z); // [-PI : PI ]
     float angle_view_degrees = degrees(angle);
     if(angle < 0) angle_view_degrees += 360;

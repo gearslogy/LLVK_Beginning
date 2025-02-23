@@ -44,12 +44,13 @@ void tank_billboard::prepare() {
     const auto &phyDevice = getMainDevice().physicalDevice;
     setRequiredObjectsByRenderer(this, geomManager);
     setRequiredObjectsByRenderer(this, uboBuffers);
-    setRequiredObjectsByRenderer(this, diffTex);
+    setRequiredObjectsByRenderer(this, diffTex,transTex);
     createDescPool();
 
     // tex and sampler
     colorSampler = FnImage::createImageSampler(phyDevice,device);
     diffTex.create("content/scene/tank_billboard/tree2/diff.png",colorSampler);
+    transTex.create("content/scene/tank_billboard/tree2/t.png",colorSampler);
     // geometry
     GLTFLoaderV2::CustomAttribLoader<VTXFmt_P_N_T_UV0_UV1_UV2_UV3_ID> attribSet;
     mGeoLoader.load("content/scene/tank_billboard/geo/tree02.gltf", attribSet);
@@ -104,7 +105,7 @@ void tank_billboard::cleanupObjects() {
     UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
     UT_Fn::cleanup_sampler(device, colorSampler);
-    UT_Fn::cleanup_resources(geomManager, diffTex);
+    UT_Fn::cleanup_resources(geomManager, diffTex, transTex);
     UT_Fn::cleanup_descriptor_pool(device, descPool);
 }
 
@@ -112,9 +113,9 @@ void tank_billboard::createDescSetsAndDescSetLayout() {
     const auto &device = getMainDevice().logicalDevice;
     const auto &phyDevice = getMainDevice().physicalDevice;
     // set layout
-    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS>; // MVP
-    using descPos = MetaDesc::desc_binding_position_t<0,1>;
-    using descBindingUsage = MetaDesc::desc_binding_usage_t< VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>; // MVP
+    using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t< VK_SHADER_STAGE_VERTEX_BIT , VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
     if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&setLayout) != VK_SUCCESS) throw std::runtime_error("error create set layout");
@@ -125,9 +126,10 @@ void tank_billboard::createDescSetsAndDescSetLayout() {
     // update sets
     namespace FnDesc = FnDescriptor;
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::array<VkWriteDescriptorSet, 2> writes = {
+        std::array<VkWriteDescriptorSet, 3> writes = {
             FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
-            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 , &diffTex.descImageInfo)
+            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 , &diffTex.descImageInfo),
+            FnDesc::writeDescriptorSet(descSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 , &transTex.descImageInfo)
         };
         vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
     }
