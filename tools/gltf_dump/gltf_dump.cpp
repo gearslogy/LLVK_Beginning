@@ -3,12 +3,13 @@
 //
 
 #include "gltf_dump.h"
-#define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_IMPLEMENTATION
 #include <libs/tiny_gltf.h>
 #include "LLVK_Utils.hpp"
 #include <unordered_map>
+#include <ranges>
 LLVK_NAMESPACE_BEGIN
 struct GLTFLoader {
     // every geometry has multi parts(at least one part) that has multi materials
@@ -32,9 +33,26 @@ struct GLTFLoader {
 
 };
 
+
+bool LoadImageDataEmpty(
+    tinygltf::Image* image,
+    const int image_idx,
+    std::string* err,
+    std::string* warn,
+    int req_width,
+    int req_height,
+    const unsigned char* bytes,
+    int size,
+    void* user_data) {
+
+
+    return true;
+}
+
 void GLTFLoader::load(const std::string &path) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
+    loader.SetImageLoader(LoadImageDataEmpty, nullptr);
     std::string err;
     std::string warn;
     bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, path);
@@ -207,8 +225,11 @@ void GLTFLoader::load(const std::string &path) {
         std::cout << "    --part:"<< k << " vertices length:" << std::size(v.vertices) << std::endl;
         std::cout << "    --part:"<< k << " indices length:" << std::size(v.indices) << std::endl;
         std::cout << "    --index :" << std::endl;
-        for(auto index: v.indices) {
+
+        for(auto &&[k, index]: std::ranges::views::enumerate( v.indices) ) {
+            if(k < 100)
             std::cout << "    " <<index  << " ";
+            else break;
         }
         std::cout << "\n";
     }

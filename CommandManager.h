@@ -76,30 +76,10 @@ struct FnCommand {
         rect2D.offset.y = 0;
         return rect2D;
     }
-
-
-
+    
 };
 
 
-/* struct for building command:vkCmdBindVertexBuffers
-VkBuffer vertexBuffers[] = {};
-VkDeviceSize offsets[] = {0}; // every buffer begin loading
-vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
- */
-struct CmdBindVertexBuffers {
-    std::vector<VkBuffer>     vertexBuffers;
-    std::vector<VkDeviceSize> offsets;
-    uint32_t firstBinding;
-    uint32_t bindingCount;
-    size_t vertexCount; // only use vkCmdDraw
-};
-struct CmdBindIndexBuffer {
-    VkBuffer indexBuffer;
-    VkDeviceSize offset;
-    VkIndexType indexType;
-    size_t indexCount;  // only use vkCmdDrawIndexed
-};
 
 
 LLVK_NAMESPACE_END

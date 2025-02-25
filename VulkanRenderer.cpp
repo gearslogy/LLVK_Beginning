@@ -329,6 +329,7 @@ void VulkanRenderer::createInstance() {
     if(result != VK_SUCCESS){
         throw std::runtime_error("Failed create vulkan instance");
     }
+    DebugV2::CommandLabel::init(instance);
 }
 
 void VulkanRenderer::createPhyiscalAndLogicDevice() {
