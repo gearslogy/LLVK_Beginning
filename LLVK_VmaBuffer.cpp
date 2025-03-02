@@ -2,6 +2,8 @@
 // Created by liuya on 8/4/2024.
 //
 
+#include <filesystem>
+
 #include "LLVK_vmaBuffer.h"
 #include "libs/stb_image.h"
 #include "LLVK_Image.h"
@@ -259,11 +261,11 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFo
     vmaDestroyBuffer(allocator, stagingBuffer,stagingBufferAllocation);
 }
 
-void VmaUBOTexture::create(const std::string &file, const VkSampler &sampler,const VkFormat &imageFormat) {
+void VmaUBOTexture::create(const std::filesystem::path &file, const VkSampler &sampler,const VkFormat &imageFormat) {
     //constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB; // need gamma correct
     //constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM; // do not need gamma correct
     uint32_t createMipLevels{};
-    FnVmaImage::createTexture(requiredObjects, imageFormat, file, image, imageAllocation,createMipLevels);
+    FnVmaImage::createTexture(requiredObjects, imageFormat, file.generic_string(), image, imageAllocation,createMipLevels);
     FnImage::createImageView( requiredObjects.device, image,
             imageFormat,
             VK_IMAGE_ASPECT_COLOR_BIT,

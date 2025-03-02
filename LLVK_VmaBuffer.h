@@ -235,7 +235,7 @@ struct VmaDepthStencilAttachment {
 // read tga/jpg/ ... etc use
 struct VmaUBOTexture : IVmaUBOTexture {
     VmaBufferRequiredObjects requiredObjects{};
-    void create(const std::string &file, const VkSampler &sampler,const VkFormat &imageFormat = VK_FORMAT_R8G8B8A8_SRGB);
+    void create(const std::filesystem::path &file, const VkSampler &sampler,const VkFormat &imageFormat = VK_FORMAT_R8G8B8A8_SRGB);
     void cleanup();
 };
 

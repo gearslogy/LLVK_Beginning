@@ -5,6 +5,8 @@
 
 #pragma once
 #define TINYGLTF_NO_STB_IMAGE_WRITE
+#include <filesystem>
+
 #include "LLVK_SYS.hpp"
 #include <glm/gtx/hash.hpp>
 #include <vulkan/vulkan.h>
@@ -199,7 +201,7 @@ namespace GLTFLoaderV2 {
         using vertex_t = vertex_type;
         using part_t = GeometryPart<vertex_t>;
         std::vector<part_t> parts{};
-        inline void load(const std::string &path, auto && ... customAttribLoaders){ readGeometry(path, parts, customAttribLoaders...);}
+        inline void load(const std::filesystem::path &path, auto && ... customAttribLoaders){ readGeometry(path, parts, customAttribLoaders...);}
     };
 } // end of GLTFLoaderV2 namespace
 
