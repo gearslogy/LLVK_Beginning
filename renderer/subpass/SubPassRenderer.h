@@ -20,8 +20,10 @@
 
 
 LLVK_NAMESPACE_BEGIN
+struct SubPassResource;
 class SubPassRenderer : public VulkanRenderer {
 protected:
+    ~SubPassRenderer() override = default;
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
@@ -34,8 +36,19 @@ private:
         glm::vec4 camPos{};
     }uboData;
 
+    void createAttachments();
+    std::unique_ptr<SubPassResource> resourceLoader;
 
 
+    VkSampler colorSampler{};
+    struct {
+        VmaAttachment Albedo{};
+        VmaAttachment NOM{};
+    }attachments;
+
+private:
+    VkDevice usedDevice{};
+    VkPhysicalDevice usedPhyDevice{};
 };
 
 
