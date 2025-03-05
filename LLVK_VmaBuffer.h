@@ -208,7 +208,7 @@ struct VmaAttachment : IVmaUBOTexture {
     void create2dArrayDepth32(uint32_t width, uint32_t height, uint32_t layerCount, const VkSampler & sampler);
     void cleanup();
     VmaBufferRequiredObjects requiredObjects{};
-
+    bool isValid{false};
 };
 
 

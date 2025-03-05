@@ -121,10 +121,12 @@ void VmaAttachment::create(uint32_t width, uint32_t height,
     descImageInfo.sampler = sampler;
     descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     descImageInfo.imageView = view;
+    isValid = true;
 }
 void VmaAttachment::cleanup() {
     vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
     vkDestroyImageView(requiredObjects.device, view, nullptr);
+    isValid = false;
 }
 void VmaAttachment::createDepth32(uint32_t width, uint32_t height,
         const VkSampler & sampler) {
@@ -146,6 +148,7 @@ void VmaAttachment::createDepth32(uint32_t width, uint32_t height,
     descImageInfo.sampler = sampler;
     descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // finally need transition to this layout
     descImageInfo.imageView = view;
+    isValid = true;
 }
 
 void VmaAttachment::create2dArrayDepth32(uint32_t width, uint32_t height, uint32_t layerCount,
@@ -169,6 +172,7 @@ void VmaAttachment::create2dArrayDepth32(uint32_t width, uint32_t height, uint32
     descImageInfo.sampler = sampler;
     descImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // finally need transition to this layout
     descImageInfo.imageView = view;
+    isValid = true;
 }
 
 

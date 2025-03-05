@@ -27,7 +27,8 @@ protected:
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
-    void swapChainResize() override;
+    void createFramebuffers() override;
+
 private:
     struct {
         glm::mat4 proj{};
@@ -42,9 +43,10 @@ private:
 
     VkSampler colorSampler{};
     struct {
-        VmaAttachment Albedo{};
-        VmaAttachment NOM{};
+        VmaAttachment albedo{};
+        VmaAttachment NRM{};
     }attachments;
+
 
 private:
     VkDevice usedDevice{};

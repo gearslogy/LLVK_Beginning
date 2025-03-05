@@ -9,7 +9,7 @@
 #include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
 void SubPassRenderer::prepare() {
-    2 = getMainDevice().logicalDevice;
+    usedDevice = getMainDevice().logicalDevice;
     usedPhyDevice = getMainDevice().physicalDevice;
 
     resourceLoader = std::make_unique<SubPassResource>();
@@ -30,13 +30,21 @@ void SubPassRenderer::createAttachments() {
     auto w = simpleSwapchain.swapChainExtent.width;
     auto h = simpleSwapchain.swapChainExtent.height;
     VkImageUsageFlagBits colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    setRequiredObjectsByRenderer(this, attachments.Albedo, attachments.NOM);
-    attachments.Albedo.create(w,h , VK_FORMAT_R8G8B8A8_UNORM, attachmentSampler.)
-}
-void SubPassRenderer::swapChainResize() {
+    setRequiredObjectsByRenderer(this, attachments.albedo, attachments.NRM);
+
+    if(attachments.albedo.isValid)
+        attachments.albedo.cleanup();
+    attachments.albedo.create(w,h , VK_FORMAT_R8G8B8A8_UNORM, colorSampler, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+
+    if(attachments.NRM.isValid)
+        attachments.NRM.cleanup();
+    attachments.NRM.create(w,h , VK_FORMAT_R8G8B8A8_UNORM, colorSampler, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 
 }
 
+void SubPassRenderer::createFramebuffers() {
+
+}
 
 
 LLVK_NAMESPACE_END

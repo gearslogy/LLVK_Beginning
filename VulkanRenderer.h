@@ -116,7 +116,7 @@ protected:
     void createPipelineCache();
     //void createPipeline();            // user
     void createDepthResources();
-    void createFramebuffers(); // call at : init() recreateSwapChain()
+
     void createCommandPool();
 
     void createCommandBuffers();
@@ -176,11 +176,8 @@ protected:
 
 
 
-
-
-
-
     // interface
+    virtual void createFramebuffers(); // call at : init() recreateSwapChain()
     virtual void cleanupObjects(){};
     virtual void prepare() {}
     virtual void render() = 0;
