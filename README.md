@@ -44,6 +44,10 @@ Learn Vulkan from scratch
 * indirect draw & instance draw
 * rbd vat effects
 * command line tools: exr dump/gltf dump/spv dump
+## subpass
+### subpass no shadow:
+![subpass.png](screenshot/only-subpass.png)
+
 
 ## billboard 
 THE WORLD OF TANKS!
