@@ -8,9 +8,10 @@
 
 LLVK_NAMESPACE_BEGIN
 
-class ShadowPass {
+struct ShadowPass {
 
 };
+
 LLVK_NAMESPACE_END
 
 

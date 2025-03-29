@@ -287,7 +287,7 @@ namespace UT_DualRenderPass {
 
 
 
-        auto passBlendAS = FnPipeline::simpleColorBlendAttacmentState();
+        auto passBlendAS = FnPipeline::simpleColorBlendAttachmentState();
         passBlendAS.blendEnable = VK_FALSE;
         std::array colorBlendAttachmentsPass1{passBlendAS};
         VkPipelineColorBlendStateCreateInfo colorBlendStateCIO1 = FnPipeline::colorBlendStateCreateInfo(colorBlendAttachmentsPass1);

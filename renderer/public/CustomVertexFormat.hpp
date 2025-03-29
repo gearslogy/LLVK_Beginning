@@ -38,7 +38,10 @@ struct VTXFmt_P_N_T_UV0 {
     glm::vec3 N{};      // 1
     glm::vec3 T{};      // 2
     glm::vec2 uv0{};    // 3
-    bool operator==(const VTXFmt_P_N_T_UV0& other) const = default; // all checking
+    bool operator==(const VTXFmt_P_N_T_UV0& other) const {
+        return P == other.P &&
+            uv0 == other.uv0 && N == other.N ; // IMPORTANT, DO NOT COMBINE N! DON't use combined N(point)
+    }
 };
 
 

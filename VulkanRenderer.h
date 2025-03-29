@@ -111,7 +111,7 @@ protected:
     void createVmaAllocator();
     void createSurface();
     void createSwapChain();
-    void createRenderpass();
+
     //void createDescriptorSetLayout(); //user
     void createPipelineCache();
     //void createPipeline();            // user
@@ -177,6 +177,7 @@ protected:
 
 
     // interface
+    virtual void createRenderpass();
     virtual void createFramebuffers(); // call at : init() recreateSwapChain()
     virtual void cleanupObjects(){};
     virtual void prepare() {}

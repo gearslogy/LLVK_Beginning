@@ -72,13 +72,13 @@ struct FnPipeline {
                 VkPipelineMultisampleStateCreateFlags flags = 0);
 
     // blend attacment
-    static constexpr VkPipelineColorBlendAttachmentState simpleOpaqueColorBlendAttacmentState() {
+    static constexpr VkPipelineColorBlendAttachmentState simpleOpaqueColorBlendAttachmentState() {
         VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentState {};
         pipelineColorBlendAttachmentState.colorWriteMask = 0xf;
         pipelineColorBlendAttachmentState.blendEnable = VK_FALSE;
         return pipelineColorBlendAttachmentState;
     }
-    static VkPipelineColorBlendAttachmentState simpleColorBlendAttacmentState();
+    static VkPipelineColorBlendAttachmentState simpleColorBlendAttachmentState();
     // blend attacment create info
     static VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo(const Concept::is_range auto &attachments);
 
@@ -164,7 +164,7 @@ inline VkPipelineMultisampleStateCreateInfo FnPipeline::multisampleStateCreateIn
     return ret;
 }
 
-inline VkPipelineColorBlendAttachmentState FnPipeline::simpleColorBlendAttacmentState() {
+inline VkPipelineColorBlendAttachmentState FnPipeline::simpleColorBlendAttachmentState() {
     VkPipelineColorBlendAttachmentState colorBlend_ATM_ST{};
     colorBlend_ATM_ST.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlend_ATM_ST.blendEnable = VK_TRUE;

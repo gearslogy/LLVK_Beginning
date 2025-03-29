@@ -283,7 +283,7 @@ void shadowmap::preparePipelines() {
     // 7. multisampling
     VkPipelineMultisampleStateCreateInfo multisample_ST_CIO=FnPipeline::multisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);
     // 8. blending
-    std::array colorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttacmentState()};
+    std::array colorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttachmentState()};
     VkPipelineColorBlendStateCreateInfo blend_ST_CIO = FnPipeline::colorBlendStateCreateInfo(colorBlendAttamentState);
     // 9-1 offscreen pipeline layout
     const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};

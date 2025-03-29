@@ -5,6 +5,7 @@
 #include "VmaRenderer.h"
 #include "LLVK_Descriptor.hpp"
 #include "Pipeline.hpp"
+#include <filesystem>
 LLVK_NAMESPACE_BEGIN
 
 
@@ -50,8 +51,9 @@ void VmaRenderer::loadModel() {
 }
 
 void VmaRenderer::loadTexture() {
+    using namespace std::string_literals;
     sampler = FnImage::createImageSampler(mainDevice.physicalDevice, mainDevice.logicalDevice);
-    uboTexture.create("content/viking_room.png", sampler);
+    uboTexture.create("content/viking_room.png"s, sampler);
 }
 
 
@@ -126,7 +128,7 @@ void VmaRenderer::preparePipelines() {
     // 7. multisampling
     VkPipelineMultisampleStateCreateInfo multisample_ST_CIO=FnPipeline::multisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);
     // 8. blending
-    std::array colorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttacmentState()};
+    std::array colorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttachmentState()};
     VkPipelineColorBlendStateCreateInfo blend_ST_CIO = FnPipeline::colorBlendStateCreateInfo(colorBlendAttamentState);
 
     // 9. pipeline layout

@@ -22,6 +22,7 @@
 #include "renderer/screenshot/ScreenShotRenderer.h"
 #include "renderer/heightblend/HeightBlendRenderer.h"
 #include "renderer/tank_billboard/tank_billboard.h"
+#include "renderer/subpass/SubPassRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -41,7 +42,8 @@ int main() {
     //LLVK::SPHEREMAP_NAMESPACE::SphereMapRenderer app;
     //LLVK::ScreenShotRenderer app;
     //LLVK::HeightBlendRenderer app;
-    LLVK::tank_billboard app;
+    //LLVK::tank_billboard app;
+    LLVK::SubPassRenderer app;
     try {
         app.run();
     }

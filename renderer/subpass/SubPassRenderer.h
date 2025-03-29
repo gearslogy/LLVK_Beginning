@@ -3,13 +3,19 @@
 //
 /*
  *
- * GBUFFER(swapchain Albedo P N depth) types:(rgb8_unorm rgb8_unorm rgba16_SFLOAT rgba16_SFLOAT)
+ * PHASE 1:
+ * Generate depth from light
  *
- * swapchain
- * Albedo
- * N
- * depth
- * vBuffer
+ *
+ *
+ * PHASE 2:
+ * swapchain_cd         RGBA8_unorm
+ * Albedo               RGBA8_unorm
+ * NRM                  RGBA16_SFLOAT
+ * swapchain_depth      depth32
+ * vBuffer              RGBA16_SFLOAT
+ *
+ *
  *
  */
 #pragma once
@@ -17,40 +23,93 @@
 #include "VulkanRenderer.h"
 #include "LLVK_GeometryLoader.h"
 #include "LLVK_VmaBuffer.h"
-
+#include "SubpassTypes.hpp"
 
 LLVK_NAMESPACE_BEGIN
 struct SubPassResource;
 class SubPassRenderer : public VulkanRenderer {
+public:
+    SubPassRenderer();
+    ~SubPassRenderer() override ;
 protected:
-    ~SubPassRenderer() override = default;
     void cleanupObjects() override;
     void prepare() override;
     void render() override;
-    void createFramebuffers() override;
 
+
+    void createRenderpass() override; // automatically call in base::prepare()
+    void createFramebuffers() override; // automatically call in base::prepare(); base::swapchainResize()
+
+    void recordCommandBuffer();
 private:
-    struct {
-        glm::mat4 proj{};
-        glm::mat4 view{};
-        glm::mat4 model{};
-        glm::vec4 camPos{};
-    }uboData;
+    subpass::GlobalUBO globalUBO{};
+    struct Light{
+        glm::vec4 position{};
+        glm::vec3 color{};
+        float radius{};
+    };
 
-    void createAttachments();
+    std::vector<Light> lights;
+
+    void createGBufferAttachments();
     std::unique_ptr<SubPassResource> resourceLoader;
 
 
     VkSampler colorSampler{};
+    subpass::GBufferAttachments gBufferAttachments;
+
+
     struct {
-        VmaAttachment albedo{};
-        VmaAttachment NRM{};
-    }attachments;
+        subpass::FramedSet gBufferBook{};
+        subpass::FramedSet gBufferTelevision{};
+        subpass::FramedSet gBufferWall{};
+        subpass::FramedSet gBufferWoodenTable{};
+        subpass::FramedSet comp{};
+        subpass::FramedSet transparent{}; // for bottle
+    }descSets;
+
+    struct {
+        VkDescriptorSetLayout gBuffer{};
+        VkDescriptorSetLayout comp{};
+        VkDescriptorSetLayout transparent{};
+    }descSetLayouts;
+
+    struct {
+        VkPipelineLayout gBuffer{};
+        VkPipelineLayout comp{};
+        VkPipelineLayout transparent{};
+    }pipelineLayouts;
+
+    struct {
+        VkPipeline gBuffer{};
+        VkPipeline comp{};
+        VkPipeline transparent{};
+    }pipelines;
+
+    subpass::FramedUBO uboBuffers{};
+    subpass::FramedSSBO compSSBOBuffers{};
+
+
+    void createDescPool();
+    void prepareUBO();
+    void prepareCompLightsSSBO();
+    void updateCompLightsSSBO();
+    void updatePreviousUBO();
+    void updateCurrentUBO();
+    void updateUBO();
+    void prepareDescSets();
+    void preparePipelines();
+    VkDescriptorPool descPool{};
 
 
 private:
     VkDevice usedDevice{};
     VkPhysicalDevice usedPhyDevice{};
+
+    UT_GraphicsPipelinePSOs psoGBuffer{};
+    UT_GraphicsPipelinePSOs psoComp{};
+    UT_GraphicsPipelinePSOs psoTransparent{};
+
 };
 
 

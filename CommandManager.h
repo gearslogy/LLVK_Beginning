@@ -42,7 +42,7 @@ struct FnCommand {
     inline static VkRenderPassBeginInfo renderPassBeginInfo(const VkFramebuffer &framebuffer,
                                                             const VkRenderPass &renderpass,
                                                             const VkExtent2D extent,
-                                                            const std::vector<VkClearValue> &clearValues) {
+                                                            std::span<const VkClearValue> clearValues) {
         VkRenderPassBeginInfo renderPassBeginInfo{};
         renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassBeginInfo.framebuffer = framebuffer;
