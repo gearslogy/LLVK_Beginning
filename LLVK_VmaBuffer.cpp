@@ -220,7 +220,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFo
     // 4 channels × 1 byte (per channel need 1 byte)
     VkDeviceSize imageSize = texWidth * texHeight * 4 * 1;
     if (!pixels) {
-        throw std::runtime_error("failed to load texture image!");
+        throw std::runtime_error(std::format("failed to load texture image:{}", filePath) );
     }
     // calculate num mip levels
     auto mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
@@ -278,11 +278,15 @@ void VmaUBOTexture::create(const std::filesystem::path &file, const VkSampler &s
     descImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     descImageInfo.imageView = view;
     descImageInfo.sampler = sampler;
+    isValid = true;
 }
 
 void VmaUBOTexture::cleanup() {
-    vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
-    vkDestroyImageView(requiredObjects.device, view, nullptr);
+    if (isValid) {
+        vmaDestroyImage(requiredObjects.allocator, image, imageAllocation);
+        vkDestroyImageView(requiredObjects.device, view, nullptr);
+    }
+    isValid = false;
 }
 
 void VmaUBOKTXTexture::cleanup() {
