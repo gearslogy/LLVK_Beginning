@@ -197,6 +197,7 @@ namespace MetaDesc {
     struct UBO_DYNAMIC{};
     struct SSBO{};
     struct SAMPLER{};
+    struct INPUT_ATTACHMENT{};
     // concept checking
     template<typename T>
     concept is_desc_ubo = std::is_same_v<T, UBO> ;
@@ -208,9 +209,11 @@ namespace MetaDesc {
     concept is_ssbo = std::is_same_v<T, SSBO> ;
     template<typename T>
     concept is_sampler = std::is_same_v<T, SAMPLER> ;
+    template<typename T>
+    concept is_input_attachment = std::is_same_v<T, INPUT_ATTACHMENT> ;
     // check all interface
     template<typename T>
-    concept is_desc_type = is_desc_ubo<T> or is_desc_cis<T> or is_ubo_dynamic<T> or is_sampler<T> or is_ssbo<T>;
+    concept is_desc_type = is_desc_ubo<T> or is_desc_cis<T> or is_ubo_dynamic<T> or is_sampler<T> or is_ssbo<T> or is_input_attachment<T>;
 
     template<typename binding_type_t, uint32_t binding_position, uint32_t usage>
     consteval auto getBinding() {
@@ -225,6 +228,8 @@ namespace MetaDesc {
             return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, binding_position, usage);
         if constexpr (is_ssbo<binding_type_t>)
             return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, binding_position, usage);
+        if constexpr (is_input_attachment<binding_type_t>)
+            return FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, binding_position, usage);
     }
 
     // type: of binding types
