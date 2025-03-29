@@ -43,14 +43,17 @@ namespace GLTFLoaderV2 {
     struct CustomAttribLoader;
 
 
-    template<typename part_t> void readGeometry(const std::string &path, std::vector<part_t> &parts, auto &&... customAttribLoader) {
+    template<typename part_t> void readGeometry(const std::filesystem::path &path, std::vector<part_t> &parts, auto &&... customAttribLoader) {
         using vertex_t = typename part_t::vertex_t;
         std::cout << "[[GLTFLoader::load]]:" << path << std::endl;
         tinygltf::Model model;
         tinygltf::TinyGLTF loader;
         std::string err;
         std::string warn;
-        bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, path);
+        if (not std::filesystem::exists(path) ) {
+            throw std::runtime_error(std::format("File does not exist: {}", path.generic_string() ) );
+        }
+        bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, path.generic_string());
         if (!warn.empty()) {
             std::cerr << "Warning: " << warn << std::endl;
         }

@@ -360,15 +360,15 @@ void defer::preparePipelines() {
      // 8. blending
 
      std::array<VkPipelineColorBlendAttachmentState, 5> mrtBlendAttachmentStates = {
-          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // position;
-          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // normal;
-          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // albedo
-          FnPipeline::simpleOpaqueColorBlendAttacmentState(), // roughness
-          FnPipeline::simpleOpaqueColorBlendAttacmentState()  // displace
+          FnPipeline::simpleOpaqueColorBlendAttachmentState(), // position;
+          FnPipeline::simpleOpaqueColorBlendAttachmentState(), // normal;
+          FnPipeline::simpleOpaqueColorBlendAttachmentState(), // albedo
+          FnPipeline::simpleOpaqueColorBlendAttachmentState(), // roughness
+          FnPipeline::simpleOpaqueColorBlendAttachmentState()  // displace
      };
      VkPipelineColorBlendStateCreateInfo blend_mrt_ST_CIO = FnPipeline::colorBlendStateCreateInfo(mrtBlendAttachmentStates);
 
-     std::array deferredColorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttacmentState()};
+     std::array deferredColorBlendAttamentState = {FnPipeline::simpleOpaqueColorBlendAttachmentState()};
      VkPipelineColorBlendStateCreateInfo blend_deferred_ST_CIO = FnPipeline::colorBlendStateCreateInfo(deferredColorBlendAttamentState);
 
      // 9. pipeline layout

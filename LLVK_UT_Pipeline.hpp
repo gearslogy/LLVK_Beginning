@@ -111,7 +111,7 @@ private:
     std::vector<VkDynamicState> dynamicsStates;
     std::array<VkVertexInputBindingDescription,1> vertexInputBindingDescriptions{};      // binding = 0 ,only one vertex buffer, may be in instance,should be one more
     std::array<VkVertexInputAttributeDescription,7> vertexInputAttributeDescriptions{};  // binding = 0, 7 attributes
-    std::array<VkPipelineColorBlendAttachmentState,1> colorBlendAttachmentState = { FnPipeline::simpleOpaqueColorBlendAttacmentState()};
+    std::array<VkPipelineColorBlendAttachmentState,1> colorBlendAttachmentState = { FnPipeline::simpleOpaqueColorBlendAttachmentState()};
 };
 
 
