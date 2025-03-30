@@ -526,6 +526,7 @@ void SubPassRenderer::prepareDescSets() {
 }
 
 void SubPassRenderer::preparePipelines() {
+    /*
     // vertex input
     std::array<VkVertexInputAttributeDescription,4> attribsDesc{};
     attribsDesc[0] = { 0,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P_N_T_UV0, P)};
@@ -533,7 +534,7 @@ void SubPassRenderer::preparePipelines() {
     attribsDesc[2] = { 2,0,VK_FORMAT_R32G32B32_SFLOAT , offsetof(VTXFmt_P_N_T_UV0, T)};
     attribsDesc[3] = { 3,0,VK_FORMAT_R32G32_SFLOAT , offsetof(VTXFmt_P_N_T_UV0, uv0) };
     VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P_N_T_UV0), VK_VERTEX_INPUT_RATE_VERTEX};
-    std::array bindingsDesc{vertexBinding};
+    std::array bindingsDesc{vertexBinding};*/
 
     // GBUFFER
     {
@@ -557,7 +558,7 @@ void SubPassRenderer::preparePipelines() {
         };
         psoGBuffer.colorBlendStateCIO.attachmentCount = colorBlendAttachments.size();
         psoGBuffer.colorBlendStateCIO.pAttachments = colorBlendAttachments.data();
-        psoGBuffer.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
+        psoGBuffer.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(subpass::bindingsDesc, subpass::attribsDesc);
         UT_GraphicsPipelinePSOs::createPipeline(usedDevice, psoGBuffer, getPipelineCache(), pipelines.gBuffer);
         UT_Fn::cleanup_shader_module(usedDevice,vsMD,fsMD);
     }
@@ -595,7 +596,7 @@ void SubPassRenderer::preparePipelines() {
         psoTransparent.setPipelineLayout(pipelineLayouts.transparent);
         psoTransparent.setRenderPass(this->getMainRenderPass());
         psoTransparent.pipelineCIO.subpass = 2;
-        psoTransparent.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(bindingsDesc, attribsDesc);
+        psoTransparent.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(subpass::bindingsDesc, subpass::attribsDesc);
         VkPipelineColorBlendAttachmentState blendState = FnPipeline::simpleColorBlendAttachmentState();
         const auto blend = FnPipeline::simpleColorBlendAttachmentState();
         psoTransparent.colorBlendStateCIO.attachmentCount = 1;

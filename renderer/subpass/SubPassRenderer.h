@@ -24,13 +24,17 @@
 #include "LLVK_GeometryLoader.h"
 #include "LLVK_VmaBuffer.h"
 #include "SubpassTypes.hpp"
-
+#include "renderer/public/CustomVertexFormat.hpp"
 LLVK_NAMESPACE_BEGIN
 struct SubPassResource;
 class SubPassRenderer : public VulkanRenderer {
 public:
     SubPassRenderer();
     ~SubPassRenderer() override ;
+    friend class SPShadowPass;
+
+
+
 protected:
     void cleanupObjects() override;
     void prepare() override;

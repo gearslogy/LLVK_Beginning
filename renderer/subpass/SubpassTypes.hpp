@@ -7,7 +7,9 @@
 #include "LLVK_SYS.hpp"
 #include <array>
 #include <LLVK_VmaBuffer.h>
-#include "renderer/public/UT_CustomRenderer.hpp"
+#include "LLVK_GeometryLoaderV2.hpp"
+#include "renderer/public/CustomVertexFormat.hpp"
+
 
 // UBO
 LLVK_NAMESPACE_BEGIN
@@ -42,6 +44,17 @@ namespace subpass{
         glm::mat4 model;
         glm::mat4 preModel;
     };
+
+    inline constexpr std::array<VkVertexInputAttributeDescription, 4> attribsDesc{
+            {
+                {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, P)},
+                {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, N)},
+                {2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, T)},
+                {3, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, uv0)},
+            }
+    };
+    inline constexpr VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P_N_T_UV0), VK_VERTEX_INPUT_RATE_VERTEX};
+    inline constexpr std::array bindingsDesc{vertexBinding};
 
 }
 
