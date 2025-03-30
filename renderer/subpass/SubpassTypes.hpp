@@ -8,7 +8,7 @@
 #include <array>
 #include <LLVK_VmaBuffer.h>
 #include "LLVK_GeometryLoaderV2.hpp"
-#include "renderer/public/CustomVertexFormat.hpp"
+#include "renderer/public/CustomVertexFormat.hpp"// 这个之前必须include LLVK_GeometryLoaderV2.hpp 需要特化
 
 
 // UBO
