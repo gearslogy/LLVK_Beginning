@@ -32,6 +32,10 @@ void SubPassRenderer::prepare() {
     prepareDescSets();
     preparePipelines();
 
+    shadowPass = std::make_unique<SPShadowPass>();
+    shadowPass->pRenderer = this;
+    shadowPass->pResources = resourceLoader.get();
+    shadowPass->prepare();
 }
 void SubPassRenderer::cleanupObjects() {
     UT_Fn::cleanup_resources(*resourceLoader);
@@ -43,6 +47,7 @@ void SubPassRenderer::cleanupObjects() {
     UT_Fn::cleanup_pipeline_layout(usedDevice, pipelineLayouts.comp, pipelineLayouts.transparent, pipelineLayouts.gBuffer);
     UT_Fn::cleanup_range_resources(uboBuffers);
     UT_Fn::cleanup_range_resources(compSSBOBuffers);
+    UT_Fn::cleanup_resources(*shadowPass);
 }
 
 void SubPassRenderer::render() {
@@ -52,12 +57,11 @@ void SubPassRenderer::render() {
     updateCurrentUBO();
     // 更新UBO数据
     updateUBO();
-
+    shadowPass->updateUBO(keyLightPos); // 可以优化，静态只计算一次
     updateCompLightsSSBO();
     recordCommandBuffer();
     submitMainCommandBuffer();
     presentMainCommandBufferFrame();
-
 }
 
 void SubPassRenderer::createGBufferAttachments() {
@@ -616,13 +620,8 @@ void SubPassRenderer::prepareUBO() {
 }
 void SubPassRenderer::prepareCompLightsSSBO() {
     setRequiredObjectsByRenderer(this, compSSBOBuffers[0], compSSBOBuffers[1]);
-    lights.emplace_back(Light{
-        {7.7405f, 3.71551f, 2.52443f,1 },{8,8,8}, 20
-    });
-
-    lights.emplace_back(Light{
-            {-3.2912, 0.9594, 1.8390,1 },{0.583, 0.7919, 1.0}, 10
-    });
+    lights.emplace_back(Light{keyLightPos,{8,8,8}, 20});
+    lights.emplace_back(Light{{-3.2912, 0.9594, 1.8390,1 },{0.583, 0.7919, 1.0}, 10});
 
     VkDeviceSize bufferSize = sizeof(Light) * lights.size();
     for (auto &ssbo : compSSBOBuffers){
@@ -683,9 +682,9 @@ void SubPassRenderer::recordCommandBuffer() {
         vkCmdDrawIndexed(cmdBuf, geo.indices.size(), 1, 0, 0, 0);
     };
 
-
     const auto renderPassBeginInfo= FnCommand::renderPassBeginInfo(getMainFramebuffer(), simplePass.pass, getSwapChainExtent(), clearValues);
-    UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
+    UT_Fn::invoke_and_check("Subpass Begin Rendering Error", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
+    shadowPass->recordCommandBuffer();    //  可以优化，静态只计算一次
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
@@ -731,8 +730,6 @@ void SubPassRenderer::recordCommandBuffer() {
     auto transGeo = resourceLoader->bottle.geoLoader.parts[0];
     renderGeo(transGeo);
     DebugV2::CommandLabel::cmdEndLabel(cmdBuf);
-
-
     vkCmdEndRenderPass(cmdBuf);
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }

@@ -20,17 +20,16 @@ struct SPShadowPass {
     void prepare();
     void cleanup();
     void recordCommandBuffer();
-
+    void updateUBO(glm::vec3 lightPos);
 private:
     void prepareRenderPass();
     void prepareFramebuffer();
     void preparePipeline();
     void prepareUBO();
     void prepareDescSets();
-    void updateUBO();
+
 
     // param to setting
-    glm::vec3 lightPos{};
     float near{0.1};
     float far{1000};
     // generated

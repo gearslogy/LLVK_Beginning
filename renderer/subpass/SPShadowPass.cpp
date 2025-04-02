@@ -49,8 +49,8 @@ void SPShadowPass::cleanup() {
 	UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
 	// cleanup pipeline
 	UT_Fn::cleanup_pipeline(device, offscreenPipeline);
-	//UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
-	//UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
+	UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
+	UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
 
 }
 
@@ -127,7 +127,13 @@ void SPShadowPass::prepareDescSets() {
 	auto setAllocInfo = FnDescriptor::setAllocateInfo(pRenderer->descPool,tmpSetLayouts);
 	UT_Fn::invoke_and_check("Error create shadow sets", vkAllocateDescriptorSets, device, &setAllocInfo, sets.data());
 	// 3. write update sets
+	for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+		std::array<VkWriteDescriptorSet,1> writeSets{
+		{FnDescriptor::writeDescriptorSet(sets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo)}
+		};
+		vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
 
+	}
 
 	// 4. create pipeline layout
 	const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};
@@ -153,6 +159,7 @@ void SPShadowPass::preparePipeline() {
 	pipelinePSOs.requiredObjects.device = device; // Required Object first
 	pipelinePSOs.asDepth("shaders/subpass_sm_vert.spv", "shaders/subpass_sm_frag.spv", shadowFramebuffer.renderPass);
 	pipelinePSOs.setPipelineLayout(offscreenPipelineLayout);
+	pipelinePSOs.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(subpass::bindingsDesc, subpass::attribsDesc);
 	// now create our pipeline
 	UT_Fn::invoke_and_check( "error create offscreen opacity pipeline" ,vkCreateGraphicsPipelines,
 		device,pipelineCache, 1, &pipelinePSOs.pipelineCIO, nullptr, &offscreenPipeline);
@@ -164,12 +171,11 @@ void SPShadowPass::prepareUBO() {
 	setRequiredObjectsByRenderer(pRenderer, uboBuffers);
 	for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++)
 		uboBuffers[i].createAndMapping(sizeof(depthMVP));
-	updateUBO();
+	updateUBO(pRenderer->keyLightPos);
 }
 
 
-
-void SPShadowPass::updateUBO() {
+void SPShadowPass::updateUBO(glm::vec3 lightPos) {
 	auto depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, near, far);
 	const auto depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
 	constexpr auto depthModelMatrix = glm::mat4(1.0f);
@@ -194,6 +200,7 @@ void SPShadowPass::recordCommandBuffer() {
 	renderPassBeginInfo.pClearValues = &cleaValue;
 
 	vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	DebugV2::CommandLabel::cmdBeginLabel(cmdBuf, "depth-rendering-pass", {1,1,1,1});
 	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , offscreenPipeline); // FIRST generate depth for opaque object
 	VkDeviceSize offsets[1] = { 0 };
 	auto viewport = FnCommand::viewport(2048,2048 );
@@ -222,8 +229,9 @@ void SPShadowPass::recordCommandBuffer() {
 
 	const auto &wall = resourceLoader->wall.geoLoader.parts[0];
 	renderGeo(wall);
-
+	DebugV2::CommandLabel::cmdEndLabel(cmdBuf);
 	vkCmdEndRenderPass(cmdBuf); // end of depth pass
+
 }
 
 

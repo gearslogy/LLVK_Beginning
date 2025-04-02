@@ -24,14 +24,15 @@
 #include "LLVK_GeometryLoader.h"
 #include "LLVK_VmaBuffer.h"
 #include "SubpassTypes.hpp"
-#include "renderer/public/CustomVertexFormat.hpp"
+#include "SPShadowPass.h"
 LLVK_NAMESPACE_BEGIN
 struct SubPassResource;
+struct SPShadowPass;
 class SubPassRenderer : public VulkanRenderer {
 public:
     SubPassRenderer();
     ~SubPassRenderer() override ;
-    friend class SPShadowPass;
+    friend struct SPShadowPass;
 
 
 
@@ -43,8 +44,8 @@ protected:
 
     void createRenderpass() override; // automatically call in base::prepare()
     void createFramebuffers() override; // automatically call in base::prepare(); base::swapchainResize()
-
     void recordCommandBuffer();
+    static inline constexpr glm::vec4 keyLightPos{7.7405f, 3.71551f, 2.52443f,1 };
 private:
     subpass::GlobalUBO globalUBO{};
     struct Light{
@@ -55,9 +56,10 @@ private:
 
     std::vector<Light> lights;
 
+
     void createGBufferAttachments();
     std::unique_ptr<SubPassResource> resourceLoader;
-
+    std::unique_ptr<SPShadowPass> shadowPass;
 
     VkSampler colorSampler{};
     subpass::GBufferAttachments gBufferAttachments;
