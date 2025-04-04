@@ -30,19 +30,19 @@ void SubPassResource::prepare() {
     wall.geoLoader.load(gltfRoot/"wall.gltf", geoAttribSet);
     television.geoLoader.load(gltfRoot/"television.gltf", geoAttribSet);
     table.geoLoader.load(gltfRoot/"woodenTable.gltf", geoAttribSet);
-    bottle.geoLoader.load(gltfRoot/"bottle.gltf", geoAttribSet);
+    fabric.geoLoader.load(gltfRoot/"bottle.gltf", geoAttribSet);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(book.geoLoader,geomManager);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(wall.geoLoader,geomManager);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(television.geoLoader,geomManager);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(table.geoLoader,geomManager);
-    UT_VmaBuffer::addGeometryToSimpleBufferManager(bottle.geoLoader,geomManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(fabric.geoLoader,geomManager);
     // 2: tex
     colorSampler = FnImage::createImageSampler(phyDevice, device);
     setRequiredObjectsByRenderer(renderer, book.diff, book.nrm);
     setRequiredObjectsByRenderer(renderer, wall.diff, wall.nrm);
     setRequiredObjectsByRenderer(renderer, television.diff, television.nrm);
     setRequiredObjectsByRenderer(renderer, table.diff, table.nrm);
-    setRequiredObjectsByRenderer(renderer, bottle.diff, bottle.nrm);
+    setRequiredObjectsByRenderer(renderer, fabric.diff, fabric.nrm);
     std::println("start reading texture");
     book.diff.create(texRoot/"book/diff.png", colorSampler);
     book.nrm.create(texRoot/"book/nrm.png", colorSampler,VK_FORMAT_R8G8B8A8_SRGB);
@@ -52,8 +52,8 @@ void SubPassResource::prepare() {
     television.nrm.create(texRoot/"television/nrm.png", colorSampler, VK_FORMAT_R8G8B8A8_SRGB);
     table.diff.create(texRoot/"table/diff.jpg", colorSampler);
     table.nrm.create(texRoot/"table/nrm.png", colorSampler,VK_FORMAT_R8G8B8A8_SRGB);
-    //bottle.diff.create(texRoot/"bottle/diff.png", colorSampler);
-    //bottle.nrm.create(texRoot/"bottle/nrm.png", colorSampler);
+    fabric.diff.create(texRoot/"fabric/diff.png", colorSampler);
+    fabric.nrm.create(texRoot/"fabric/nrm.png", colorSampler);
 
     // parse push constant data
     std::println("prepare texture end");
@@ -105,7 +105,7 @@ void SubPassResource::prepareXform() {
             setModelMatrix(television, result);
         }
         else if (name == "woodenTable") setModelMatrix(table, result);
-        else if (name == "bottle") setModelMatrix(bottle, result);
+        else if (name == "bottle") setModelMatrix(fabric, result);
         else {
             std::println("unrecognized name{}", name);
          }
@@ -116,7 +116,7 @@ void SubPassResource::cleanup() {
     const auto &device = renderer->getMainDevice().logicalDevice;
     UT_Fn::cleanup_resources(geomManager);
     UT_Fn::cleanup_sampler(device, colorSampler);
-    UT_Fn::cleanup_resources(book,wall,television,table,bottle);
+    UT_Fn::cleanup_resources(book,wall,television,table,fabric);
 }
 
 LLVK_NAMESPACE_END

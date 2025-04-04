@@ -38,7 +38,7 @@ struct SubPassResource {
     Geometry wall{};
     Geometry television{};
     Geometry table{};
-    Geometry bottle{};
+    Geometry fabric{};
     VmaSimpleGeometryBufferManager geomManager{};
     VkSampler colorSampler{};
     void prepareXform();

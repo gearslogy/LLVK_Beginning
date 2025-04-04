@@ -21,6 +21,18 @@ struct SPShadowPass {
     void cleanup();
     void recordCommandBuffer();
     void updateUBO(glm::vec3 lightPos);
+
+    struct {
+        VmaAttachment depthAttachment{};
+        VkFramebuffer framebuffer{};
+        VkRenderPass renderPass{};
+        VkSampler depthSampler{};
+    }shadowFramebuffer;
+
+    // generated
+    glm::mat4 depthMVP{};
+    subpass::FramedUBO uboBuffers{};
+
 private:
     void prepareRenderPass();
     void prepareFramebuffer();
@@ -32,18 +44,9 @@ private:
     // param to setting
     float near{0.1};
     float far{1000};
-    // generated
-    glm::mat4 depthMVP{};
-    subpass::FramedUBO uboBuffers{};
     subpass::FramedSet sets{};
 
 
-    struct {
-        VmaAttachment depthAttachment{};
-        VkFramebuffer framebuffer{};
-        VkRenderPass renderPass{};
-        VkSampler depthSampler{};
-    }shadowFramebuffer;
 
 
     UT_GraphicsPipelinePSOs pipelinePSOs{};

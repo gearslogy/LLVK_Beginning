@@ -45,6 +45,8 @@ Learn Vulkan from scratch
 * rbd vat effects
 * command line tools: exr dump/gltf dump/spv dump
 ## subpass
+### subpass shadowmap
+![subpass.png](screenshot/subpass_with_shadowmap.png)
 ### subpass no shadow:
 ![subpass.png](screenshot/only-subpass.png)
 

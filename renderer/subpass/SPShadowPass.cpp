@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Administrator on 3/2/2025.
 //
 
@@ -10,8 +10,10 @@
 #include "SubPassResource.h"
 LLVK_NAMESPACE_BEGIN
 void SPShadowPass::prepare() {
+	const auto &device = pRenderer->getMainDevice().logicalDevice;
     // 1. create attachment
 	setRequiredObjectsByRenderer(pRenderer, shadowFramebuffer.depthAttachment);
+	shadowFramebuffer.depthSampler = FnImage::createDepthSampler(device);
 	shadowFramebuffer.depthAttachment.createDepth32(size, size, shadowFramebuffer.depthSampler);
 	// 2. render pass
 	prepareRenderPass();
@@ -137,8 +139,14 @@ void SPShadowPass::prepareDescSets() {
 
 	// 4. create pipeline layout
 	const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};
-	VkPipelineLayoutCreateInfo offscreenSetLayout_CIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
-	UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &offscreenSetLayout_CIO,nullptr, &offscreenPipelineLayout );
+	VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(subpass::xform);
+	pipelineLayoutCIO.pPushConstantRanges = &pushConstantRange;
+	pipelineLayoutCIO.pushConstantRangeCount =1 ;
+	UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &offscreenPipelineLayout );
 }
 
 
@@ -148,12 +156,6 @@ void SPShadowPass::preparePipeline() {
 	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
 	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT); // maps
 	const std::array offscreen_setLayout_bindings = {set0_ubo_binding0, set0_ubo_binding1};
-
-	const VkDescriptorSetLayoutCreateInfo offscreenSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(offscreen_setLayout_bindings);
-	UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",
-		vkCreateDescriptorSetLayout,device,
-		&offscreenSetLayoutCIO,
-		nullptr, &offscreenDescriptorSetLayout);
 
 	auto pipelineCache=  pRenderer->getPipelineCache();
 	pipelinePSOs.requiredObjects.device = device; // Required Object first
@@ -219,15 +221,19 @@ void SPShadowPass::recordCommandBuffer() {
 	const auto *resourceLoader = pRenderer->resourceLoader.get();
 
 	const auto &book = resourceLoader->book.geoLoader.parts[0];
+	vkCmdPushConstants(cmdBuf, offscreenPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform), &resourceLoader->book.xform);
 	renderGeo(book);
 
+	vkCmdPushConstants(cmdBuf, offscreenPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->television.xform);
 	const auto &television = resourceLoader->television.geoLoader.parts[0];
 	renderGeo(television);
 
 	const auto &table = resourceLoader->table.geoLoader.parts[0];
+	vkCmdPushConstants(cmdBuf, offscreenPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->table.xform);
 	renderGeo(table);
 
 	const auto &wall = resourceLoader->wall.geoLoader.parts[0];
+	vkCmdPushConstants(cmdBuf, offscreenPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->wall.xform);
 	renderGeo(wall);
 	DebugV2::CommandLabel::cmdEndLabel(cmdBuf);
 	vkCmdEndRenderPass(cmdBuf); // end of depth pass

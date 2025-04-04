@@ -26,16 +26,17 @@ void SubPassRenderer::prepare() {
     resourceLoader->prepare();
     colorSampler = FnImage::createImageSampler(usedPhyDevice, usedDevice);
 
+    shadowPass = std::make_unique<SPShadowPass>();
+    shadowPass->pRenderer = this;
     createDescPool();
+    shadowPass->pResources = resourceLoader.get();
+    shadowPass->prepare(); // 现在才可以准备shadowpass, shadowpass依赖 descPool
+
     prepareUBO();
     prepareCompLightsSSBO();
     prepareDescSets();
     preparePipelines();
 
-    shadowPass = std::make_unique<SPShadowPass>();
-    shadowPass->pRenderer = this;
-    shadowPass->pResources = resourceLoader.get();
-    shadowPass->prepare();
 }
 void SubPassRenderer::cleanupObjects() {
     UT_Fn::cleanup_resources(*resourceLoader);
@@ -349,9 +350,9 @@ void SubPassRenderer::createFramebuffers() {
             auto &descSet = descSets.transparent[i];
             if (descSet == nullptr) break; // because we should call createFramebuffers() first. so the descSet = nullptr
             std::array writes = {
-                // binding =0 is UBO
-                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, &vImageInfo), // binding=1 is V input attachment
-                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 2, &pImageInfo), // binding=2 is P input attachment
+                // binding =0 is UBO / 1:base 2:nrm
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 3, &vImageInfo), // binding=2 is V input attachment
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 4, &pImageInfo), // binding=3 is P input attachment
             };
             vkUpdateDescriptorSets(usedDevice,static_cast<uint32_t>(writes.size()),writes.data(),0, nullptr);
         }
@@ -464,15 +465,22 @@ void SubPassRenderer::prepareDescSets() {
             MetaDesc::INPUT_ATTACHMENT, // NRM
             MetaDesc::INPUT_ATTACHMENT, // V
             MetaDesc::INPUT_ATTACHMENT, // P
-            MetaDesc::SSBO>;            // Lights
-        using binding_positions_t = MetaDesc::desc_binding_position_t<0,1,2,3,4,5>;
+            MetaDesc::SSBO,// Lights
+            MetaDesc::CIS, // DEPTH
+            MetaDesc::UBO  // light project view matrix
+        >;
+
+        using binding_positions_t = MetaDesc::desc_binding_position_t<0,1,2,3,4,5,6,7>;
         using binding_usages_t =  MetaDesc::desc_binding_usage_t<
             VK_SHADER_STAGE_FRAGMENT_BIT,  // GLOBAL UBO
             VK_SHADER_STAGE_FRAGMENT_BIT,  // alebdo
             VK_SHADER_STAGE_FRAGMENT_BIT,  // NRM
             VK_SHADER_STAGE_FRAGMENT_BIT,  // V
             VK_SHADER_STAGE_FRAGMENT_BIT,  // P
-            VK_SHADER_STAGE_FRAGMENT_BIT>; // Lights
+            VK_SHADER_STAGE_FRAGMENT_BIT,  // Lights
+            VK_SHADER_STAGE_FRAGMENT_BIT,  // depth
+            VK_SHADER_STAGE_FRAGMENT_BIT   // depth ubo
+        >;
         constexpr std::array setLayoutBindings= MetaDesc::generateSetLayoutBindings<desc_types, binding_positions_t, binding_usages_t>();
         //setLayout
         const VkDescriptorSetLayoutCreateInfo setLayoutCIO = FnDescriptor::setLayoutCreateInfo(setLayoutBindings);
@@ -493,6 +501,8 @@ void SubPassRenderer::prepareDescSets() {
                 FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,3, &vImageInfo),
                 FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,4, &pImageInfo),
                 FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,5, &compSSBOBuffers[i].descBufferInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6, &shadowPass->shadowFramebuffer.depthAttachment.descImageInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,7, &shadowPass->uboBuffers[i].descBufferInfo),
             };
             vkUpdateDescriptorSets(usedDevice,writes.size(),writes.data(),0, nullptr);
         }
@@ -500,9 +510,24 @@ void SubPassRenderer::prepareDescSets() {
 
     // forward  TRANSPARENT
     {
-        using desc_types = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::INPUT_ATTACHMENT,MetaDesc::INPUT_ATTACHMENT>;
-        using binding_positions_t = MetaDesc::desc_binding_position_t<0,1,2>;
-        using binding_usages_t =  MetaDesc::desc_binding_usage_t<VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+        using desc_types = MetaDesc::desc_types_t<
+            MetaDesc::UBO,
+            MetaDesc::CIS,               // BASE TEXTURES
+            MetaDesc::CIS,               // nrm TEXTURES
+            MetaDesc::INPUT_ATTACHMENT,  // v
+            MetaDesc::INPUT_ATTACHMENT,  // P
+            MetaDesc::SSBO               // LIGHTS
+        >;
+
+        using binding_positions_t = MetaDesc::desc_binding_position_t<0,1,2,3,4,5>;
+        using binding_usages_t =  MetaDesc::desc_binding_usage_t<
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT
+        >;
         constexpr std::array setLayoutBindings= MetaDesc::generateSetLayoutBindings<desc_types, binding_positions_t, binding_usages_t>();
         //setLayout
 
@@ -515,8 +540,11 @@ void SubPassRenderer::prepareDescSets() {
             auto &descSet = descSets.transparent[i];
             std::array writes = {
                 FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
-                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, &vImageInfo),
-                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 2, &pImageInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &resourceLoader->fabric.diff.descImageInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &resourceLoader->fabric.diff.descImageInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 3, &vImageInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 4, &pImageInfo),
+                FnDescriptor::writeDescriptorSet(descSet,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 5, &compSSBOBuffers[i].descBufferInfo),
             };
             vkUpdateDescriptorSets(usedDevice,static_cast<uint32_t>(writes.size()),writes.data(),0, nullptr);
         }
@@ -620,8 +648,9 @@ void SubPassRenderer::prepareUBO() {
 }
 void SubPassRenderer::prepareCompLightsSSBO() {
     setRequiredObjectsByRenderer(this, compSSBOBuffers[0], compSSBOBuffers[1]);
-    lights.emplace_back(Light{keyLightPos,{8,8,8}, 20});
-    lights.emplace_back(Light{{-3.2912, 0.9594, 1.8390,1 },{0.583, 0.7919, 1.0}, 10});
+    glm::vec3 keyLightColor{1.0, 0.95, 0.85};
+    lights.emplace_back(Light{keyLightPos,keyLightColor*20.0f, 10});
+    lights.emplace_back(Light{{-3.2912, 0.9594, 1.8390,1 },glm::vec3(0.583, 0.7919, 1.0)*0.35f, 6});
 
     VkDeviceSize bufferSize = sizeof(Light) * lights.size();
     for (auto &ssbo : compSSBOBuffers){
@@ -726,8 +755,8 @@ void SubPassRenderer::recordCommandBuffer() {
     vkCmdNextSubpass(cmdBuf, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.transparent);
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayouts.transparent, 0, 1, &descSets.transparent[currentFlightFrame], 0 , nullptr);
-    vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->bottle.xform);
-    auto transGeo = resourceLoader->bottle.geoLoader.parts[0];
+    vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->fabric.xform);
+    auto transGeo = resourceLoader->fabric.geoLoader.parts[0];
     renderGeo(transGeo);
     DebugV2::CommandLabel::cmdEndLabel(cmdBuf);
     vkCmdEndRenderPass(cmdBuf);

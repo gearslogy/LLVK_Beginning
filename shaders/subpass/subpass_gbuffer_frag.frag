@@ -27,7 +27,7 @@ vec3 reconstructNormal(vec2 NXY){
 
 void main(){
     vec4 base = texture(AlbedoTexSampler, uv);
-    base = gammaCorrect(base,2.2);
+    //base = gammaCorrect(base,2.2);
     vec4 nrm = texture(NRMTexSampler, uv);
     nrm = gammaCorrect(nrm,2.2);
 
