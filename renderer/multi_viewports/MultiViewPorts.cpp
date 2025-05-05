@@ -13,7 +13,10 @@ void MultiViewPorts::prepare() {
     // Ready pool
     HLP::createSimpleDescPool(device, descPool);
     colorSampler = FnImage::createImageSampler(phyDevice, device);
+    prepareUBOs();
+    prepareDescriptorSets();
     preparePipeline();
+
 }
 void MultiViewPorts::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
@@ -23,6 +26,8 @@ void MultiViewPorts::cleanupObjects() {
     UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_resources(geomManager);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
+    UT_Fn::cleanup_descriptor_set_layout(device, setLayout);
+    UT_Fn::cleanup_range_resources(uboBuffers);
 }
 
 
@@ -47,8 +52,49 @@ void MultiViewPorts::loadGeometry() {
     tree.diff.create(texRoot/"tree_diff.png", colorSampler);
     tree.nrm.create(texRoot/"tree_nrm.png", colorSampler);
 }
+
+void MultiViewPorts::prepareUBOs() {
+    setRequiredObjectsByRenderer(this, uboBuffers);
+    for (int i=0;i<uboBuffers.size();i++) {
+        uboBuffers[i].createAndMapping(sizeof(UBO));
+    }
+}
+void MultiViewPorts::updateUBOs() {
+
+
+    for (int i=0;i<uboBuffers.size();i++) {
+        memcpy(uboBuffers[i].mapped, &ubo, sizeof(UBO));
+    }
+}
+
+
 void MultiViewPorts::prepareDescriptorSets() {
-    
+    // 1 set
+    // binding=0 UBO
+    // binding=1 diff
+    // binding=2 NRM
+    const auto &device = mainDevice.logicalDevice;
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO, MetaDesc::CIS, MetaDesc::CIS>;
+    using descPos = MetaDesc::desc_binding_position_t<0,1,2>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t< VK_SHADER_STAGE_GEOMETRY_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT>;
+    constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
+    const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
+    if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&setLayout) != VK_SUCCESS) throw std::runtime_error("error create set0 layout");
+
+    std::array<VkDescriptorSetLayout,2> layouts = {setLayout, setLayout}; // must be two, because we USE MAX_FLIGHT_FRAME
+    auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
+    UT_Fn::invoke_and_check("create scene tree sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, tree.sets.data());
+    UT_Fn::invoke_and_check("create scene grid sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, grid.sets.data());
+    // update sets
+    namespace FnDesc = FnDescriptor;
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        std::array<VkWriteDescriptorSet, 3> writes = {
+            FnDesc::writeDescriptorSet(tree.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
+            FnDesc::writeDescriptorSet(tree.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1, &tree.diff.descImageInfo),
+            FnDesc::writeDescriptorSet(tree.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2, &tree.nrm.descImageInfo),
+        };
+        vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+    }
 }
 
 

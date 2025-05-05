@@ -15,7 +15,7 @@ LLVK_NAMESPACE_BEGIN
 class MultiViewPorts : public VulkanRenderer{
 public:
     struct UBO {
-        glm::mat4 proj[4]; // left right top bottom
+        glm::mat4 proj[4]; // main | left,right,top
         glm::mat4 modelView[4];
         glm::vec4 lightPos;
     }ubo;
@@ -24,7 +24,7 @@ public:
         GLTFLoaderV2::Loader<vertex_t> geoLoader;
         VmaUBOTexture diff; // or D_Alpha
         VmaUBOTexture nrm; // normal rough metallic
-
+        HLP::FramedSet sets;
         void cleanup() {
             diff.cleanup();
             nrm.cleanup();
@@ -36,8 +36,10 @@ public:
     void render() override;
     void cleanupObjects() override;
 private:
+    void prepareUBOs();
     void preparePipeline();
     void prepareDescriptorSets();
+    void updateUBOs();
 private:
     VkDescriptorPool descPool{};
     UT_GraphicsPipelinePSOs pso{};
@@ -47,11 +49,13 @@ private:
     Geometry tree{};
     VmaSimpleGeometryBufferManager geomManager{};
     VkSampler colorSampler{};
+    VkDescriptorSetLayout setLayout{};
     VkPipeline pipeline{};
     VkPipelineLayout pipelineLayout{};
-
-
-
+    HLP::FramedUBO uboBuffers{};
+    Camera leftCam{};
+    Camera rightCam{};
+    Camera topCam{};
 };
 LLVK_NAMESPACE_END
 
