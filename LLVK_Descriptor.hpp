@@ -125,6 +125,21 @@ namespace FnDescriptor {
         return writeDescriptorSet;
     }
 
+
+    template<typename T, uint32_t stageFlags = VK_SHADER_STAGE_ALL>
+    inline VkPushConstantRange pushConstant(){
+        VkPushConstantRange ret{};
+        ret.stageFlags = stageFlags;
+        ret.offset = 0;
+        ret.size = sizeof(std::decay<T>);
+        return ret;
+    }
+
+    inline void pushConstantInject(VkPipelineLayoutCreateInfo &info, const VkPushConstantRange &range){
+        info.pushConstantRangeCount = 1;
+        info.pPushConstantRanges = &range;
+    }
+
 }
 
 struct UBORequiredObjects {

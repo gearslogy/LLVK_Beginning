@@ -5,12 +5,12 @@
 #ifndef MULTIVIEWPORTSSHADOWPASS_H
 #define MULTIVIEWPORTSSHADOWPASS_H
 
-#include "renderer/subpass/SPShadowPass.h"
+#include "renderer/public/SimpleShadowPass.h"
 
 LLVK_NAMESPACE_BEGIN
-class MultiViewPortsShadowPass : public SPShadowPass {
+class MultiViewPortsShadowPass : public SimpleShadowPass {
 public:
-    void recordCommandBuffer() override;
+    void drawObjects() override;
 };
 
 LLVK_NAMESPACE_END

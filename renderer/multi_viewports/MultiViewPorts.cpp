@@ -3,23 +3,9 @@
 //
 
 #include "MultiViewPorts.h"
-
 #include <LLVK_UT_VmaBuffer.hpp>
-
 #include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
-
-
-inline constexpr std::array<VkVertexInputAttributeDescription, 4> attribsDesc{
-                    {
-                        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, P)},
-                        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, N)},
-                        {2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, T)},
-                        {3, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(VTXFmt_P_N_T_UV0, uv0)},
-                    }
-};
-inline constexpr VkVertexInputBindingDescription vertexBinding{0, sizeof(VTXFmt_P_N_T_UV0), VK_VERTEX_INPUT_RATE_VERTEX};
-inline constexpr std::array bindingsDesc{vertexBinding};
 
 void MultiViewPorts::prepare() {
     const auto &device = mainDevice.logicalDevice;
@@ -27,12 +13,16 @@ void MultiViewPorts::prepare() {
     // Ready pool
     HLP::createSimpleDescPool(device, descPool);
     colorSampler = FnImage::createImageSampler(phyDevice, device);
+    preparePipeline();
 }
 void MultiViewPorts::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
     UT_Fn::cleanup_sampler(device, colorSampler);
     UT_Fn::cleanup_resources(grid, tree);
     UT_Fn::cleanup_descriptor_pool(device, descPool);
+    UT_Fn::cleanup_pipeline(device, pipeline);
+    UT_Fn::cleanup_resources(geomManager);
+    UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
 }
 
 
@@ -56,6 +46,27 @@ void MultiViewPorts::loadGeometry() {
     grid.nrm.create(texRoot/"grid_nrm.png", colorSampler);
     tree.diff.create(texRoot/"tree_diff.png", colorSampler);
     tree.nrm.create(texRoot/"tree_nrm.png", colorSampler);
+}
+void MultiViewPorts::prepareDescriptorSets() {
+    
+}
+
+
+void MultiViewPorts::preparePipeline() {
+    const auto &device = mainDevice.logicalDevice;
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multiview_vert.spv",  device);
+    const auto gsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multiview_geom.spv",  device);
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multiview_frag.spv",  device);
+    VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);
+    VkPipelineShaderStageCreateInfo gsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, vsMD);
+    VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
+    pso.setShaderStages(vsMD_ssCIO, gsMD, fsMD_ssCIO);
+    pso.setPipelineLayout(pipelineLayout);
+    pso.setRenderPass(getMainRenderPass());
+    pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(HLP::VTXAttrib::VTXFmt_P_N_T_UV0_BindingsDesc,
+        HLP::VTXAttrib::VTXFmt_P_N_T_UV0_AttribsDesc);
+    UT_GraphicsPipelinePSOs::createPipeline(device, pso, getPipelineCache(), pipeline);
+    UT_Fn::cleanup_shader_module(device,vsMD,fsMD);
 }
 
 
@@ -97,7 +108,7 @@ void MultiViewPorts::recordCommandBuffer() {
     //<1> ------------   render secene ------
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     // ---------------------------  RENDER PASS ---------------------------
-    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.gBuffer);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayouts.gBuffer, 0, 1, &descSets.gBufferBook[currentFlightFrame], 0 , nullptr);
     const auto &book = resourceLoader->book.geoLoader.parts[0];
     vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform), &resourceLoader->book.xform);

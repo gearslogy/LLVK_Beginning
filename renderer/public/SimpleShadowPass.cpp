@@ -3,13 +3,13 @@
 //
 
 #include "SimpleShadowPass.h"
-
 #include "UT_CustomRenderer.hpp"
 #include "VulkanValidation.h"
 #include "VulkanRenderer.h"
 
 LLVK_NAMESPACE_BEGIN
-	void SimpleShadowPass::prepare() {
+
+void SimpleShadowPass::prepare() {
 	const auto &device = pRenderer->getMainDevice().logicalDevice;
     // 1. create attachment
 	setRequiredObjectsByRenderer(pRenderer, shadowFramebuffer.depthAttachment);
@@ -140,12 +140,6 @@ void SimpleShadowPass::prepareDescSets() {
 	// 4. create pipeline layout
 	const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};
 	VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
-	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(subpass::xform);
-	pipelineLayoutCIO.pPushConstantRanges = &pushConstantRange;
-	pipelineLayoutCIO.pushConstantRangeCount =1 ;
 	UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &offscreenPipelineLayout );
 }
 
@@ -159,9 +153,10 @@ void SimpleShadowPass::preparePipeline() {
 
 	auto pipelineCache=  pRenderer->getPipelineCache();
 	pipelinePSOs.requiredObjects.device = device; // Required Object first
-	pipelinePSOs.asDepth("shaders/subpass_sm_vert.spv", "shaders/subpass_sm_frag.spv", shadowFramebuffer.renderPass);
+	pipelinePSOs.asDepth("shaders/GSM_vert.spv", "shaders/GSM_frag.spv", shadowFramebuffer.renderPass);
 	pipelinePSOs.setPipelineLayout(offscreenPipelineLayout);
-	pipelinePSOs.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(subpass::bindingsDesc, subpass::attribsDesc);
+	pipelinePSOs.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(HLP::VTXAttrib::VTXFmt_P_N_T_UV0_BindingsDesc,
+                                                                              HLP::VTXAttrib::VTXFmt_P_N_T_UV0_AttribsDesc);
 	// now create our pipeline
 	UT_Fn::invoke_and_check( "error create offscreen opacity pipeline" ,vkCreateGraphicsPipelines,
 		device,pipelineCache, 1, &pipelinePSOs.pipelineCIO, nullptr, &offscreenPipeline);
@@ -173,13 +168,13 @@ void SimpleShadowPass::prepareUBO() {
 	setRequiredObjectsByRenderer(pRenderer, uboBuffers);
 	for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++)
 		uboBuffers[i].createAndMapping(sizeof(depthMVP));
-	updateUBO(pRenderer->keyLightPos);
+    updateUBO();
 }
 
 
-void SimpleShadowPass::updateUBO(glm::vec3 lightPos) {
+void SimpleShadowPass::updateUBO() {
 	auto depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, near, far);
-	const auto depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
+	const auto depthViewMatrix = glm::lookAt(keyLightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
 	constexpr auto depthModelMatrix = glm::mat4(1.0f);
 	depthProjectionMatrix[1][1] *= -1.0f;
 	depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;

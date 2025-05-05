@@ -8,13 +8,7 @@
 #include <LLVK_GeometryLoaderV2.hpp>
 #include <LLVK_UT_Pipeline.hpp>
 #include "VulkanRenderer.h"
-#include "renderer/public/CustomVertexFormat.hpp"
 #include "renderer/public/Helper.hpp"
-
-
-
-
-
 
 
 LLVK_NAMESPACE_BEGIN
@@ -28,7 +22,7 @@ public:
     struct Geometry{
         using vertex_t = VTXFmt_P_N_T_UV0;
         GLTFLoaderV2::Loader<vertex_t> geoLoader;
-        VmaUBOTexture diff; // or D_AO
+        VmaUBOTexture diff; // or D_Alpha
         VmaUBOTexture nrm; // normal rough metallic
 
         void cleanup() {
@@ -41,7 +35,9 @@ public:
     void prepare() override;
     void render() override;
     void cleanupObjects() override;
-
+private:
+    void preparePipeline();
+    void prepareDescriptorSets();
 private:
     VkDescriptorPool descPool{};
     UT_GraphicsPipelinePSOs pso{};
@@ -52,6 +48,9 @@ private:
     VmaSimpleGeometryBufferManager geomManager{};
     VkSampler colorSampler{};
     VkPipeline pipeline{};
+    VkPipelineLayout pipelineLayout{};
+
+
 
 };
 LLVK_NAMESPACE_END

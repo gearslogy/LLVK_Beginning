@@ -34,10 +34,10 @@ struct VTXFmt_P_N_T_UV0_UV1_UV2_UV3_ID {
 };
 
 struct VTXFmt_P_N_T_UV0 {
-    glm::vec3 P{};      // 0
-    glm::vec3 N{};      // 1
-    glm::vec3 T{};      // 2
-    glm::vec2 uv0{};    // 3
+    glm::vec3 P{};      // 0         // offset 0
+    glm::vec3 N{};      // 1         // offset (0 + 3*4) = 12
+    glm::vec3 T{};      // 2         // offset (0 + 3*4 + 3*4) = 24
+    glm::vec2 uv0{};    // 3         // offset (0 + 3*4 + 3*4 + 3*4) = 36
     bool operator==(const VTXFmt_P_N_T_UV0& other) const {
         return P == other.P &&
             uv0 == other.uv0 && N == other.N ; // IMPORTANT, DO NOT COMBINE N! DON't use combined N(point)

@@ -6,7 +6,6 @@
 
 #include <LLVK_SYS.hpp>
 #include <LLVK_UT_Pipeline.hpp>
-
 #include "Helper.hpp"
 #include <glm/glm.hpp>
 LLVK_NAMESPACE_BEGIN
@@ -20,7 +19,9 @@ struct SimpleShadowPass {
     void prepare();
     void cleanup();
     virtual void drawObjects() = 0;
-    void updateUBO(glm::vec3 lightPos);
+    void setLightPosition(glm::vec3 P) { keyLightPos = P;}
+    void updateUBO();
+
 
     struct {
         VmaAttachment depthAttachment{};
@@ -46,6 +47,7 @@ private:
     float near{0.1};
     float far{1000};
     HLP::FramedSet sets{};
+    glm::vec3 keyLightPos;
 
 
     UT_GraphicsPipelinePSOs pipelinePSOs{};

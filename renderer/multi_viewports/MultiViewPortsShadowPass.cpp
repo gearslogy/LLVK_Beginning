@@ -6,7 +6,6 @@
 
 #include "MultiViewPorts.h"
 LLVK_NAMESPACE_BEGIN
-    MultiViewPorts::
 
 
 LLVK_NAMESPACE_END
