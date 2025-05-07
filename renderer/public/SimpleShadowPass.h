@@ -14,6 +14,7 @@ class VulkanRenderer;
 struct SimpleShadowPass {
     VulkanRenderer *pRenderer;
     VkDescriptorPool *pDescPool;
+    VkDescriptorImageInfo *pDescImageInfo{};
 
     static constexpr auto size = 2048;
     void prepare();
@@ -47,7 +48,7 @@ private:
     float near{0.1};
     float far{1000};
     HLP::FramedSet sets{};
-    glm::vec3 keyLightPos;
+    glm::vec3 keyLightPos{};
 
 
     UT_GraphicsPipelinePSOs pipelinePSOs{};

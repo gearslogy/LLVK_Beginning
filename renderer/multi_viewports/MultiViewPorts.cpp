@@ -87,14 +87,23 @@ void MultiViewPorts::prepareDescriptorSets() {
     UT_Fn::invoke_and_check("create scene grid sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, grid.sets.data());
     // update sets
     namespace FnDesc = FnDescriptor;
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::array<VkWriteDescriptorSet, 3> writes = {
-            FnDesc::writeDescriptorSet(tree.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
-            FnDesc::writeDescriptorSet(tree.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1, &tree.diff.descImageInfo),
-            FnDesc::writeDescriptorSet(tree.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2, &tree.nrm.descImageInfo),
-        };
-        vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
-    }
+    auto writeSets = [&device, this](Geometry &geo) {
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            std::array<VkWriteDescriptorSet, 3> writes = {
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1, &tree.diff.descImageInfo),
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2, &tree.nrm.descImageInfo),
+            };
+            vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+        }
+    };
+    writeSets(tree);
+    writeSets(grid);
+
+    // 4. create pipeline layout
+    const std::array offscreenSetLayouts{setLayout};
+    VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
+    UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
 }
 
 

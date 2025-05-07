@@ -114,10 +114,11 @@ void SimpleShadowPass::prepareRenderPass() {
 
 void SimpleShadowPass::prepareDescSets() {
 	const auto &device = pRenderer->getMainDevice().logicalDevice;
-
+	assert(pDescImageInfo==nullptr);
 	// 1. create setlayout
 	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
-	const std::array offscreen_setLayout_bindings = {set0_ubo_binding0};
+	auto set0_ubo_binding1 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);         // image.a to drop fragment
+	const std::array offscreen_setLayout_bindings = {set0_ubo_binding0, set0_ubo_binding1};
 
 	const VkDescriptorSetLayoutCreateInfo offscreenSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(offscreen_setLayout_bindings);
 	UT_Fn::invoke_and_check("Error create offscreen descriptor set layout",
@@ -130,13 +131,12 @@ void SimpleShadowPass::prepareDescSets() {
 	UT_Fn::invoke_and_check("Error create shadow sets", vkAllocateDescriptorSets, device, &setAllocInfo, sets.data());
 	// 3. write update sets
 	for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
-		std::array<VkWriteDescriptorSet,1> writeSets{
-		{FnDescriptor::writeDescriptorSet(sets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo)}
+		std::array writeSets{
+			FnDescriptor::writeDescriptorSet(sets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
+			FnDescriptor::writeDescriptorSet(sets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, pDescImageInfo)
 		};
 		vkUpdateDescriptorSets(device,static_cast<uint32_t>(writeSets.size()),writeSets.data(),0, nullptr);
-
 	}
-
 	// 4. create pipeline layout
 	const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};
 	VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
