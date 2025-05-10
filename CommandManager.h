@@ -67,6 +67,13 @@ struct FnCommand {
         viewport.y = 0;
         return viewport;
     }
+    static VkViewport viewport(auto width, auto height, auto x, auto y) {
+        auto viewport = viewport(width, height);
+        viewport.x = x;
+        viewport.y = y;
+        return viewport;
+    }
+
     //vkCmdSetScissor(cmdBuffer,0, 1, &rect2D);
     static VkRect2D scissor(auto width,auto height){
         VkRect2D rect2D {};
@@ -76,6 +83,13 @@ struct FnCommand {
         rect2D.offset.y = 0;
         return rect2D;
     }
+    static VkRect2D scissor(auto width,auto height, auto offsetX, auto offsetY){
+        VkRect2D rect2D = scissor(width,height);
+        rect2D.offset.x = offsetX;
+        rect2D.offset.y = offsetY;
+        return rect2D;
+    }
+
     
 };
 

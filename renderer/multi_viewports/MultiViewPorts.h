@@ -14,9 +14,10 @@
 LLVK_NAMESPACE_BEGIN
 class MultiViewPorts : public VulkanRenderer{
 public:
+    static constexpr uint32_t VIEWPORTS_NUM = 2;
     struct UBO {
-        glm::mat4 proj[4]; // main | left,right,top
-        glm::mat4 modelView[4];
+        glm::mat4 proj[VIEWPORTS_NUM];
+        glm::mat4 modelView[VIEWPORTS_NUM];
         glm::vec4 lightPos;
     }ubo;
     struct Geometry{
@@ -46,7 +47,8 @@ private:
     void recordCommandBuffer();
     void loadGeometry();
     Geometry grid{};
-    Geometry tree{};
+    Geometry treeLeaves{};
+    Geometry treeTrunk{};
     VmaSimpleGeometryBufferManager geomManager{};
     VkSampler colorSampler{};
     VkDescriptorSetLayout setLayout{};

@@ -21,7 +21,7 @@ void MultiViewPorts::prepare() {
 void MultiViewPorts::cleanupObjects() {
     const auto &device = mainDevice.logicalDevice;
     UT_Fn::cleanup_sampler(device, colorSampler);
-    UT_Fn::cleanup_resources(grid, tree);
+    UT_Fn::cleanup_resources(grid, treeTrunk, treeLeaves);
     UT_Fn::cleanup_descriptor_pool(device, descPool);
     UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_resources(geomManager);
@@ -40,30 +40,33 @@ void MultiViewPorts::loadGeometry() {
     setRequiredObjectsByRenderer(this, geomManager);
     GLTFLoaderV2::CustomAttribLoader<Geometry::vertex_t> geoAttribSet;
     grid.geoLoader.load(gltfRoot/"grid.gltf", geoAttribSet);
-    tree.geoLoader.load(gltfRoot/"tree.gltf", geoAttribSet);
+    treeTrunk.geoLoader.load(gltfRoot/"tree_trunk.gltf", geoAttribSet);
+    treeLeaves.geoLoader.load(gltfRoot/"tree_leaves.gltf", geoAttribSet);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(grid.geoLoader,geomManager);
-    UT_VmaBuffer::addGeometryToSimpleBufferManager(tree.geoLoader,geomManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(treeTrunk.geoLoader,geomManager);
+    UT_VmaBuffer::addGeometryToSimpleBufferManager(treeLeaves.geoLoader,geomManager);
 
 
     setRequiredObjectsByRenderer(this, grid.diff, grid.nrm);
-    setRequiredObjectsByRenderer(this, tree.diff, tree.nrm);
+    setRequiredObjectsByRenderer(this, treeTrunk.diff, treeTrunk.nrm);
+    setRequiredObjectsByRenderer(this, treeLeaves.diff, treeLeaves.nrm);
     grid.diff.create(texRoot/"grid_diff.png", colorSampler);
     grid.nrm.create(texRoot/"grid_nrm.png", colorSampler);
-    tree.diff.create(texRoot/"tree_diff.png", colorSampler);
-    tree.nrm.create(texRoot/"tree_nrm.png", colorSampler);
+    treeTrunk.diff.create(texRoot/"tree_trunk_diff.png", colorSampler);
+    treeTrunk.nrm.create(texRoot/"tree_trunk_nrm.png", colorSampler);
+    treeLeaves.diff.create(texRoot/"tree_leaves_diff.png", colorSampler);
+    treeLeaves.nrm.create(texRoot/"tree_leaves_nrm.png", colorSampler);
 }
 
 void MultiViewPorts::prepareUBOs() {
     setRequiredObjectsByRenderer(this, uboBuffers);
-    for (int i=0;i<uboBuffers.size();i++) {
-        uboBuffers[i].createAndMapping(sizeof(UBO));
+    for (auto & uboBuffer : uboBuffers) {
+        uboBuffer.createAndMapping(sizeof(UBO));
     }
 }
 void MultiViewPorts::updateUBOs() {
-
-
-    for (int i=0;i<uboBuffers.size();i++) {
-        memcpy(uboBuffers[i].mapped, &ubo, sizeof(UBO));
+    for (auto & uboBuffer : uboBuffers) {
+        memcpy(uboBuffer.mapped, &ubo, sizeof(UBO));
     }
 }
 
@@ -83,7 +86,7 @@ void MultiViewPorts::prepareDescriptorSets() {
 
     std::array<VkDescriptorSetLayout,2> layouts = {setLayout, setLayout}; // must be two, because we USE MAX_FLIGHT_FRAME
     auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
-    UT_Fn::invoke_and_check("create scene tree sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, tree.sets.data());
+    UT_Fn::invoke_and_check("create scene tree sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, treeTrunk.sets.data());
     UT_Fn::invoke_and_check("create scene grid sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, grid.sets.data());
     // update sets
     namespace FnDesc = FnDescriptor;
@@ -91,13 +94,14 @@ void MultiViewPorts::prepareDescriptorSets() {
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             std::array<VkWriteDescriptorSet, 3> writes = {
                 FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
-                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1, &tree.diff.descImageInfo),
-                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2, &tree.nrm.descImageInfo),
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1, &geo.diff.descImageInfo),
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2, &geo.nrm.descImageInfo),
             };
             vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
         }
     };
-    writeSets(tree);
+    writeSets(treeTrunk);
+    writeSets(treeLeaves);
     writeSets(grid);
 
     // 4. create pipeline layout
@@ -126,7 +130,10 @@ void MultiViewPorts::preparePipeline() {
 
 
 void MultiViewPorts::render() {
-
+    updateUBOs();
+    recordCommandBuffer();
+    submitMainCommandBuffer();
+    presentMainCommandBufferFrame();
 }
 
 
@@ -135,8 +142,16 @@ void MultiViewPorts::recordCommandBuffer() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
     auto [width, height] = getSwapChainExtent();
     VkDeviceSize offsets[1] = { 0 };
-    auto viewport = FnCommand::viewport(width,height );
-    auto scissor = FnCommand::scissor(width,height);
+
+    VkViewport viewports[VIEWPORTS_NUM]{};
+    VkRect2D   scissors[VIEWPORTS_NUM]{};
+    viewports[0] = FnCommand::viewport(width/2,height,0,0);
+    viewports[1] = FnCommand::viewport(width/2,height, width/2, height);
+
+    scissors[0] = FnCommand::scissor(width/2,height,0,0);
+
+
+
     // clear
     VkClearValue clearValues[2];
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
@@ -164,17 +179,18 @@ void MultiViewPorts::recordCommandBuffer() {
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     // ---------------------------  RENDER PASS ---------------------------
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayouts.gBuffer, 0, 1, &descSets.gBufferBook[currentFlightFrame], 0 , nullptr);
-    const auto &book = resourceLoader->book.geoLoader.parts[0];
-    vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform), &resourceLoader->book.xform);
-    renderGeo(book);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &grid.sets[currentFlightFrame], 0 , nullptr);
+    //vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform), &resourceLoader->book.xform);
+    renderGeo(grid.geoLoader.parts[0]);
 
-    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayouts.gBuffer, 0, 1, &descSets.gBufferTelevision[currentFlightFrame], 0 , nullptr);
-    const auto &television = resourceLoader->television.geoLoader.parts[0];
-    vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->television.xform);
-    renderGeo(television);
-
-
+    // render tree trunk
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &treeTrunk.sets[currentFlightFrame], 0 , nullptr);
+    //vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->television.xform);
+    renderGeo(treeTrunk.geoLoader.parts[0]);
+    // render tree leaves
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &treeLeaves.sets[currentFlightFrame], 0 , nullptr);
+    //vkCmdPushConstants(cmdBuf, pipelineLayouts.gBuffer, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(subpass::xform),&resourceLoader->television.xform);
+    renderGeo(treeLeaves.geoLoader.parts[0]);
 
     // ----------------------------
     vkCmdEndRenderPass(cmdBuf);
