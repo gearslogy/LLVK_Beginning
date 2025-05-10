@@ -253,7 +253,7 @@ void FnVmaImage::createTexture(const VmaBufferRequiredObjects &reqObj,const VkFo
                           VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels,1);
 
     FnImage::copyBufferToImage(device, commandPool, queue, stagingBuffer,
-                      image, texHeight, texHeight);
+                      image, texWidth, texHeight);
 
     FnImage::generateMipmaps(physicalDevice, device,
         commandPool, queue,
