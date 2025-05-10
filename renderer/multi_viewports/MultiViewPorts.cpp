@@ -13,6 +13,7 @@ void MultiViewPorts::prepare() {
     // Ready pool
     HLP::createSimpleDescPool(device, descPool);
     colorSampler = FnImage::createImageSampler(phyDevice, device);
+    loadGeometry();
     prepareUBOs();
     prepareDescriptorSets();
     preparePipeline();
@@ -39,9 +40,13 @@ void MultiViewPorts::loadGeometry() {
 
     setRequiredObjectsByRenderer(this, geomManager);
     GLTFLoaderV2::CustomAttribLoader<Geometry::vertex_t> geoAttribSet;
+    grid.name = "grid";
+    treeTrunk.name = "treeTrunk";
+    treeLeaves.name = "treeLeaves";
+
     grid.geoLoader.load(gltfRoot/"grid.gltf", geoAttribSet);
-    treeTrunk.geoLoader.load(gltfRoot/"tree_trunk.gltf", geoAttribSet);
-    treeLeaves.geoLoader.load(gltfRoot/"tree_leaves.gltf", geoAttribSet);
+    treeTrunk.geoLoader.load(gltfRoot/"trunk.gltf", geoAttribSet);
+    treeLeaves.geoLoader.load(gltfRoot/"leaves.gltf", geoAttribSet);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(grid.geoLoader,geomManager);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(treeTrunk.geoLoader,geomManager);
     UT_VmaBuffer::addGeometryToSimpleBufferManager(treeLeaves.geoLoader,geomManager);
@@ -50,12 +55,15 @@ void MultiViewPorts::loadGeometry() {
     setRequiredObjectsByRenderer(this, grid.diff, grid.nrm);
     setRequiredObjectsByRenderer(this, treeTrunk.diff, treeTrunk.nrm);
     setRequiredObjectsByRenderer(this, treeLeaves.diff, treeLeaves.nrm);
-    grid.diff.create(texRoot/"grid_diff.png", colorSampler);
-    grid.nrm.create(texRoot/"grid_nrm.png", colorSampler);
-    treeTrunk.diff.create(texRoot/"tree_trunk_diff.png", colorSampler);
-    treeTrunk.nrm.create(texRoot/"tree_trunk_nrm.png", colorSampler);
-    treeLeaves.diff.create(texRoot/"tree_leaves_diff.png", colorSampler);
-    treeLeaves.nrm.create(texRoot/"tree_leaves_nrm.png", colorSampler);
+    grid.diff.create(texRoot/"grid_D.jpg", colorSampler);
+    grid.nrm.create(texRoot/"grid_NR.png", colorSampler);
+
+    treeLeaves.diff.create(texRoot/"leaves_D.png", colorSampler);
+    treeLeaves.nrm.create(texRoot/"leaves_NRS.png", colorSampler);
+
+    treeTrunk.diff.create(texRoot/"trunk_D.png", colorSampler);
+    treeTrunk.nrm.create(texRoot/"trunk_NR.TGA", colorSampler);
+
 }
 
 void MultiViewPorts::prepareUBOs() {
@@ -65,6 +73,32 @@ void MultiViewPorts::prepareUBOs() {
     }
 }
 void MultiViewPorts::updateUBOs() {
+    // left is perspective view
+    auto [width, height] =  getSwapChainExtent();
+    mainCamera.mAspect = static_cast<float>(width/2) / static_cast<float>(height);
+    auto &proj0 = ubo.proj[0];
+    auto &modelView0 = ubo.modelView[0];
+    proj0 = mainCamera.projection();
+    proj0[1][1] *= -1;
+    modelView0 = glm::mat4(1.0f) * mainCamera.view();
+
+
+    // --- RIGHT VIEW (Top View, Orthographic) ---
+    auto &proj1 = ubo.proj[1];
+    auto &modelView1 = ubo.modelView[1];
+    // Orthographic projection (adjust bounds as needed)
+    float halfWidth = 10.0f;  // Example: covers -10 to 10 in X and Z
+    float halfHeight = halfWidth * (height / (width / 2.0f));  // Maintain aspect ratio
+    proj1 = glm::ortho(
+        -halfWidth, halfWidth,   // Left, Right
+        -halfHeight, halfHeight, // Bottom, Top
+        0.1f, 100.0f             // Near, Far
+    );
+    proj1[1][1] *= -1;
+    modelView1 = glm::lookAt(glm::vec3(0, 20, 0),
+        glm::vec3(0, 0, 0),
+        glm::vec3(0, 0, 1));
+
     for (auto & uboBuffer : uboBuffers) {
         memcpy(uboBuffer.mapped, &ubo, sizeof(UBO));
     }
@@ -86,23 +120,24 @@ void MultiViewPorts::prepareDescriptorSets() {
 
     std::array<VkDescriptorSetLayout,2> layouts = {setLayout, setLayout}; // must be two, because we USE MAX_FLIGHT_FRAME
     auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
+    UT_Fn::invoke_and_check("create scene tree sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, treeLeaves.sets.data());
     UT_Fn::invoke_and_check("create scene tree sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, treeTrunk.sets.data());
     UT_Fn::invoke_and_check("create scene grid sets error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, grid.sets.data());
     // update sets
     namespace FnDesc = FnDescriptor;
-    auto writeSets = [&device, this](Geometry &geo) {
+    auto writeSets = [&device, this](const Geometry &geo) {
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             std::array<VkWriteDescriptorSet, 3> writes = {
                 FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBuffers[i].descBufferInfo),
-                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1, &geo.diff.descImageInfo),
-                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,2, &geo.nrm.descImageInfo),
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &geo.diff.descImageInfo),
+                FnDesc::writeDescriptorSet(geo.sets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &geo.nrm.descImageInfo),
             };
             vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
         }
     };
+    writeSets(grid);
     writeSets(treeTrunk);
     writeSets(treeLeaves);
-    writeSets(grid);
 
     // 4. create pipeline layout
     const std::array offscreenSetLayouts{setLayout};
@@ -113,19 +148,19 @@ void MultiViewPorts::prepareDescriptorSets() {
 
 void MultiViewPorts::preparePipeline() {
     const auto &device = mainDevice.logicalDevice;
-    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multiview_vert.spv",  device);
-    const auto gsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multiview_geom.spv",  device);
-    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multiview_frag.spv",  device);
+    const auto vsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multi_viewports_vert.spv",  device);
+    const auto gsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multi_viewports_geom.spv",  device);
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/multi_viewports_frag.spv",  device);
     VkPipelineShaderStageCreateInfo vsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vsMD);
-    VkPipelineShaderStageCreateInfo gsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, vsMD);
+    VkPipelineShaderStageCreateInfo gsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, gsMD);
     VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
-    pso.setShaderStages(vsMD_ssCIO, gsMD, fsMD_ssCIO);
+    pso.setShaderStages(vsMD_ssCIO, gsMD_ssCIO, fsMD_ssCIO);
     pso.setPipelineLayout(pipelineLayout);
     pso.setRenderPass(getMainRenderPass());
     pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(HLP::VTXAttrib::VTXFmt_P_N_T_UV0_BindingsDesc,
         HLP::VTXAttrib::VTXFmt_P_N_T_UV0_AttribsDesc);
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, getPipelineCache(), pipeline);
-    UT_Fn::cleanup_shader_module(device,vsMD,fsMD);
+    UT_Fn::cleanup_shader_module(device,vsMD,gsMD,fsMD);
 }
 
 
@@ -143,15 +178,6 @@ void MultiViewPorts::recordCommandBuffer() {
     auto [width, height] = getSwapChainExtent();
     VkDeviceSize offsets[1] = { 0 };
 
-    VkViewport viewports[VIEWPORTS_NUM]{};
-    VkRect2D   scissors[VIEWPORTS_NUM]{};
-    viewports[0] = FnCommand::viewport(width/2,height,0,0);
-    viewports[1] = FnCommand::viewport(width/2,height, width/2, height);
-
-    scissors[0] = FnCommand::scissor(width/2,height,0,0);
-
-
-
     // clear
     VkClearValue clearValues[2];
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
@@ -163,6 +189,9 @@ void MultiViewPorts::recordCommandBuffer() {
         vkCmdBindIndexBuffer(cmdBuf,geo.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(cmdBuf, geo.indices.size(), 1, 0, 0, 0);
     };
+    //<0>------------- render depth -----------
+
+
 
 
     const auto renderPassBeginInfo= FnCommand::renderPassBeginInfo(getMainFramebuffer(),
@@ -171,12 +200,18 @@ void MultiViewPorts::recordCommandBuffer() {
         clearValues);
     UT_Fn::invoke_and_check("Rendering Error", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
 
-    //<0>------------- render depth -----------
-
-
+    // set viewports
+    VkViewport viewports[VIEWPORTS_NUM]{};
+    VkRect2D   scissors[VIEWPORTS_NUM]{};
+    viewports[0] = FnCommand::viewport(width/2,height,0,0); // LEFT
+    viewports[1] = FnCommand::viewport(width/2,height, width/2, height); // RIGHT
+    scissors[0] = FnCommand::scissor(width/2,height,0,0); // left
+    scissors[1] = FnCommand::scissor(width/2,height,width/2,0); // right
 
     //<1> ------------   render secene ------
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdSetViewport(cmdBuf, 0, VIEWPORTS_NUM, viewports );
+    vkCmdSetScissor(cmdBuf,0, VIEWPORTS_NUM, scissors);
     // ---------------------------  RENDER PASS ---------------------------
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &grid.sets[currentFlightFrame], 0 , nullptr);

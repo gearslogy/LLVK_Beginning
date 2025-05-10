@@ -68,10 +68,10 @@ struct FnCommand {
         return viewport;
     }
     static VkViewport viewport(auto width, auto height, auto x, auto y) {
-        auto viewport = viewport(width, height);
-        viewport.x = x;
-        viewport.y = y;
-        return viewport;
+        auto ret = viewport(width, height);
+        ret.x = x;
+        ret.y = y;
+        return ret;
     }
 
     //vkCmdSetScissor(cmdBuffer,0, 1, &rect2D);

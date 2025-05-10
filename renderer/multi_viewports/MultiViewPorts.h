@@ -26,6 +26,7 @@ public:
         VmaUBOTexture diff; // or D_Alpha
         VmaUBOTexture nrm; // normal rough metallic
         HLP::FramedSet sets;
+        std::string name; // asset name for debug
         void cleanup() {
             diff.cleanup();
             nrm.cleanup();

@@ -23,6 +23,7 @@
 #include "renderer/heightblend/HeightBlendRenderer.h"
 #include "renderer/tank_billboard/tank_billboard.h"
 #include "renderer/subpass/SubPassRenderer.h"
+#include "renderer/multi_viewports/MultiViewPorts.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -43,7 +44,8 @@ int main() {
     //LLVK::ScreenShotRenderer app;
     //LLVK::HeightBlendRenderer app;
     //LLVK::tank_billboard app;
-    LLVK::SubPassRenderer app;
+    //LLVK::SubPassRenderer app;
+    LLVK::MultiViewPorts app;
     try {
         app.run();
     }
