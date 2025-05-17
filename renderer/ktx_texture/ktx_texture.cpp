@@ -166,7 +166,7 @@ void ktx_texture::recordCommandBuffer() {
     std::vector<VkClearValue> clearValues(2);
     clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
-    const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+    const VkFramebuffer &framebuffer = getMainFramebuffer();
     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
         simplePass.pass,
         &simpleSwapchain.swapChainExtent,clearValues);

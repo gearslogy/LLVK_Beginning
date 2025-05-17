@@ -486,13 +486,8 @@ void VulkanRenderer::draw() {
     }
     // here can push constant and update uniform
     vkResetFences(mainDevice.logicalDevice, 1, &inFlightFences[currentFlightFrame]);
-    activatedFrameCommandBufferToSubmit = commandBuffers[currentFlightFrame];
-    vkResetCommandBuffer(activatedFrameCommandBufferToSubmit, 0); //0: main command buffer reset
-    activatedSwapChainFramebuffer = simpleFramebuffer.swapChainFramebuffers[imageIndex];
-    activatedImageAvailableSemaphore = imageAvailableSemaphores[currentFlightFrame];
-    activatedRenderFinishedSemaphore = renderFinishedSemaphores[currentFlightFrame];
+    vkResetCommandBuffer(commandBuffers[imageIndex], 0); //0: main command buffer reset
     render(); // call the pure virtual function(record command buffer)                         //1: command buffer new content
-
     // advanced
     currentFlightFrame = (currentFlightFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

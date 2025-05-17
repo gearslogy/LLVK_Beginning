@@ -1,5 +1,5 @@
 #version 460 core
-
+#include "common.glsl"
 layout(location=0) in INPUT{
     vec3 N;
     vec3 T;
@@ -15,7 +15,8 @@ layout(location=0) out vec4 outColor;
 void main(){
     vec4 base = texture(baseSampler, uv0);
     vec4 NR   = texture(NRSampler, uv0);
-    if (base.r < 0.2)
+    if (base.a < 0.01)
         discard;
-    outColor = vec4(base.rgb, 0);
+    vec3 diff = gammaCorrect(base, 2.2).rgb;
+    outColor = vec4(diff, 0);
 }

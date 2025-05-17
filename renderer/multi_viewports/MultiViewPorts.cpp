@@ -8,6 +8,7 @@
 LLVK_NAMESPACE_BEGIN
 
 void MultiViewPorts::prepare() {
+    mainCamera.mPosition = glm::vec3(0.0f, 5.0f, 20.0f);
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     // Ready pool
@@ -61,7 +62,7 @@ void MultiViewPorts::loadGeometry() {
     treeLeaves.diff.create(texRoot/"leaves_D.png", colorSampler);
     treeLeaves.nrm.create(texRoot/"leaves_NRS.png", colorSampler);
 
-    treeTrunk.diff.create(texRoot/"trunk_D.png", colorSampler);
+    treeTrunk.diff.create(texRoot/"trunk_D2.png", colorSampler);
     treeTrunk.nrm.create(texRoot/"trunk_NR.TGA", colorSampler);
 
 }

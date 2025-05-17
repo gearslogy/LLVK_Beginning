@@ -56,8 +56,8 @@ public :
     [[nodiscard]] auto getSwapChainExtent() const { return simpleSwapchain.swapChainExtent;}
     [[nodiscard]] VkPipelineCache getPipelineCache() const ;
     [[nodiscard]] VkRenderPass getMainRenderPass() const { return simplePass.pass;}
-    [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return activatedSwapChainFramebuffer;}
-    [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return activatedFrameCommandBufferToSubmit;}
+    [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return simpleFramebuffer.swapChainFramebuffers[imageIndex];}
+    [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return commandBuffers[currentFlightFrame];}
     [[nodiscard]] auto getCurrentFlightFrame() const{ return currentFlightFrame;}
 protected:
     bool framebufferResized  = false;
@@ -90,10 +90,10 @@ protected:
     PipelineCache simplePipelineCache{};
 
     // When rendering, you can only pick one from these asynchronous resources
-    VkFramebuffer activatedSwapChainFramebuffer{};          // swapchain frame buffer. we have three images in our swapchain
-    VkCommandBuffer activatedFrameCommandBufferToSubmit{};  // [two command buffer,MAX_FLIGHT=2]  only one frame activated
-    VkSemaphore activatedImageAvailableSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
-    VkSemaphore activatedRenderFinishedSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
+    //VkFramebuffer activatedSwapChainFramebuffer{};          // swapchain frame buffer. we have three images in our swapchain
+    //VkCommandBuffer activatedFrameCommandBufferToSubmit{};  // [two command buffer,MAX_FLIGHT=2]  only one frame activated
+    //VkSemaphore activatedImageAvailableSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
+    //VkSemaphore activatedRenderFinishedSemaphore{};         // [two semaphores,  MAX_FLIGHT=2]    only one frame activated
     uint32_t imageIndex{};                                  // may be 0 1 2 based on swapchain images
     VmaAllocator vmaAllocator{};
     Camera mainCamera{};
@@ -166,12 +166,13 @@ protected:
 
     // this can direct present
     void submitMainCommandBuffer() {
-        submitTask(activatedFrameCommandBufferToSubmit,
-            activatedImageAvailableSemaphore,
-            activatedRenderFinishedSemaphore, inFlightFences[currentFlightFrame]);
+        submitTask(commandBuffers[imageIndex],
+             imageAvailableSemaphores[currentFlightFrame],
+            renderFinishedSemaphores[currentFlightFrame],
+            inFlightFences[currentFlightFrame]);
     }
     void presentMainCommandBufferFrame() {
-        presentFrame(activatedRenderFinishedSemaphore);
+        presentFrame(renderFinishedSemaphores[currentFlightFrame]);
     }
 
 

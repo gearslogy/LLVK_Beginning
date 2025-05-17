@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(CP_02)
 
 set(CMAKE_CXX_STANDARD 26)
-set(GLFW_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw-3.4.bin.WIN64)
+set(GLFW_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw-3.4.bin.WIN64/)
 set(GLFW_PATH_INCLUDE ${GLFW_PATH}/include)
 set(GLFW_PATH_LIB ${GLFW_PATH}/lib-vc2022)
 

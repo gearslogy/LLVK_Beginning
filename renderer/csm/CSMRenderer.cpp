@@ -79,7 +79,7 @@ void CSMRenderer::render() {
     updateUBO();
     depthPass->update();
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
-    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    const auto &cmdBuf = getMainCommandBuffer();
     UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     depthPass->recordCommandBuffer();
     scenePass->recordCommandBuffer();
