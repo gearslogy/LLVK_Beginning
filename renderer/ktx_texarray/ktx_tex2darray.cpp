@@ -171,7 +171,7 @@ void ktx_tex2darray::recordCommandBuffer() {
     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
         simplePass.pass,
         &simpleSwapchain.swapChainExtent,clearValues);
-
+    const auto &cmdBuf= getMainCommandBuffer();
     auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
     vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
