@@ -70,31 +70,31 @@ void BasicRenderer::recordCommandBuffer() {
     std::vector<VkClearValue> clearValues(2);
     clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
-    const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+    const VkFramebuffer &framebuffer = getMainFramebuffer();
     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
         simplePass.pass,
         &simpleSwapchain.swapChainExtent,clearValues);
-
-    auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
+    auto cmdBuf = getMainCommandBuffer();
+    auto result = vkBeginCommandBuffer(cmdBuf, &cmdBufferBeginInfo);
     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,simplePipeline.graphicsPipeline);
+    vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,simplePipeline.graphicsPipeline);
 
     auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     auto scissor = FnCommand::scissor( simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
-    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
     // 更新当前帧的 Push Constants
     //std::cout << "push range1:" << 0 << " " << sizeof(PushVertexStageData) << std::endl;
-    vkCmdPushConstants(activatedFrameCommandBufferToSubmit,
+    vkCmdPushConstants(cmdBuf,
         simplePipeline.pipelineLayout,
         VK_SHADER_STAGE_VERTEX_BIT,
         0,
         sizeof(PushVertexStageData),
         &PushConstant::vertexPushConstants[currentFlightFrame]);
     //std::cout << "push range2:" << sizeof(PushFragmentStageData) << " " << sizeof(PushVertexStageData) << std::endl;
-    vkCmdPushConstants(activatedFrameCommandBufferToSubmit,
+    vkCmdPushConstants(cmdBuf,
         simplePipeline.pipelineLayout,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         sizeof(PushVertexStageData), // 偏移量为 Vertex Push Constant 的大小
@@ -103,20 +103,20 @@ void BasicRenderer::recordCommandBuffer() {
 
     // only one buffer hold all data
     VkDeviceSize offset =0;
-    vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit,
+    vkCmdBindVertexBuffers(cmdBuf,
                            0,
                            1,
                            &simpleObjLoader.verticesBuffer,&offset);
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                    simplePipeline.pipelineLayout, 0, 2,
                    &(simpleDescriptorManager.descriptorSets)[currentFlightFrame * 2],
                    0, nullptr);
-    vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit, simpleObjLoader.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, simpleObjLoader.indices.size(), 1, 0, 0, 0);
+    vkCmdBindIndexBuffer(cmdBuf, simpleObjLoader.indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(cmdBuf, simpleObjLoader.indices.size(), 1, 0, 0, 0);
 
 
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
-    if (vkEndCommandBuffer(activatedFrameCommandBufferToSubmit) != VK_SUCCESS) {
+    vkCmdEndRenderPass(cmdBuf);
+    if (vkEndCommandBuffer(cmdBuf) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
 }

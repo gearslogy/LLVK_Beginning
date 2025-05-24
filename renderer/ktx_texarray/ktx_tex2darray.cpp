@@ -167,34 +167,34 @@ void ktx_tex2darray::recordCommandBuffer() {
     std::vector<VkClearValue> clearValues(2);
     clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
-    const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+    const VkFramebuffer &framebuffer = getMainFramebuffer();
     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
         simplePass.pass,
         &simpleSwapchain.swapChainExtent,clearValues);
-    const auto &cmdBuf= getMainCommandBuffer();
-    auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
+    const auto cmdBuf= getMainCommandBuffer();
+    auto result = vkBeginCommandBuffer(cmdBuf, &cmdBufferBeginInfo);
     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
-    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
     VkDeviceSize offsets[1] = { 0 };
     // render ground
     //
     auto &verticesBuffer = geoBufferManager.createVertexBuffers[0].buffer;
     auto &indicesBuffer = geoBufferManager.createIndexedBuffers[0].buffer;
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipelineObject.pipeline);
-    vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit, 0, 1, &verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit,indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineObject.pipelineLayout, 0, 2, pipelineObject.sets, 0, nullptr);
-    vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, geo.indices.size(), MAX_LAYERS, 0, 0, 0);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipelineObject.pipeline);
+    vkCmdBindVertexBuffers(cmdBuf, 0, 1, &verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(cmdBuf,indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineObject.pipelineLayout, 0, 2, pipelineObject.sets, 0, nullptr);
+    vkCmdDrawIndexed(cmdBuf, geo.indices.size(), MAX_LAYERS, 0, 0, 0);
 
 
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
-    if (vkEndCommandBuffer(activatedFrameCommandBufferToSubmit) != VK_SUCCESS) {
+    vkCmdEndRenderPass(cmdBuf);
+    if (vkEndCommandBuffer(cmdBuf) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
 }

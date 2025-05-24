@@ -56,8 +56,19 @@ public :
     [[nodiscard]] auto getSwapChainExtent() const { return simpleSwapchain.swapChainExtent;}
     [[nodiscard]] VkPipelineCache getPipelineCache() const ;
     [[nodiscard]] VkRenderPass getMainRenderPass() const { return simplePass.pass;}
-    [[nodiscard]] VkFramebuffer getMainFramebuffer() const { return simpleFramebuffer.swapChainFramebuffers[imageIndex];}
-    [[nodiscard]] VkCommandBuffer getMainCommandBuffer() const {return commandBuffers[currentFlightFrame];}
+
+    // Get FrameBuffer
+    template <typename Self>
+    [[nodiscard]] auto&& getMainFramebuffer(this Self&& self)  {
+        return std::forward<Self>(self).simpleFramebuffer.swapChainFramebuffers[self.imageIndex];
+    }
+
+    template <typename Self>
+    [[nodiscard]] auto&& getMainCommandBuffer(this Self&& self)  {
+        return std::forward<Self>(self).commandBuffers[self.currentFlightFrame];
+    }
+
+    // Current Flight Frame
     [[nodiscard]] auto getCurrentFlightFrame() const{ return currentFlightFrame;}
 protected:
     bool framebufferResized  = false;

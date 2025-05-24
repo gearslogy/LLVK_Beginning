@@ -221,7 +221,7 @@ void IndirectRenderer::updateUniformBuffers() {
 
 void IndirectRenderer::recordCommandBuffer() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
-    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    const auto &cmdBuf = getMainCommandBuffer();
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     std::vector<VkClearValue> sceneClearValues(2);
     sceneClearValues[0].color = {0.4, 0.4, 0.4, 1};

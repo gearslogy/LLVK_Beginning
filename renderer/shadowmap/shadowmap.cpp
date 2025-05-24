@@ -355,7 +355,7 @@ void shadowmap::preparePipelines() {
 void shadowmap::recordCommandBuffer() {
     //vkResetCommandBuffer(activatedFrameCommandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
-    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    const auto &cmdBuf = getMainCommandBuffer();
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     {
 
@@ -422,7 +422,7 @@ void shadowmap::recordCommandBuffer() {
         sceneClearValues[1].depthStencil = { 1.0f, 0 };
         const auto sceneRenderPass = simplePass.pass;
         const auto sceneRenderExtent = simpleSwapchain.swapChainExtent;
-        const auto sceneRenderPassBeginInfo = FnCommand::renderPassBeginInfo(activatedSwapChainFramebuffer, sceneRenderPass, sceneRenderExtent,sceneClearValues);
+        const auto sceneRenderPassBeginInfo = FnCommand::renderPassBeginInfo(getMainFramebuffer(), sceneRenderPass, sceneRenderExtent,sceneClearValues);
         vkCmdBeginRenderPass(cmdBuf, &sceneRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , scenePipeline.opaque); // FIRST generate depth for opaque object
         auto [vs_width , vs_height] = sceneRenderExtent;

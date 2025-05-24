@@ -88,7 +88,7 @@ void InstanceRenderer::updateUniformBuffers() {
 
 void InstanceRenderer::recordCommandBuffer() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
-    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    const auto &cmdBuf = getMainCommandBuffer();
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     terrainPass->recordCommandBuffer();
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );

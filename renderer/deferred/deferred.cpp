@@ -499,7 +499,8 @@ void defer::render() {
      // Signal ready with render complete semaphore
      compSubmitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFlightFrame];
      // Submit composition work
-     compSubmitInfo.pCommandBuffers = &activatedFrameCommandBufferToSubmit;
+     const auto cmdBuf = getMainCommandBuffer();
+     compSubmitInfo.pCommandBuffers = &cmdBuf;
      UT_Fn::invoke_and_check("error submit render composition queue",vkQueueSubmit, mainDevice.graphicsQueue, 1, &compSubmitInfo, inFlightFences[currentFlightFrame]);
 
      presentMainCommandBufferFrame();
@@ -595,25 +596,26 @@ void defer::recordCompositionCommandBuffer() {
      std::vector<VkClearValue> clearValues(2);
      clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
      clearValues[1].depthStencil = {1.0f, 0};
-     const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+     const VkFramebuffer &framebuffer = getMainFramebuffer();
      auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
          simplePass.pass,
          &simpleSwapchain.swapChainExtent,clearValues);
-     auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
+     auto cmdBuf = getMainCommandBuffer();
+     auto result = vkBeginCommandBuffer(cmdBuf, &cmdBufferBeginInfo);
      if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-     vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-     vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipelines.composition);
+     vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,pipelines.composition);
      auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
      auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-     vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
-     vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
+     vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+     vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
-     vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.compositionLayout,
+     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.compositionLayout,
           0, 2, compositionDescriptorSets.composition, 0, nullptr);
-     vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.composition);
-     vkCmdDraw(activatedFrameCommandBufferToSubmit, 3, 1, 0, 0);
-     vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
-     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,activatedFrameCommandBufferToSubmit );
+     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.composition);
+     vkCmdDraw(cmdBuf, 3, 1, 0, 0);
+     vkCmdEndRenderPass(cmdBuf);
+     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
 }
 
 

@@ -366,26 +366,27 @@ void DynamicsUBO::recordCommandBuffer() {
     std::vector<VkClearValue> clearValues(2);
     clearValues[0].color = {0.6f, 0.65f, 0.4, 1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
-    const VkFramebuffer &framebuffer = activatedSwapChainFramebuffer;
+    const VkFramebuffer &framebuffer = getMainFramebuffer();
     auto [cmdBufferBeginInfo,renderpassBeginInfo ]= FnCommand::createCommandBufferBeginInfo(framebuffer,
         simplePass.pass,
         &simpleSwapchain.swapChainExtent,clearValues);
 
-    auto result = vkBeginCommandBuffer(activatedFrameCommandBufferToSubmit, &cmdBufferBeginInfo);
+    auto cmdBuf = getMainCommandBuffer();
+    auto result = vkBeginCommandBuffer(cmdBuf, &cmdBufferBeginInfo);
     if(result!= VK_SUCCESS) throw std::runtime_error{"ERROR vkBeginCommandBuffer"};
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,plantPipeline);
+    vkCmdBeginRenderPass(cmdBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,plantPipeline);
 
     auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
-    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
 
 
     VkDeviceSize offsets[1] = { 0 };
 
-    vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit, 0, 1, &plantGeo.parts[0].verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit,plantGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmdBuf, 0, 1, &plantGeo.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(cmdBuf,plantGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 
     // Render multiple objects using different model matrices by dynamically offsetting into one uniform buffer
@@ -394,20 +395,20 @@ void DynamicsUBO::recordCommandBuffer() {
         // One dynamic offset per dynamic descriptor to offset into the ubo containing all model matrices
         uint32_t dynamicOffset = j * static_cast<uint32_t>(dynamicAlignment);
         // Bind the descriptor set for rendering a mesh using the dynamic offset
-        vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, plantPipelineLayout, 0, 2, plantDescriptorSets, 1, &dynamicOffset);
-        vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, plantGeo.parts[0].indices.size(), 1, 0, 0, 0);
+        vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, plantPipelineLayout, 0, 2, plantDescriptorSets, 1, &dynamicOffset);
+        vkCmdDrawIndexed(cmdBuf, plantGeo.parts[0].indices.size(), 1, 0, 0, 0);
     }
 
     // render ground
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS ,standardPipeline.pipeline);
-    vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit, 0, 1, &groundGeo.parts[0].verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit,groundGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, standardPipeline.pipelineLayout, 0, 2, standardPipeline.sets, 0, nullptr);
-    vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, groundGeo.parts[0].indices.size(), 1, 0, 0, 0);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS ,standardPipeline.pipeline);
+    vkCmdBindVertexBuffers(cmdBuf, 0, 1, &groundGeo.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(cmdBuf,groundGeo.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, standardPipeline.pipelineLayout, 0, 2, standardPipeline.sets, 0, nullptr);
+    vkCmdDrawIndexed(cmdBuf, groundGeo.parts[0].indices.size(), 1, 0, 0, 0);
 
 
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
-    if (vkEndCommandBuffer(activatedFrameCommandBufferToSubmit) != VK_SUCCESS) {
+    vkCmdEndRenderPass(cmdBuf);
+    if (vkEndCommandBuffer(cmdBuf) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
 }

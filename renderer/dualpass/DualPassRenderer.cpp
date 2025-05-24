@@ -169,7 +169,7 @@ void DualPassRenderer::render() {
 
 void DualPassRenderer::recordAll() {
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
-    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    const auto &cmdBuf = getMainCommandBuffer();
     UT_Fn::invoke_and_check("begin dual pass command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     opaqueScenePass->recordCommandBuffer();
     recordHairPass1();
@@ -195,11 +195,11 @@ void DualPassRenderer::recordHairPass1() {
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 2;
     renderPassBeginInfo.pClearValues =clearValues.data();
-
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
+    auto cmdBuf = getMainCommandBuffer();
+    vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
     cmdRenderHair();
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
+    vkCmdEndRenderPass(cmdBuf);
 }
 void DualPassRenderer::recordPass1DepthOnly() {
     auto [width, height]= simpleSwapchain.swapChainExtent;
@@ -213,10 +213,11 @@ void DualPassRenderer::recordPass1DepthOnly() {
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 1;
     renderPassBeginInfo.pClearValues = &cleaValue;
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
+    auto cmdBuf = getMainCommandBuffer();
+    vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline1);
     cmdRenderHair();
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
+    vkCmdEndRenderPass(cmdBuf);
 }
 
 
@@ -236,11 +237,11 @@ void DualPassRenderer::recordHairPass2() {
     renderPassBeginInfo.renderArea.extent.height = height;
     renderPassBeginInfo.clearValueCount = 2;
     renderPassBeginInfo.pClearValues = clearValues.data();
-
-    vkCmdBeginRenderPass(activatedFrameCommandBufferToSubmit, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
+    auto cmdBuf = getMainCommandBuffer();
+    vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS , hairPipeline2);
     cmdRenderHair();
-    vkCmdEndRenderPass(activatedFrameCommandBufferToSubmit);
+    vkCmdEndRenderPass(cmdBuf);
 
 }
 
@@ -248,13 +249,14 @@ void DualPassRenderer::cmdRenderHair() {
     VkDeviceSize offsets[1] = { 0 };
     const auto viewport = FnCommand::viewport(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
     const auto scissor = FnCommand::scissor(simpleSwapchain.swapChainExtent.width, simpleSwapchain.swapChainExtent.height );
-    vkCmdSetViewport(activatedFrameCommandBufferToSubmit, 0, 1, &viewport);
-    vkCmdSetScissor(activatedFrameCommandBufferToSubmit,0, 1, &scissor);
-    vkCmdBindDescriptorSets(activatedFrameCommandBufferToSubmit, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
+    auto cmdBuf = getMainCommandBuffer();
+    vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+    vkCmdSetScissor(cmdBuf,0, 1, &scissor);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, dualPipelineLayout,
 0, 1, &hairDescSets[currentFlightFrame], 0, nullptr);
-    vkCmdBindVertexBuffers(activatedFrameCommandBufferToSubmit, 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
-    vkCmdBindIndexBuffer(activatedFrameCommandBufferToSubmit,hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(activatedFrameCommandBufferToSubmit, hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
+    vkCmdBindVertexBuffers(cmdBuf, 0, 1, &hairLoader.parts[0].verticesBuffer, offsets);
+    vkCmdBindIndexBuffer(cmdBuf,hairLoader.parts[0].indicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(cmdBuf, hairLoader.parts[0].indices.size(), 1, 0, 0, 0);
 
 }
 

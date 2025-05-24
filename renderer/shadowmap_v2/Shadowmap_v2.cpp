@@ -12,9 +12,10 @@
 LLVK_NAMESPACE_BEGIN
     Shadowmap_v2::Shadowmap_v2() {
     mainCamera.mPosition = glm::vec3(15,20,192);
+    const VkCommandBuffer &cmdBuf = getMainCommandBuffer();
     shadowMapPass = std::make_unique<ShadowMapPass>(this,
         &descPool,
-        &activatedFrameCommandBufferToSubmit);
+        &cmdBuf);
     scenePass = std::make_unique<ScenePass>(this,&descPool);
     lightPos = {281.654, 120,316.942};
 }
@@ -112,7 +113,7 @@ void Shadowmap_v2::updateUniformBuffers() {
 void Shadowmap_v2::recordCommandBuffer() {
     //vkResetCommandBuffer(activatedFrameCommandBufferToSubmit,/*VkCommandBufferResetFlagBits*/ 0); //0: command buffer reset
     auto cmdBeginInfo = FnCommand::commandBufferBeginInfo();
-    const auto &cmdBuf = activatedFrameCommandBufferToSubmit;
+    const auto &cmdBuf = getMainCommandBuffer();
     UT_Fn::invoke_and_check("begin shadow command", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
     shadowMapPass->recordCommandBuffer();
     scenePass->recordCommandBuffer();
