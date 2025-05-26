@@ -2,8 +2,8 @@
 #extension GL_ARB_viewport_array : enable
 
 layout(constant_id = 0 ) const int VIEWPORTS_NUM = 2;
-layout(triangles, invocations = 2) in;
-layout(triangle_strip, max_vertices = 3 ) out;
+layout (triangles, invocations = 2) in;
+layout (triangle_strip, max_vertices = 3) out;
 
 layout (set=0, binding=0) uniform UBO{
     mat4 proj[2];

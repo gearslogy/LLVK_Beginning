@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by liuya on 4/8/2025.
 //
 
@@ -8,7 +8,7 @@
 LLVK_NAMESPACE_BEGIN
 
 void MultiViewPorts::prepare() {
-    mainCamera.mPosition = glm::vec3(0.0f, 5.0f, 20.0f);
+    mainCamera.mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     // Ready pool
@@ -62,7 +62,7 @@ void MultiViewPorts::loadGeometry() {
     treeLeaves.diff.create(texRoot/"leaves_D.png", colorSampler);
     treeLeaves.nrm.create(texRoot/"leaves_NRS.png", colorSampler);
 
-    treeTrunk.diff.create(texRoot/"trunk_D2.png", colorSampler);
+    treeTrunk.diff.create(texRoot/"trunk_D.png", colorSampler);
     treeTrunk.nrm.create(texRoot/"trunk_NR.TGA", colorSampler);
 
 }
@@ -76,30 +76,31 @@ void MultiViewPorts::prepareUBOs() {
 void MultiViewPorts::updateUBOs() {
     // left is perspective view
     auto [width, height] =  getSwapChainExtent();
-    mainCamera.mAspect = static_cast<float>(width/2) / static_cast<float>(height);
-    auto &proj0 = ubo.proj[0];
-    auto &modelView0 = ubo.modelView[0];
+    mainCamera.mAspect = (static_cast<float>(width)/2 ) / static_cast<float>(height);
+    //std::cout << "aspect:" <<mainCamera.mAspect << std::endl;
+    auto &proj0 = ubo.proj[1];
+    auto &modelView0 = ubo.modelView[1];
     proj0 = mainCamera.projection();
     proj0[1][1] *= -1;
     modelView0 = glm::mat4(1.0f) * mainCamera.view();
 
 
     // --- RIGHT VIEW (Top View, Orthographic) ---
-    auto &proj1 = ubo.proj[1];
-    auto &modelView1 = ubo.modelView[1];
+    auto &proj1 = ubo.proj[0];
+    auto &modelView1 = ubo.modelView[0];
     // Orthographic projection (adjust bounds as needed)
     float halfWidth = 10.0f;  // Example: covers -10 to 10 in X and Z
     float halfHeight = halfWidth * (height / (width / 2.0f));  // Maintain aspect ratio
     proj1 = glm::ortho(
         -halfWidth, halfWidth,   // Left, Right
         -halfHeight, halfHeight, // Bottom, Top
-        0.1f, 100.0f             // Near, Far
+        0.1f, 10.0f             // Near, Far
     );
     proj1[1][1] *= -1;
     modelView1 = glm::lookAt(glm::vec3(0, 20, 0),
         glm::vec3(0, 0, 0),
         glm::vec3(0, 0, 1));
-
+    ubo.lightPos = {0,30,0,0};
     for (auto & uboBuffer : uboBuffers) {
         memcpy(uboBuffer.mapped, &ubo, sizeof(UBO));
     }
@@ -201,18 +202,20 @@ void MultiViewPorts::recordCommandBuffer() {
         clearValues);
     UT_Fn::invoke_and_check("Rendering Error", vkBeginCommandBuffer, cmdBuf, &cmdBeginInfo);
 
-    // set viewports
-    VkViewport viewports[VIEWPORTS_NUM]{};
-    VkRect2D   scissors[VIEWPORTS_NUM]{};
-    viewports[0] = FnCommand::viewport(width/2,height,0,0); // LEFT
-    viewports[1] = FnCommand::viewport(width/2,height, width/2, height); // RIGHT
-    scissors[0] = FnCommand::scissor(width/2,height,0,0); // left
-    scissors[1] = FnCommand::scissor(width/2,height,width/2,0); // right
+    // set viewports  0 = right(TOP), 1 = left(perspective)
+    VkViewport viewports[2]{};
+    VkRect2D   scissors[2]{};
+
+    viewports[0] = FnCommand::viewport(width/2, height, width/2, 0); // right TOP view
+    viewports[1] = FnCommand::viewport(width/2, height, 0, 0);       // left perspective view
+
+    scissors[0] = FnCommand::scissor(width/2, height, width/2, 0); // right TOP view
+    scissors[1] = FnCommand::scissor(width/2, height, 0, 0);       // left perspective view
 
     //<1> ------------   render secene ------
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdSetViewport(cmdBuf, 0, VIEWPORTS_NUM, viewports );
-    vkCmdSetScissor(cmdBuf,0, VIEWPORTS_NUM, scissors);
+    vkCmdSetViewport(cmdBuf, 0, 2, viewports );
+    vkCmdSetScissor(cmdBuf,0, 2, scissors);
     // ---------------------------  RENDER PASS ---------------------------
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &grid.sets[currentFlightFrame], 0 , nullptr);

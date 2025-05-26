@@ -177,7 +177,7 @@ protected:
 
     // this can direct present
     void submitMainCommandBuffer() {
-        submitTask(commandBuffers[imageIndex],
+        submitTask(commandBuffers[currentFlightFrame],
              imageAvailableSemaphores[currentFlightFrame],
             renderFinishedSemaphores[currentFlightFrame],
             inFlightFences[currentFlightFrame]);
