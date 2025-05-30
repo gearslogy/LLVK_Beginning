@@ -8,7 +8,7 @@
 LLVK_NAMESPACE_BEGIN
 
 void MultiViewPorts::prepare() {
-    mainCamera.mPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    mainCamera.mPosition = glm::vec3(0.0f, 5.0f, 20.0f);
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     // Ready pool
