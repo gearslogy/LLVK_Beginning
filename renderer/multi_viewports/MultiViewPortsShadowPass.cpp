@@ -5,10 +5,13 @@
 #include "MultiViewPortsShadowPass.h"
 #include "MultiViewPorts.h"
 LLVK_NAMESPACE_BEGIN
-
-void MultiViewPortsShadowPass::drawObjects() {
-
+MultiViewPortsShadowPass::MultiViewPortsShadowPass(const MultiViewPorts *renderer):SimpleShadowPass(renderer)
+{
 }
 
+void MultiViewPortsShadowPass::drawObjects() {
+    auto *renderer = static_cast<const MultiViewPorts*>(pRenderer);
+    renderer->drawObjects();
+}
 
 LLVK_NAMESPACE_END

@@ -8,24 +8,31 @@
 #include "VulkanRenderer.h"
 
 LLVK_NAMESPACE_BEGIN
-
-void SimpleShadowPass::prepare() {
+SimpleShadowPass::SimpleShadowPass(const VulkanRenderer *renderer):pRenderer(renderer) {
 	const auto &device = pRenderer->getMainDevice().logicalDevice;
-    // 1. create attachment
+	// 1. create attachment
 	setRequiredObjectsByRenderer(pRenderer, shadowFramebuffer.depthAttachment);
 	shadowFramebuffer.depthSampler = FnImage::createDepthSampler(device);
 	shadowFramebuffer.depthAttachment.createDepth32(size, size, shadowFramebuffer.depthSampler);
-	// 2. render pass
-	prepareRenderPass();
-	// 3.framebuffer create
-	prepareFramebuffer();
-	// 4. UBO
-	prepareUBO();
-	// 5. dest sets
-	prepareDescSets();
-	// 6. pipe
-	preparePipeline();
 }
+SimpleShadowPass::~SimpleShadowPass()  = default;
+
+void SimpleShadowPass::cleanup() {
+	std::cout << "--------------clean up simple shadow pass\n";
+	const auto device = pRenderer->getMainDevice().logicalDevice;
+	vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
+	// cleanup ubo
+	UT_Fn::cleanup_range_resources(uboBuffers);
+	// cleanup framebuffer
+	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
+	UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
+	UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
+	// cleanup pipeline
+	UT_Fn::cleanup_pipeline(device, offscreenPipeline);
+}
+
+
+
 void SimpleShadowPass::prepareFramebuffer() {
 	const auto &device = pRenderer->getMainDevice().logicalDevice;
 	VkFramebufferCreateInfo framebufferInfo = {};
@@ -40,21 +47,6 @@ void SimpleShadowPass::prepareFramebuffer() {
 }
 
 
-void SimpleShadowPass::cleanup() {
-	const auto device = pRenderer->getMainDevice().logicalDevice;
-	vkDestroyFramebuffer(device, shadowFramebuffer.framebuffer, nullptr);
-	// cleanup ubo
-	UT_Fn::cleanup_range_resources(uboBuffers);
-	// cleanup framebuffer
-	UT_Fn::cleanup_resources(shadowFramebuffer.depthAttachment);
-	UT_Fn::cleanup_render_pass(device, shadowFramebuffer.renderPass);
-	UT_Fn::cleanup_sampler(device, shadowFramebuffer.depthSampler);
-	// cleanup pipeline
-	UT_Fn::cleanup_pipeline(device, offscreenPipeline);
-	UT_Fn::cleanup_descriptor_set_layout(device, offscreenDescriptorSetLayout);
-	UT_Fn::cleanup_pipeline_layout(device, offscreenPipelineLayout);
-
-}
 
 void SimpleShadowPass::prepareRenderPass() {
 	VkAttachmentDescription attachmentDescription{};
@@ -112,6 +104,7 @@ void SimpleShadowPass::prepareRenderPass() {
     UT_Fn::invoke_and_check("Error created render pass",vkCreateRenderPass, pRenderer->getMainDevice().logicalDevice, &renderPassCreateInfo, nullptr, &shadowFramebuffer.renderPass);
 }
 
+/*
 void SimpleShadowPass::prepareDescSets() {
 	const auto &device = pRenderer->getMainDevice().logicalDevice;
 	assert(pDescImageInfo==nullptr);
@@ -141,10 +134,11 @@ void SimpleShadowPass::prepareDescSets() {
 	const std::array offscreenSetLayouts{offscreenDescriptorSetLayout};
 	VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(offscreenSetLayouts); // ONLY ONE SET
 	UT_Fn::invoke_and_check("ERROR create offscreen pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &offscreenPipelineLayout );
-}
+}*/
 
 
-void SimpleShadowPass::preparePipeline() {
+void SimpleShadowPass::preparePipeline(const VkPipelineLayout &pl) {
+	pipelineLayout = pl;
 	const auto &device = pRenderer->getMainDevice().logicalDevice;
 	// we only have one set.
 	auto set0_ubo_binding0 = FnDescriptor::setLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_SHADER_STAGE_VERTEX_BIT);         // ubo
@@ -154,7 +148,7 @@ void SimpleShadowPass::preparePipeline() {
 	auto pipelineCache=  pRenderer->getPipelineCache();
 	pipelinePSOs.requiredObjects.device = device; // Required Object first
 	pipelinePSOs.asDepth("shaders/GSM_vert.spv", "shaders/GSM_frag.spv", shadowFramebuffer.renderPass);
-	pipelinePSOs.setPipelineLayout(offscreenPipelineLayout);
+	pipelinePSOs.setPipelineLayout(pl);
 	pipelinePSOs.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo(HLP::VTXAttrib::VTXFmt_P_N_T_UV0_BindingsDesc,
                                                                               HLP::VTXAttrib::VTXFmt_P_N_T_UV0_AttribsDesc);
 	// now create our pipeline

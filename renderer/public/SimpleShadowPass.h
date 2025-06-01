@@ -12,17 +12,28 @@ LLVK_NAMESPACE_BEGIN
 
 class VulkanRenderer;
 struct SimpleShadowPass {
-    VulkanRenderer *pRenderer;
-    VkDescriptorPool *pDescPool;
-    VkDescriptorImageInfo *pDescImageInfo{};
-
+    explicit SimpleShadowPass(const VulkanRenderer * renderer);
+    virtual ~SimpleShadowPass();
+    const VulkanRenderer *pRenderer;
     static constexpr auto size = 2048;
-    void prepare();
-    void cleanup();
+
+    // prepare order:
+    /*
+    // 2. render pass
+    prepareRenderPass();
+    // 3.framebuffer create
+    prepareFramebuffer();
+    // 4. UBO
+    prepareUBO();
+    // 5. dest sets
+    prepareDescSetsAndPipelineLayout(); // DROPed use MainRenderer resources
+    // 6. pipe
+    preparePipeline();
+     */
     virtual void drawObjects() = 0;
     void setLightPosition(glm::vec3 P) { keyLightPos = P;}
     void updateUBO();
-
+    void cleanup();
 
     struct {
         VmaAttachment depthAttachment{};
@@ -33,28 +44,23 @@ struct SimpleShadowPass {
 
     // generated
     glm::mat4 depthMVP{};
-    HLP::FramedUBO uboBuffers{};
+    HLP::FramedUBO uboBuffers{}; // for depthMVP
 
-private:
+
     void prepareRenderPass();
     void prepareFramebuffer();
-    void preparePipeline();
+    void preparePipeline(const VkPipelineLayout &pl);
     void prepareUBO();
-    void prepareDescSets();
-
     void recordCommandBuffer();
-
+private:
     // param to setting
     float near{0.1};
     float far{1000};
-    HLP::FramedSet sets{};
     glm::vec3 keyLightPos{};
 
-
+    VkPipelineLayout pipelineLayout{};
     UT_GraphicsPipelinePSOs pipelinePSOs{};
     VkPipeline offscreenPipeline{};
-    VkDescriptorSetLayout offscreenDescriptorSetLayout{}; // only one set=0
-    VkPipelineLayout offscreenPipelineLayout{};   //only 1 set: binding=0 UBO depthMVP, binding=1 colormap. use .a discard
 
 };
 

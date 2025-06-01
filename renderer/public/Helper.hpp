@@ -27,6 +27,12 @@ namespace HLP {
     using FramedSet = std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT>;
     using FramedSSBO = std::array<VmaSSBOBuffer, MAX_FRAMES_IN_FLIGHT>;
 
+    // for every render geometry
+    struct xform {
+        glm::mat4 model{1.0};
+        glm::mat4 preModel{1.0};
+    };
+
     namespace VTXAttrib{
         inline constexpr std::array<VkVertexInputAttributeDescription, 4> VTXFmt_P_N_T_UV0_AttribsDesc{
                 {

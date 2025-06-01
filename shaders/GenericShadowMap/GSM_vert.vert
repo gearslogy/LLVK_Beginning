@@ -8,19 +8,20 @@ layout(location=3) in vec2 uv0;
 // -- OUT --
 layout(location=0) out vec2 uv;
 
-// the binding at 3
+
 layout (binding=3) uniform UBO{
     mat4 depth_mvp;
 }ubo;
 
-/*
+
 layout(push_constant) uniform PushConstant {
     mat4 model;
     mat4 preModel;
-} pcv;*/
+} pcv;
 
 
 void main(){
-    vec4 worldPos = ubo.depth_mvp * vec4(P, 1.0);
+    vec4 worldPos = ubo.depth_mvp * pcv.model * vec4(P, 1.0);
     gl_Position = worldPos;
+    uv= uv0;
 }

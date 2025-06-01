@@ -6,90 +6,90 @@
 	"accessors":[
 		{
 			"bufferView":0,
-			"componentType":5123,
-			"count":2166,
+			"componentType":5125,
+			"count":58806,
 			"type":"SCALAR",
 			"min":[0
 			],
-			"max":[399
+			"max":[9999
 			]
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":400,
+			"count":10000,
 			"type":"VEC3",
-			"min":[-25,0,-25
+			"min":[-50,-1.59129202,-50
 			],
-			"max":[25,0,25
+			"max":[49.9999924,1.74700546,49.9999924
 			]
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":400,
+			"count":10000,
 			"type":"VEC3",
-			"min":[0,1,0
+			"min":[-0.497892976,0.783424437,-0.482455879
 			],
-			"max":[0,1,0
+			"max":[0.559419096,0.99999845,0.589226186
 			]
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":400,
+			"count":10000,
 			"type":"VEC4",
-			"min":[1,0,0,1
+			"min":[0.85027504,-0.526338041,-0.0300137326,1
 			],
-			"max":[1,0,0,1
+			"max":[0.99999994,0.516208351,0.0232900772,1
 			]
 		},
 		{
 			"bufferView":4,
 			"componentType":5126,
-			"count":400,
+			"count":10000,
 			"type":"VEC2",
-			"min":[0,0
+			"min":[-2.5,-6.49999905
 			],
-			"max":[1,1
+			"max":[7.49999905,3.5
 			]
 		}
 	],
 	"buffers":[
 		{
 			"uri":"grid_data.bin",
-			"byteLength":23532,
+			"byteLength":715224,
 			"name":"main_buffer"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":4332,
+			"byteLength":235224,
 			"target":34963
 		},
 		{
 			"buffer":0,
-			"byteOffset":4332,
-			"byteLength":4800,
+			"byteOffset":235224,
+			"byteLength":120000,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteOffset":9132,
-			"byteLength":4800,
+			"byteOffset":355224,
+			"byteLength":120000,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteOffset":13932,
-			"byteLength":6400,
+			"byteOffset":475224,
+			"byteLength":160000,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteOffset":20332,
-			"byteLength":3200,
+			"byteOffset":635224,
+			"byteLength":80000,
 			"target":34962
 		}
 	],
@@ -112,7 +112,7 @@
 					"indices":0
 				}
 			],
-			"name":"uvquickshade3"
+			"name":"mountain1"
 		}
 	],
 	"scenes":[

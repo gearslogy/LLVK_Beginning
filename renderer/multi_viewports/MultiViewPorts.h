@@ -12,14 +12,21 @@
 
 
 LLVK_NAMESPACE_BEGIN
+
+struct MultiViewPortsShadowPass;
 class MultiViewPorts : public VulkanRenderer{
 public:
+    MultiViewPorts();
+    ~MultiViewPorts() override;
     static constexpr uint32_t VIEWPORTS_NUM = 2;
+    static constexpr uint32_t push_constant_stage = VK_SHADER_STAGE_ALL;
     struct UBO {
         glm::mat4 proj[VIEWPORTS_NUM];
-        glm::mat4 modelView[VIEWPORTS_NUM];
+        glm::mat4 view[VIEWPORTS_NUM];
+        glm::vec4 camPos[VIEWPORTS_NUM];
         glm::vec4 lightPos;
-    }ubo;
+    }ubo{};
+
     struct Geometry{
         using vertex_t = VTXFmt_P_N_T_UV0;
         GLTFLoaderV2::Loader<vertex_t> geoLoader;
@@ -27,6 +34,7 @@ public:
         VmaUBOTexture nrm; // normal rough metallic
         HLP::FramedSet sets;
         std::string name; // asset name for debug
+        HLP::xform xform{};
         void cleanup() {
             diff.cleanup();
             nrm.cleanup();
@@ -37,6 +45,7 @@ public:
     void prepare() override;
     void render() override;
     void cleanupObjects() override;
+    void drawObjects() const;
 private:
     void prepareUBOs();
     void preparePipeline();
@@ -45,6 +54,7 @@ private:
 private:
     VkDescriptorPool descPool{};
     UT_GraphicsPipelinePSOs pso{};
+
     void recordCommandBuffer();
     void loadGeometry();
     Geometry grid{};
@@ -59,6 +69,7 @@ private:
     Camera leftCam{};
     Camera rightCam{};
     Camera topCam{};
+    std::unique_ptr<MultiViewPortsShadowPass> shadowPass;
 };
 LLVK_NAMESPACE_END
 

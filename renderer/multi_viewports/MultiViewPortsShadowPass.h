@@ -8,8 +8,10 @@
 #include "renderer/public/SimpleShadowPass.h"
 
 LLVK_NAMESPACE_BEGIN
-class MultiViewPortsShadowPass : public SimpleShadowPass {
+class MultiViewPorts;
+struct MultiViewPortsShadowPass final : SimpleShadowPass {
 public:
+    explicit MultiViewPortsShadowPass(const MultiViewPorts *renderer);
     void drawObjects() override;
 };
 
