@@ -4,13 +4,17 @@ Learn Vulkan from scratch
 * None of the assets can be used commercially
 * Except houdini works commercially
 
-## features
+### features
+### doing...
+* mesh shader
+* SSAO
+* cpu frustum culling
+
 ### todo
 * custom resolve ktx2 files
 * 3d texture
 * lod system
 * font rendering
-* subpass
 * computeshader image/particle system/fluid simulation
 * IMGUI
 * click mouse event: pick object based on BVH traveling
@@ -20,15 +24,16 @@ Learn Vulkan from scratch
 * GDC grass system
 * GPU path tracing
 * CPU and GPU culling
-* mesh shader
-* SSR/SSAO/GTAO/TAA/FSR/DLSS
+* SSR/GTAO/TAA/FSR/DLSS
 * terrain
 * multi threading rendering
 * runtime virtual textures
-* viewport array
+
 
 
 ### The following features have been implemented :
+* subpass
+* viewport array
 * vma memory management
 * spirv-reflection pipelinelayout or metaprogramming for pipelineLayout
 * pso object
