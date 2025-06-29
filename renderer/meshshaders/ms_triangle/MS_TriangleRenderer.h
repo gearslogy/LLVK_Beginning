@@ -17,13 +17,13 @@ protected:
     void render() override;
     void updateUBO();
 private:
+    void createPipeline();
     HLP::MVP uboData{};
     HLP::FramedUBO uboFramedUBO{};
     HLP::FramedSet sets{};
 
     VkDescriptorPool descPool{};
     VkPipeline pipeline{};
-    VkDescriptorSet descSet{};
     VkDescriptorSetLayout descSetLayout{};
     VkPipelineLayout pipelineLayout{};
     UT_GraphicsPipelinePSOs pso{};

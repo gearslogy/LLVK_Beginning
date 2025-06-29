@@ -31,13 +31,29 @@ void MS_TriangleRenderer::prepare(){
     }
     updateUBO();
 
-
-
     // set layout
+    using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO>; // MVP
+    using descPos = MetaDesc::desc_binding_position_t<0>;
+    using descBindingUsage = MetaDesc::desc_binding_usage_t< VK_SHADER_STAGE_MESH_BIT_EXT>; // MVP
+    constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
+    const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
+    if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&descSetLayout) != VK_SUCCESS) throw std::runtime_error("error create set0 layout");
     // set
+    std::array<VkDescriptorSetLayout,2> layouts = {descSetLayout, descSetLayout}; // must be two, because we USE MAX_FLIGHT_FRAME
+    auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
+    UT_Fn::invoke_and_check("create scene sets-0 error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, sets.data());
     // update set
+    namespace FnDesc = FnDescriptor;
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        std::array<VkWriteDescriptorSet,1> writes = {
+            FnDesc::writeDescriptorSet(sets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &uboFramedUBO[i].descBufferInfo),
+        };
+        vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+    }
     // pipeline layout
-    // pipeline
+    const std::array setLayouts{descSetLayout}; // just one set
+    VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
+    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
 
 }
 
@@ -48,6 +64,27 @@ void MS_TriangleRenderer::updateUBO() {
     uboData.model = glm::mat4(1.0f);
     memcpy(uboFramedUBO[getCurrentFlightFrame()].mapped, &uboData, sizeof(uboData));
 }
+void MS_TriangleRenderer::createPipeline() {
+    const auto &device = mainDevice.logicalDevice;
+    const auto &phyDevice = mainDevice.physicalDevice;
+    // pipeline
+    const auto meshMD = FnPipeline::createShaderModuleFromSpvFile("shaders/ms_triangle_mesh.spv",  device);    //shader modules
+    const auto taskMD = FnPipeline::createShaderModuleFromSpvFile("shaders/ms_triangle_task.spv",  device);
+    const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/ms_triangle_frag.spv",  device);
+    VkPipelineShaderStageCreateInfo meshMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_MESH_BIT_EXT, meshMD);    //shader stages
+    VkPipelineShaderStageCreateInfo taskMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_TASK_BIT_EXT, taskMD);
+    VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_TASK_BIT_EXT, fsMD);
+
+    pso.setShaderStages(meshMD_ssCIO, taskMD_ssCIO, fsMD_ssCIO);
+    pso.setPipelineLayout(pipelineLayout);
+    pso.setRenderPass(getMainRenderPass());
+
+
+    UT_GraphicsPipelinePSOs::createPipeline(device, pso, getPipelineCache(), pipeline);
+    UT_Fn::cleanup_shader_module(device,meshMD,taskMD,fsMD);
+}
+
+
 
 void MS_TriangleRenderer::render(){
     const auto &device = mainDevice.logicalDevice;
