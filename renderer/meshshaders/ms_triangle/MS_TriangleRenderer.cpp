@@ -4,27 +4,49 @@
 
 #include "MS_TriangleRenderer.h"
 #include "renderer/public/Helper.hpp"
+#include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
-void MS_TriangleRenderer::cleanupObjects(){
+    void MS_TriangleRenderer::cleanupObjects(){
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     UT_Fn::cleanup_descriptor_pool(device, descPool);
+    UT_Fn::cleanup_range_resources(uboFramedUBO);
     UT_Fn::cleanup_pipeline_layout(device, pipelineLayout);
     UT_Fn::cleanup_pipeline(device, pipeline);
     UT_Fn::cleanup_descriptor_set_layout(device, descSetLayout);
+
 }
 
 
 void MS_TriangleRenderer::prepare(){
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
+    vkCmdDrawMeshTasksEXT = reinterpret_cast<PFN_vkCmdDrawMeshTasksEXT>(vkGetDeviceProcAddr(device, "vkCmdDrawMeshTasksEXT"));
     HLP::createSimpleDescPool(device, descPool);
+
+    // ubo create
+    setRequiredObjectsByRenderer(this, uboFramedUBO);
+    for (auto &ubo: uboFramedUBO) {
+        ubo.createAndMapping(sizeof(HLP::MVP));
+    }
+    updateUBO();
+
+
+
     // set layout
     // set
     // update set
     // pipeline layout
     // pipeline
 
+}
+
+void MS_TriangleRenderer::updateUBO() {
+    uboData.proj = mainCamera.projection();
+    uboData.proj[1][1] *= -1;
+    uboData.view = mainCamera.view();
+    uboData.model = glm::mat4(1.0f);
+    memcpy(uboFramedUBO[getCurrentFlightFrame()].mapped, &uboData, sizeof(uboData));
 }
 
 void MS_TriangleRenderer::render(){

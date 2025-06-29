@@ -10,6 +10,12 @@
 #include "CustomVertexFormat.hpp"
 LLVK_NAMESPACE_BEGIN
 namespace HLP {
+    struct MVP {
+        glm::mat4 proj;
+        glm::mat4 view;
+        glm::mat4 model;
+    };
+
     inline void createSimpleDescPool(const VkDevice &device, VkDescriptorPool &descPool) {
         std::array<VkDescriptorPoolSize, 4> poolSizes  = {{
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 40 * MAX_FRAMES_IN_FLIGHT},
