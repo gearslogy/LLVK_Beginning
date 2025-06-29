@@ -41,7 +41,13 @@ private:
         const std::vector<const char*> &checkExtensions) ;
     static uint32_t getMaxPushConstantsSize(VkPhysicalDevice device);
 private:
-    inline static const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    inline static  std::vector<const char*> deviceExtensions = {
+        //// Extensions required by mesh shading
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_MESH_SHADER_EXTENSION_NAME,
+        VK_KHR_SPIRV_1_4_EXTENSION_NAME,
+        VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME// Required by VK_KHR_spirv_1_4
+    };
 };
 
 LLVK_NAMESPACE_END

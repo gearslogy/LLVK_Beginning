@@ -306,6 +306,8 @@ void VulkanRenderer::createInstance() {
         extensionNamesList.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);  // we will use here
     }
 
+    extensionNamesList.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);// Mesh shader support
+
     checkInstanceExtensionSupport(extensionNamesList);
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = DebugV2::CustomDebug::getCreateInfo();
@@ -490,6 +492,7 @@ void VulkanRenderer::draw() {
     render(); // call the pure virtual function(record command buffer)                         //1: command buffer new content
     // advanced
     currentFlightFrame = (currentFlightFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    std::cout << currentFlightFrame << std::endl;
 }
 
 VkPipelineCache VulkanRenderer::getPipelineCache() const {

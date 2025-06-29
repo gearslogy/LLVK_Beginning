@@ -76,23 +76,81 @@ void Device::createLogicDevice() {
     deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
     deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
     {
-        // bindless
-        VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, nullptr};
-        VkPhysicalDeviceFeatures2 deviceFeatures2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexingFeatures};
-        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
-        bool bindlessSupported = indexingFeatures.descriptorBindingPartiallyBound && indexingFeatures.runtimeDescriptorArray;
+        // Feature chain setup
+        VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+        indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
 
-        VkPhysicalDeviceFeatures2 deviceFeatures2Inject{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, nullptr};
-        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2Inject);
-        deviceCreateInfo.pNext = &deviceFeatures2Inject;
+        VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
+        meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+        VkPhysicalDeviceMultiviewFeaturesKHR multiviewFeatures{};
+        multiviewFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR fragmentShadingRateFeatures{};
+        fragmentShadingRateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+
+        VkPhysicalDeviceFeatures2 deviceFeatures2{};
+        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+        // Link the feature chain
+        deviceFeatures2.pNext = &meshShaderFeatures;
+        meshShaderFeatures.pNext = &multiviewFeatures;
+        multiviewFeatures.pNext = &fragmentShadingRateFeatures;
+        fragmentShadingRateFeatures.pNext = &indexingFeatures;
+
+        // Query supported features
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+
+        // Check bindless support
+        bool bindlessSupported = indexingFeatures.descriptorBindingPartiallyBound &&
+                                indexingFeatures.runtimeDescriptorArray;
+
+        // Check mesh shader support
+        bool meshShaderSupported = meshShaderFeatures.meshShader && meshShaderFeatures.taskShader;
+
+        // Check multiview support for mesh shaders
+        bool multiviewSupported = multiviewFeatures.multiview &&
+                                 meshShaderFeatures.multiviewMeshShader;
+
+        // Check fragment shading rate support
+        bool fragmentShadingRateSupported = fragmentShadingRateFeatures.primitiveFragmentShadingRate &&
+                                          meshShaderFeatures.primitiveFragmentShadingRateMeshShader;
+
+        // Enable features if supported
+        if (meshShaderSupported) {
+            meshShaderFeatures.meshShader = VK_TRUE;
+            meshShaderFeatures.taskShader = VK_TRUE;
+        }
+
+        if (multiviewSupported && meshShaderSupported && meshShaderFeatures.multiviewMeshShader) {
+            multiviewFeatures.multiview = VK_TRUE;
+            meshShaderFeatures.multiviewMeshShader = VK_TRUE;
+        }
+
+        if (fragmentShadingRateSupported && meshShaderSupported &&
+            meshShaderFeatures.primitiveFragmentShadingRateMeshShader) {
+            fragmentShadingRateFeatures.primitiveFragmentShadingRate = VK_TRUE;
+            meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_TRUE;
+        }
+
+        deviceCreateInfo.pNext = &deviceFeatures2;
+
+        // Log supported features
         if (bindlessSupported) {
-            deviceFeatures2Inject.pNext = &indexingFeatures;
             std::cout << "[[Device::getPhysicalDevice]]: Bindless supported" << std::endl;
         }
-        if (deviceFeatures2Inject.features.geometryShader) {
+        if (deviceFeatures2.features.geometryShader) {
             std::cout << "[[Device::getPhysicalDevice]]: Geometry shader supported" << std::endl;
         }
-
+        if (meshShaderSupported) {
+            std::cout << "[[Device::getPhysicalDevice]]: Mesh shader supported" << std::endl;
+        }
+        if (multiviewSupported) {
+            std::cout << "[[Device::getPhysicalDevice]]: Multiview supported" << std::endl;
+        }
+        if (fragmentShadingRateSupported) {
+            std::cout << "[[Device::getPhysicalDevice]]: Primitive fragment shading rate supported" << std::endl;
+        }
     }
 
     auto result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
@@ -146,7 +204,7 @@ bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vec
             return false;
         });
         if(find != propList.end()){
-            std::cout << "vulkan support device extension:" << checkExt << std::endl;
+            std::cout << "[[Device::checkDeviceExtensionSupport]]: vulkan support device extension:" << checkExt << std::endl;
             accumCheck +=1;
         }
         else{

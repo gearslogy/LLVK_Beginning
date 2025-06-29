@@ -18,6 +18,8 @@ protected:
 private:
     VkDescriptorPool descPool{};
     VkPipeline pipeline{};
+    VkDescriptorSet descSet{};
+    VkDescriptorSetLayout descSetLayout{};
     VkPipelineLayout pipelineLayout{};
     UT_GraphicsPipelinePSOs pso{};
 
