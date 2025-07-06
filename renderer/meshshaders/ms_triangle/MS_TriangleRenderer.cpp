@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by liuya on 6/9/2025.
 //
 
@@ -22,27 +22,27 @@ void MS_TriangleRenderer::prepare(){
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     vkCmdDrawMeshTasksEXT = reinterpret_cast<PFN_vkCmdDrawMeshTasksEXT>(vkGetDeviceProcAddr(device, "vkCmdDrawMeshTasksEXT"));
+    // 0 : create desc pool
     HLP::createSimpleDescPool(device, descPool);
-
-    // ubo create
+    // 1: ubo create
     setRequiredObjectsByRenderer(this, uboFramedUBO);
     for (auto &ubo: uboFramedUBO) {
         ubo.createAndMapping(sizeof(HLP::MVP));
     }
     updateUBO();
 
-    // set layout
+    // 2: set layout
     using descTypes = MetaDesc::desc_types_t<MetaDesc::UBO>; // MVP
     using descPos = MetaDesc::desc_binding_position_t<0>;
     using descBindingUsage = MetaDesc::desc_binding_usage_t< VK_SHADER_STAGE_MESH_BIT_EXT>; // MVP
     constexpr auto sceneDescBindings = MetaDesc::generateSetLayoutBindings<descTypes,descPos,descBindingUsage>();
     const auto sceneSetLayoutCIO = FnDescriptor::setLayoutCreateInfo(sceneDescBindings);
     if (vkCreateDescriptorSetLayout(device,&sceneSetLayoutCIO,nullptr,&descSetLayout) != VK_SUCCESS) throw std::runtime_error("error create set0 layout");
-    // set
+    // 3: set
     std::array<VkDescriptorSetLayout,2> layouts = {descSetLayout, descSetLayout}; // must be two, because we USE MAX_FLIGHT_FRAME
     auto sceneSetAllocInfo = FnDescriptor::setAllocateInfo(descPool, layouts );
     UT_Fn::invoke_and_check("create scene sets-0 error", vkAllocateDescriptorSets,device, &sceneSetAllocInfo, sets.data());
-    // update set
+    // 4: update set
     namespace FnDesc = FnDescriptor;
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         std::array<VkWriteDescriptorSet,1> writes = {
@@ -50,11 +50,12 @@ void MS_TriangleRenderer::prepare(){
         };
         vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
     }
-    // pipeline layout
+    // 5: pipeline layout
     const std::array setLayouts{descSetLayout}; // just one set
     VkPipelineLayoutCreateInfo pipelineLayoutCIO = FnPipeline::layoutCreateInfo(setLayouts);
-    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout,device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
-
+    UT_Fn::invoke_and_check("ERROR create deferred pipeline layout",vkCreatePipelineLayout, device, &pipelineLayoutCIO,nullptr, &pipelineLayout );
+    // 6: pipeline
+    createPipeline();
 }
 
 void MS_TriangleRenderer::updateUBO() {
@@ -78,7 +79,8 @@ void MS_TriangleRenderer::createPipeline() {
     pso.setShaderStages(meshMD_ssCIO, taskMD_ssCIO, fsMD_ssCIO);
     pso.setPipelineLayout(pipelineLayout);
     pso.setRenderPass(getMainRenderPass());
-
+    pso.vertexInputStageCIO.pVertexAttributeDescriptions = nullptr;
+    pso.vertexInputStageCIO.pVertexBindingDescriptions = nullptr;
 
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, getPipelineCache(), pipeline);
     UT_Fn::cleanup_shader_module(device,meshMD,taskMD,fsMD);
@@ -91,8 +93,9 @@ void MS_TriangleRenderer::render(){
     const auto &phyDevice = mainDevice.physicalDevice;
     const auto &cmdBuf = getMainCommandBuffer();
 
-
-    // Record command buffer info
+    // 0 : update UBO
+    updateUBO();
+    // 1 : Record command buffer info
     VkCommandBufferBeginInfo beginInfo = FnCommand::commandBufferBeginInfo();
     auto [width, height] = getSwapChainExtent();
     // clear
@@ -116,10 +119,27 @@ void MS_TriangleRenderer::render(){
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         // RECORD COMMAND BUFFER
-        vkCmdDrawMeshTasksEXT(cmdBuf, 1, 1, 1);
+        vkCmdDrawMeshTasksEXT(cmdBuf, 1, 1, 1); // 运行 1 个任务着色器工作组
+        /*
+         * 1:
+         * vkCmdDrawMeshTasksEXT(commandBuffer, 3, 1, 1); // 相当于 EmitMeshTasksEXT(3, 1, 1)
+         这样就不用task shader了。我们当前task shader是：
+            #version 460 core
+            #extension GL_EXT_mesh_shader : require
+            void main(){
+                EmitMeshTasksEXT(3,1,1); // 该任务着色器分发 3 个网格工作组,	3 个网格着色器运行
+            }
+         2: 所以说task shader不一定非得要存在。
+         */
         vkCmdEndRenderPass(cmdBuf);
     }
     UT_Fn::invoke_and_check("failed to record command buffer!",vkEndCommandBuffer,cmdBuf );
+
+    // 2: submit command buffer
+    submitMainCommandBuffer();
+    // 3 : present
+    presentMainCommandBufferFrame();
+
 }
 
 

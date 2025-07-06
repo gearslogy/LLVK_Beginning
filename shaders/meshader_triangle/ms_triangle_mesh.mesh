@@ -1,0 +1,57 @@
+#version 460 core
+#extension GL_EXT_mesh_shader : require
+layout (binding =0 ) uniform UBO{
+    mat4 proj;
+    mat4 view;
+    mat4 model;
+}ubo;
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 3, max_primitives = 1) out;
+
+
+layout(location = 0) out VertexOutput
+{
+	vec4 color;
+} vertexOutput[];
+
+// 定义一些buffers。 输出到fragment
+const vec4[3] positions = {
+	vec4( 0.0, -1.0, 0.0, 1.0),
+	vec4(-1.0,  1.0, 0.0, 1.0),
+	vec4( 1.0,  1.0, 0.0, 1.0)
+};
+
+const vec4[3] colors = {
+	vec4(0.0, 1.0, 0.0, 1.0),
+	vec4(0.0, 0.0, 1.0, 1.0),
+	vec4(1.0, 0.0, 0.0, 1.0)
+};
+
+void main()
+{
+    // 如果 EmitMeshTasksEXT(3, 1, 1)，则gl_LocalInvocationID的值可能是 0, 1, 2。
+	uint iid = gl_LocalInvocationID.x;
+
+
+    // 沿着Z 便宜 这些三角形。注意task是EmitMeshTasksEXT(3,1,1)
+    // mesh shader会运行三次
+	vec4 offset = vec4(0.0, 0.0, gl_GlobalInvocationID.x, 0.0);
+	SetMeshOutputsEXT(3, 1);  // 3 个顶点（对应 max_vertices=3）。1 个图元（对应 max_primitives=1）。
+
+
+    // 透视
+	mat4 mvp = ubo.projection * ubo.view * ubo.model;
+	gl_MeshVerticesEXT[0].gl_Position = mvp * (positions[0] + offset);
+	gl_MeshVerticesEXT[1].gl_Position = mvp * (positions[1] + offset);
+	gl_MeshVerticesEXT[2].gl_Position = mvp * (positions[2] + offset);
+
+    // 顶点色
+	vertexOutput[0].color = colors[0];
+	vertexOutput[1].color = colors[1];
+	vertexOutput[2].color = colors[2];
+
+	// 定义三角形图元的顶点索引（0 → 1 → 2）。
+	// gl_PrimitiveTriangleIndicesEXT 是内置数组，存储图元的索引数据
+	gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] =  uvec3(0, 1, 2);
+}

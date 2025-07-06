@@ -1,0 +1,16 @@
+#version 460 core
+#extension GL_EXT_mesh_shader : require
+
+
+void main(){
+    // 1：任务着色器（Task Shader）是可选的，但网格着色器（Mesh Shader）是必需的。
+    // 2：该任务着色器分发 3 个网格工作组,	3 个网格着色器运行，告诉 Vulkan 要运行 3 个网格工作组（X=3, Y=1, Z=1）。
+    EmitMeshTasksEXT(3,1,1); // 会让 mesh shader运行三次
+    // 3：任务着色器可用于动态 LOD（细节级别）或视锥剔除，根据场景复杂度动态调整网格工作组数量。但本例是静态分发。
+    // 4: Limit:参数范围需在设备限制内（如 maxMeshWorkGroupCount）。
+}
+
+// if no task shader:
+/* C++ 可以指定：
+vkCmdDrawMeshTasksEXT(commandBuffer, 3, 1, 1); // 相当于 EmitMeshTasksEXT(3, 1, 1)
+*/
