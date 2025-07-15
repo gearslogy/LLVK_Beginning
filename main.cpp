@@ -24,6 +24,7 @@
 #include "renderer/tank_billboard/tank_billboard.h"
 #include "renderer/subpass/SubPassRenderer.h"
 #include "renderer/multi_viewports/MultiViewPorts.h"
+#include "renderer/meshshaders/ms_triangle/MS_TriangleRenderer.h"
 int main() {
     //BasicRenderer app;
     //LLVK::ktx_texture app;
@@ -45,7 +46,8 @@ int main() {
     //LLVK::HeightBlendRenderer app;
     //LLVK::tank_billboard app;
     //LLVK::SubPassRenderer app;
-    LLVK::MultiViewPorts app;
+    //LLVK::MultiViewPorts app;
+    LLVK::MS_TriangleRenderer app;
     try {
         app.run();
     }

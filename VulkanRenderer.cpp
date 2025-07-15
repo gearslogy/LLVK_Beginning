@@ -492,7 +492,7 @@ void VulkanRenderer::draw() {
     render(); // call the pure virtual function(record command buffer)                         //1: command buffer new content
     // advanced
     currentFlightFrame = (currentFlightFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    std::cout << currentFlightFrame << std::endl;
+    //std::cout << currentFlightFrame << std::endl;
 }
 
 VkPipelineCache VulkanRenderer::getPipelineCache() const {

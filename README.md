@@ -49,6 +49,10 @@ Learn Vulkan from scratch
 * indirect draw & instance draw
 * rbd vat effects
 * command line tools: exr dump/gltf dump/spv dump
+## mesh shader 
+### sample01: triangle
+![meshshader.png](screenshot/ms_triangle.png)
+
 
 ## multi viewports
 ![multiviewports.png](screenshot/multiviewports.png)

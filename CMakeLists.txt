@@ -21,7 +21,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_FORCE_DEPTH_ZERO_TO_ONE G
 MESSAGE("VK_SDK_PATH Path----> $ENV{VK_SDK_PATH}" )
 MESSAGE("VULKAN_SDK  Path----> $ENV{VULKAN_SDK}" )
 
-set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslc.exe)
+set(glsl_compiler_exec_path $ENV{VK_SDK_PATH}/bin/glslc.exe --target-env=vulkan1.2 )
 set(shader_include_folder ${CMAKE_SOURCE_DIR}/shaders/include)
 file(GLOB shader_include_files ${shader_include_folder}/*)
 set(compile_shader_folder ${CMAKE_SOURCE_DIR}/build/bin/shaders)
@@ -30,6 +30,8 @@ file(GLOB_RECURSE shader_sources
         shaders/*.frag
         shaders/*.geom
         shaders/*.vert
+        shaders/*.mesh
+        shaders/*.task
         shaders/dynamicsUBO/*.frag
         shaders/dynamicsUBO/*.vert
         shaders/quad/*.frag

@@ -6,7 +6,7 @@
 #include "renderer/public/Helper.hpp"
 #include "renderer/public/UT_CustomRenderer.hpp"
 LLVK_NAMESPACE_BEGIN
-    void MS_TriangleRenderer::cleanupObjects(){
+void MS_TriangleRenderer::cleanupObjects(){
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     UT_Fn::cleanup_descriptor_pool(device, descPool);
@@ -19,6 +19,7 @@ LLVK_NAMESPACE_BEGIN
 
 
 void MS_TriangleRenderer::prepare(){
+    mainCamera.mPosition = glm::vec3(0, 0, 4);
     const auto &device = mainDevice.logicalDevice;
     const auto &phyDevice = mainDevice.physicalDevice;
     vkCmdDrawMeshTasksEXT = reinterpret_cast<PFN_vkCmdDrawMeshTasksEXT>(vkGetDeviceProcAddr(device, "vkCmdDrawMeshTasksEXT"));
@@ -46,7 +47,7 @@ void MS_TriangleRenderer::prepare(){
     namespace FnDesc = FnDescriptor;
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         std::array<VkWriteDescriptorSet,1> writes = {
-            FnDesc::writeDescriptorSet(sets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &uboFramedUBO[i].descBufferInfo),
+            FnDesc::writeDescriptorSet(sets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboFramedUBO[i].descBufferInfo),
         };
         vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
     }
@@ -74,13 +75,15 @@ void MS_TriangleRenderer::createPipeline() {
     const auto fsMD = FnPipeline::createShaderModuleFromSpvFile("shaders/ms_triangle_frag.spv",  device);
     VkPipelineShaderStageCreateInfo meshMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_MESH_BIT_EXT, meshMD);    //shader stages
     VkPipelineShaderStageCreateInfo taskMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_TASK_BIT_EXT, taskMD);
-    VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_TASK_BIT_EXT, fsMD);
+    VkPipelineShaderStageCreateInfo fsMD_ssCIO = FnPipeline::shaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fsMD);
 
-    pso.setShaderStages(meshMD_ssCIO, taskMD_ssCIO, fsMD_ssCIO);
+    pso.setShaderStages(taskMD_ssCIO, meshMD_ssCIO, fsMD_ssCIO);
     pso.setPipelineLayout(pipelineLayout);
     pso.setRenderPass(getMainRenderPass());
-    pso.vertexInputStageCIO.pVertexAttributeDescriptions = nullptr;
-    pso.vertexInputStageCIO.pVertexBindingDescriptions = nullptr;
+    pso.rasterizerStateCIO.cullMode = VK_CULL_MODE_NONE;
+    //pso.vertexInputStageCIO.pVertexAttributeDescriptions = nullptr;
+    //pso.vertexInputStageCIO.pVertexBindingDescriptions = nullptr;
+    pso.vertexInputStageCIO = FnPipeline::vertexInputStateCreateInfo();
 
     UT_GraphicsPipelinePSOs::createPipeline(device, pso, getPipelineCache(), pipeline);
     UT_Fn::cleanup_shader_module(device,meshMD,taskMD,fsMD);
@@ -117,7 +120,7 @@ void MS_TriangleRenderer::render(){
         vkCmdSetScissor(cmdBuf,0, 1, &scissor);
         // ---------------------------  RENDER PASS ---------------------------
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
+        vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &sets[currentFlightFrame], 0 , nullptr);
         // RECORD COMMAND BUFFER
         vkCmdDrawMeshTasksEXT(cmdBuf, 1, 1, 1); // 运行 1 个任务着色器工作组
         /*
