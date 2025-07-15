@@ -50,6 +50,10 @@ Learn Vulkan from scratch
 * rbd vat effects
 * command line tools: exr dump/gltf dump/spv dump
 ## mesh shader 
+### how to compile mesh shader:
+```bash
+glslc --target-env=vulkan1.2 -I include_path shader.task -o shader.spv
+```
 ### sample01: triangle
 ![meshshader.png](screenshot/ms_triangle.png)
 
